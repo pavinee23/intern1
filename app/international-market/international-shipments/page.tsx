@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -185,9 +185,30 @@ export default function InternationalShipmentsPage() {
     { code: 'VN', name: 'Vietnam', flag: 'VN', currency: '₫', color: 'bg-yellow-500' },
   ];
 
-  // Sample data for international shipments to overseas branches only
-  const [shipments, setShipments] = useState<InternationalShipment[]>([
-    {
+  const [shipments, setShipments] = useState<InternationalShipment[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/int-shipments').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setShipments(data.map((r: any) => ({
+        ...r,
+        items: r.items ?? [],
+        updates: r.updates ?? [],
+        customerName: r.customerName ?? '',
+        contactPerson: r.contactPerson ?? '',
+        contactPhone: r.contactPhone ?? '',
+        totalWeight: r.totalWeight ?? '',
+        totalBoxes: r.totalBoxes ?? 0,
+        shipmentMethod: r.shipmentMethod ?? 'sea',
+        shippingCost: r.shippingCost ?? 0,
+        currency: r.currency ?? 'USD',
+        estimatedTransitDays: r.estimatedTransitDays ?? 0,
+        customsValue: r.customsValue ?? 0,
+        incoterms: r.incoterms ?? 'FOB',
+      })));
+    });
+  }, []);
+
+  if(false) { const _s_arr = [{
       id: '1',
       shipmentNumber: 'IS-2026-001',
       orderNumber: 'IO-2026-001',
@@ -354,8 +375,9 @@ export default function InternationalShipmentsPage() {
         { timestamp: '2026-02-15 16:00', location: 'Busan HQ Warehouse', status: 'Packed', notes: 'Eco-friendly packaging completed, awaiting vessel schedule' },
         { timestamp: '2026-02-15 09:00', location: 'Busan HQ', status: 'Processing', notes: 'Special eco-friendly packaging in progress' }
       ]
-    }
-  ]);
+    }];
+  }
+  void 0;
 
   // Sample domestic shipments data for each branch
   const [domesticShipments] = useState<DomesticShipment[]>([

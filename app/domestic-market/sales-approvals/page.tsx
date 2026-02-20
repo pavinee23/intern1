@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -74,18 +74,11 @@ export default function DomesticSalesApprovalsPage() {
     { id: 9, name: 'Energy Audit Kit EAK-1', price: 900000, category: 'Audit', unit: 'set' }
   ];
 
-  const [items, setItems] = useState<SalesApproval[]>([
-    { id: 1, approvalNumber: 'DSA-2026-001', region: 'seoul', productName: 'K-Energy Solar Panel 500W', quantity: 300, amount: 540000000, requestedBy: 'Kim Minjun', approvedBy: 'Park Jihye', approvalDate: '2026-02-15', status: 'approved', remarks: '강남구 대형 빌딩 옥상 설치 프로젝트' },
-    { id: 2, approvalNumber: 'DSA-2026-002', region: 'busan', productName: 'Smart Inverter SI-3000', quantity: 150, amount: 277500000, requestedBy: 'Choi Donghyun', approvedBy: '-', approvalDate: '2026-02-14', status: 'pending', remarks: '해운대 신축 아파트 단지 설치' },
-    { id: 3, approvalNumber: 'DSA-2026-003', region: 'daejeon', productName: 'Battery Storage BS-500', quantity: 50, amount: 175000000, requestedBy: 'Son Heungmin', approvedBy: 'Lee Kangin', approvalDate: '2026-02-13', status: 'approved', remarks: '대덕연구단지 에너지 저장 시스템' },
-    { id: 4, approvalNumber: 'DSA-2026-004', region: 'gwangju', productName: 'LED Lighting Module LM-100', quantity: 800, amount: 72000000, requestedBy: 'Hwang Heemin', approvedBy: '-', approvalDate: '2026-02-12', status: 'pending', remarks: '전남 공공기관 LED 교체 사업' },
-    { id: 5, approvalNumber: 'DSA-2026-005', region: 'seoul', productName: 'EV Charger EC-300', quantity: 120, amount: 288000000, requestedBy: 'Jung Wooyoung', approvedBy: 'Kim Yeji', approvalDate: '2026-02-11', status: 'approved', remarks: '수도권 고속도로 휴게소 충전기 설치' },
-    { id: 6, approvalNumber: 'DSA-2026-006', region: 'daegu', productName: 'Power Monitoring System PMS', quantity: 25, amount: 62500000, requestedBy: 'Bae Suzy', approvedBy: '-', approvalDate: '2026-02-10', status: 'rejected', remarks: '예산 초과 - 2분기 재신청 필요' },
-    { id: 7, approvalNumber: 'DSA-2026-007', region: 'incheon', productName: 'Solar Controller SC-200', quantity: 200, amount: 90000000, requestedBy: 'Lee Seunghyun', approvedBy: 'Choi Yuna', approvalDate: '2026-02-09', status: 'approved', remarks: '인천공항 주변 태양광 발전소' },
-    { id: 8, approvalNumber: 'DSA-2026-008', region: 'jeju', productName: 'K-Energy Solar Panel 500W', quantity: 500, amount: 900000000, requestedBy: 'Ko Changseok', approvedBy: 'Park Seonjin', approvalDate: '2026-02-08', status: 'approved', remarks: '제주도 신재생에너지 프로젝트' },
-    { id: 9, approvalNumber: 'DSA-2026-009', region: 'busan', productName: 'Transformer T-5000', quantity: 8, amount: 720000000, requestedBy: 'Park Jihoon', approvedBy: '-', approvalDate: '2026-02-07', status: 'pending', remarks: '기장군 산업단지 변압기 교체' },
-    { id: 10, approvalNumber: 'DSA-2026-010', region: 'seoul', productName: 'Energy Audit Kit EAK-1', quantity: 30, amount: 27000000, requestedBy: 'Yoo Jaesung', approvedBy: 'Kim Minjun', approvalDate: '2026-02-06', status: 'approved', remarks: '서울시 에너지 감사 장비 공급' },
-  ]);
+  const [items, setItems] = useState<SalesApproval[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/domestic-approvals').then(r => r.json()).then(data => { if (Array.isArray(data)) setItems(data); });
+  }, []);
 
   const [newItem, setNewItem] = useState({ 
     region: 'seoul', 
@@ -117,8 +110,9 @@ export default function DomesticSalesApprovalsPage() {
     return matchSearch && matchRegion && matchStatus;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/domestic-approvals?id=${id}`, { method: 'DELETE' });
       setItems(items.filter(o => o.id !== id));
     }
   };
@@ -429,37 +423,46 @@ export default function DomesticSalesApprovalsPage() {
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const selectedCustomer = customers.find(c => c.id === Number(newItem.customerId));
     const selectedDealer = dealers.find(d => d.id === Number(newItem.dealerId));
     const selectedProduct = products.find(p => p.id === Number(newItem.productId));
-    
-    const newId = Math.max(...items.map(o => o.id)) + 1;
-    setItems([...items, {
-      id: newId,
-      approvalNumber: `DSA-2026-${String(newId).padStart(3, '0')}`,
-      region: newItem.region,
-      productName: selectedProduct?.name || newItem.productName,
-      quantity: newItem.quantity,
-      amount: newItem.amount,
-      requestedBy: selectedCustomer?.name || newItem.requestedBy,
-      approvedBy: '-',
-      approvalDate: '2026-02-15',
-      status: 'pending',
-      remarks: `${locale === 'ko' ? '고객' : 'Customer'}: ${selectedCustomer?.company || 'N/A'}, ${locale === 'ko' ? '딜러' : 'Dealer'}: ${selectedDealer?.name || 'N/A'}${newItem.remarks ? ` - ${newItem.remarks}` : ''}`,
-    }]);
+    const approvalNumber = `DSA-2026-${String(Date.now()).slice(-3)}`;
+    const productName = selectedProduct?.name || newItem.productName;
+    const requestedBy = selectedCustomer?.name || newItem.requestedBy;
+    const remarks = `${locale === 'ko' ? '고객' : 'Customer'}: ${selectedCustomer?.company || 'N/A'}, ${locale === 'ko' ? '딜러' : 'Dealer'}: ${selectedDealer?.name || 'N/A'}${newItem.remarks ? ` - ${newItem.remarks}` : ''}`;
+    const res = await fetch('/api/korea/domestic-approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        approvalNumber,
+        region: newItem.region,
+        productName,
+        quantity: newItem.quantity,
+        amount: newItem.amount,
+        requestedBy,
+        approvedBy: '-',
+        approvalDate: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        remarks,
+      }),
+    });
+    const json = await res.json();
+    if (json.id) {
+      setItems([{ id: json.id, approvalNumber, region: newItem.region, productName, quantity: newItem.quantity, amount: newItem.amount, requestedBy, approvedBy: '-', approvalDate: new Date().toISOString().slice(0, 10), status: 'pending', remarks }, ...items]);
+    }
     setIsAddModalOpen(false);
-    setNewItem({ 
-      region: 'seoul', 
-      customerId: '', 
-      dealerId: '', 
-      productId: '', 
-      productName: '', 
-      quantity: 1, 
+    setNewItem({
+      region: 'seoul',
+      customerId: '',
+      dealerId: '',
+      productId: '',
+      productName: '',
+      quantity: 1,
       unitPrice: 0,
-      amount: 0, 
-      requestedBy: '', 
-      remarks: '' 
+      amount: 0,
+      requestedBy: '',
+      remarks: ''
     });
   };
 

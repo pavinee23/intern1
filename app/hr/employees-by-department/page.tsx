@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -39,6 +39,7 @@ export default function EmployeesByDepartmentPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [viewDocumentModal, setViewDocumentModal] = useState<{ isOpen: boolean; documents?: string[]; employeeName?: string; currentIndex?: number }>({ isOpen: false });
   const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     position: '',
@@ -61,6 +62,19 @@ export default function EmployeesByDepartmentPage() {
     { id: 'maintenance', name: t.maintenanceDepartment },
     { id: 'rd', name: t.researchDevelopmentDepartment },
   ];
+
+  useEffect(() => {
+    fetch('/api/korea/employees')
+      .then(r => r.json())
+      .then(data => { setEmployeesList(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(locale === 'ko' ? '직원을 삭제하시겠습니까?' : 'Delete this employee?')) return;
+    await fetch(`/api/korea/employees?id=${id}`, { method: 'DELETE' });
+    setEmployeesList(prev => prev.filter(e => e.id !== id));
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -87,8 +101,8 @@ export default function EmployeesByDepartmentPage() {
     }));
   };
 
-  const handleCreate = () => {
-    const newId = `EMP${String(employeesList.length + initialEmployees.length + 1).padStart(3, '0')}`;
+  const handleCreate = async () => {
+    const newId = `EMP${String(Date.now()).slice(-6)}`;
     const employeeToAdd: Employee = {
       id: newId,
       name: newEmployee.name,
@@ -99,61 +113,17 @@ export default function EmployeesByDepartmentPage() {
       joinDate: newEmployee.joinDate,
       documents: newEmployee.documents.length > 0 ? newEmployee.documents : undefined,
     };
-    setEmployeesList([...employeesList, employeeToAdd]);
-    setNewEmployee({ name: '', position: '', email: '', phone: '', department: 'hr', joinDate: '2026-02-15', documents: [] });
+    await fetch('/api/korea/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(employeeToAdd)
+    });
+    setEmployeesList(prev => [...prev, employeeToAdd]);
+    setNewEmployee({ name: '', position: '', email: '', phone: '', department: 'hr', joinDate: new Date().toISOString().split('T')[0], documents: [] });
     setIsAddModalOpen(false);
   };
 
-  // Sample employee data
-  const initialEmployees: Employee[] = [
-    {
-      id: 'EMP001',
-      name: locale === 'ko' ? '김민수' : 'Kim Min-su',
-      position: locale === 'ko' ? '부서장' : 'Department Head',
-      email: 'minsu.kim@kenergy.com',
-      phone: '+82-10-1234-5678',
-      department: 'hr',
-      joinDate: '2020-03-15',
-    },
-    {
-      id: 'EMP002',
-      name: locale === 'ko' ? '이수진' : 'Lee Su-jin',
-      position: locale === 'ko' ? '회계 담당' : 'Accountant',
-      email: 'sujin.lee@kenergy.com',
-      phone: '+82-10-2345-6789',
-      department: 'hr',
-      joinDate: '2021-06-20',
-    },
-    {
-      id: 'EMP003',
-      name: locale === 'ko' ? '박지훈' : 'Park Ji-hoon',
-      position: locale === 'ko' ? '엔지니어' : 'Engineer',
-      email: 'jihoon.park@kenergy.com',
-      phone: '+82-10-3456-7890',
-      department: 'production',
-      joinDate: '2019-11-10',
-    },
-    {
-      id: 'EMP004',
-      name: locale === 'ko' ? '최영희' : 'Choi Young-hee',
-      position: locale === 'ko' ? '품질 검사원' : 'Quality Inspector',
-      email: 'younghee.choi@kenergy.com',
-      phone: '+82-10-4567-8901',
-      department: 'quality',
-      joinDate: '2022-01-05',
-    },
-    {
-      id: 'EMP005',
-      name: locale === 'ko' ? '정태영' : 'Jung Tae-young',
-      position: locale === 'ko' ? '연구원' : 'Researcher',
-      email: 'taeyoung.jung@kenergy.com',
-      phone: '+82-10-5678-9012',
-      department: 'rd',
-      joinDate: '2020-08-18',
-    },
-  ];
-
-  const employees = [...initialEmployees, ...employeesList];
+  const employees = employeesList;
 
   const filteredEmployees = employees.filter(employee => {
     const matchesDepartment = selectedDepartment === 'all' || employee.department === selectedDepartment;
@@ -318,10 +288,15 @@ export default function EmployeesByDepartmentPage() {
                   <th className="px-6 py-4 text-center text-sm font-semibold">
                     {locale === 'ko' ? '서류' : 'Documents'}
                   </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold">
+                    {locale === 'ko' ? '삭제' : 'Delete'}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEmployees.length > 0 ? (
+                {loading ? (
+                  <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">{locale === 'ko' ? '로딩 중...' : 'Loading...'}</td></tr>
+                ) : filteredEmployees.length > 0 ? (
                   filteredEmployees.map((employee, index) => (
                     <tr
                       key={employee.id}
@@ -370,11 +345,16 @@ export default function EmployeesByDepartmentPage() {
                           <span className="text-gray-400">✗</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 text-center">
+                        <button onClick={() => handleDelete(employee.id)} className="text-red-500 hover:text-red-700 text-xs font-medium">
+                          {locale === 'ko' ? '삭제' : 'Del'}
+                        </button>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                       {t.noData}
                     </td>
                   </tr>

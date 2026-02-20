@@ -34,11 +34,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })
       }
 
-      // Check if user is admin (typeID 1 or 2)
-      if (user.typeID !== 1 && user.typeID !== 2) {
-        return NextResponse.json({ error: 'Access denied. Admin privileges required.' }, { status: 403 })
-      }
-
       // Verify InfluxDB is reachable (health endpoint)
       try {
         const healthRes = await fetch(`${INFLUX_BASE}/health`)

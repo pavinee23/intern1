@@ -8,17 +8,11 @@ function getPool() {
   if (!pool) {
     // Debug: Log environment variables only when pool is created
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🔍 MySQL Connection Config:', {
-        host: process.env.MYSQL_HOST || process.env.MYSQL_USER_HOST,
-        port: process.env.MYSQL_PORT || process.env.MYSQL_USER_PORT,
-        user: process.env.MYSQL_USER,
-        database: process.env.MYSQL_DATABASE || process.env.MYSQL_USER_DATABASE,
-        password_set: !!(process.env.MYSQL_PASSWORD || process.env.MYSQL_USER_PASSWORD)
-      })
+  
     }
 
     pool = mysql.createPool({
-      host: process.env.MYSQL_HOST || process.env.MYSQL_USER_HOST || 'localhost',
+      host: process.env.MYSQL_HOST || process.env.MYSQL_USER_HOST || '127.0.0.1',
       port: parseInt(process.env.MYSQL_PORT || process.env.MYSQL_USER_PORT || '3306'),
       user: process.env.MYSQL_USER || process.env.MYSQL_USER_USER || 'ksystem',
       password: process.env.MYSQL_PASSWORD || process.env.MYSQL_USER_PASSWORD || 'Ksave2025Admin',
@@ -78,12 +72,12 @@ export async function authenticateUser(
   email: string
   site: string
   typeID: number
+  departmentID: string
 } | null> {
   // Check if we should use internal MySQL proxy API (for Vercel deployment)
   const useProxy = process.env.USE_MYSQL_PROXY === 'true'
 
   if (useProxy) {
-    console.log('🌐 Using internal MySQL proxy API for authentication')
     try {
       // Use internal Next.js API route
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/mysql-proxy`, {
@@ -96,7 +90,6 @@ export async function authenticateUser(
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.log('❌ Proxy API authentication failed:', response.status, errorData.error)
         return null
       }
 
@@ -109,24 +102,24 @@ export async function authenticateUser(
           name: data.name || '',
           email: data.email || '',
           site: data.site || '',
-          typeID: data.typeID
+          typeID: data.typeID,
+          departmentID: data.departmentID || ''
         }
       }
 
       return null
     } catch (error: any) {
-      console.error('❌ Proxy API authentication error:', error.message)
-      // Fall back to direct MySQL connection if proxy fails
-      console.log('⚠️ Falling back to direct MySQL connection')
+      console.error('Proxy auth error:', error.message)
     }
   }
 
-  // Use direct MySQL connection (local development)
-  console.log('🔌 Using direct MySQL connection for authentication')
+  // Use direct MySQL connection
   const sql = `
-    SELECT userId, userName, name, email, site, password, typeID
-    FROM user_list
-    WHERE userName = ?
+    SELECT ul.userId, ul.userName, ul.name, ul.email, ul.site, ul.password, ul.typeID,
+           ct.departmentID
+    FROM user_list ul
+    LEFT JOIN cus_type ct ON ul.typeID = ct.typeID
+    WHERE ul.userName = ?
     LIMIT 1
   `
 
@@ -142,26 +135,23 @@ export async function authenticateUser(
 
     const user = users[0]
 
-    // DEBUG: log fetched user and provided credentials (temporary)
-    console.log('🔐 authenticateUser fetched row:', {
-      userName: user.userName,
-      password: user.password,
-      site: user.site
-    })
-    console.log('🔎 authenticateUser provided:', { username, password, site })
-
     // Check if password matches (plain text comparison for now)
     // TODO: Use bcrypt for password hashing in production
     if (user.password !== password) {
       return null
     }
 
-    // If site is provided, check if it matches (case-insensitive)
-    if (site && user.site) {
-      if (user.site.toLowerCase() !== site.toLowerCase()) {
+    // Super users (typeID 4/7 or userId 1/7) bypass site check
+    const isSuperUser = user.typeID === 4 || user.typeID === 7
+      || user.userId === 1 || user.userId === 7
+
+    // If site is provided, check if it matches (supports comma-separated sites in DB)
+    if (!isSuperUser && site && user.site) {
+      const allowedSites = user.site.split(',').map((s: string) => s.trim().toLowerCase())
+      if (!allowedSites.includes(site.trim().toLowerCase())) {
         return null
       }
-    } else if (site && !user.site) {
+    } else if (!isSuperUser && site && !user.site) {
       // User has no site in database but site is required
       return null
     }
@@ -173,7 +163,8 @@ export async function authenticateUser(
       name: user.name || '',
       email: user.email || '',
       site: user.site || '',
-      typeID: user.typeID
+      typeID: user.typeID,
+      departmentID: user.departmentID || ''
     }
   } finally {
     connection.release()

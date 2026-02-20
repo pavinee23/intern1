@@ -1,13 +1,13 @@
 "use client";
 
-import { Home, BarChart2, MapPin, Bell, Settings, Monitor, Layout as LayoutIcon, Code, Users, FileText, MessageSquare, HelpCircle } from "lucide-react";
+import { Home, BarChart2, MapPin, Bell, Settings, Monitor, Layout as LayoutIcon, Code, Users, FileText, MessageSquare, HelpCircle, UserCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale } from "@/lib/LocaleContext";
 
 const navigationItems = [
-  { key: "dashboard", icon: Home, href: "/" },
+  { key: "dashboard", icon: Home, href: "/dashboard" },
   { key: "overview", icon: BarChart2, href: "/overview" },
   { key: "monitor", icon: Monitor, href: "/monitor" },
   { key: "location", icon: MapPin, href: "/location" },
@@ -28,6 +28,7 @@ const supportItems = [
   { key: "supportTickets", icon: MessageSquare, href: "/support-tickets" },
   { key: "userFeedback", icon: Users, href: "/user-feedback" },
   { key: "helpDocs", icon: HelpCircle, href: "/help-docs" },
+  { key: "userProfile", icon: UserCircle, href: "/profile" },
 ];
 
 export default function Sidebar() {

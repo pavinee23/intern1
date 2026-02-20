@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -38,18 +38,11 @@ export default function DomesticSiteInspectionPage() {
     ? [{ key: 'seoul', name: '서울/경기' }, { key: 'busan', name: '부산/경남' }, { key: 'daegu', name: '대구/경북' }, { key: 'daejeon', name: '대전/충청' }, { key: 'gwangju', name: '광주/전라' }, { key: 'incheon', name: '인천/강원' }, { key: 'jeju', name: '제주' }]
     : [{ key: 'seoul', name: 'Seoul/Gyeonggi' }, { key: 'busan', name: 'Busan/Gyeongnam' }, { key: 'daegu', name: 'Daegu/Gyeongbuk' }, { key: 'daejeon', name: 'Daejeon/Chungcheong' }, { key: 'gwangju', name: 'Gwangju/Jeolla' }, { key: 'incheon', name: 'Incheon/Gangwon' }, { key: 'jeju', name: 'Jeju' }];
 
-  const [items, setItems] = useState<SiteInspection[]>([
-    { id: 1, inspectionNumber: 'DSI-2026-001', region: 'seoul', siteLocation: '서울 강남구 역삼동 - 타워A 옥상', inspector: 'Kim Taehyung', inspectionDate: '2026-02-15', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', overallResult: 'pass', remarks: '우수한 상태, 태양광 패널 설치 준비 완료' },
-    { id: 2, inspectionNumber: 'DSI-2026-002', region: 'busan', siteLocation: '부산 해운대구 마린시티 복합건물', inspector: 'Park Seojin', inspectionDate: '2026-02-14', structuralCondition: 'pass', electricalSystem: 'conditional', safetyCompliance: 'pass', siteReadiness: 'conditional', overallResult: 'conditional', remarks: '설치 전 전기 배선 업그레이드 필요' },
-    { id: 3, inspectionNumber: 'DSI-2026-003', region: 'daejeon', siteLocation: '대전 유성구 연구단지 건물C', inspector: 'Lee Junhyuk', inspectionDate: '2026-02-13', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', overallResult: 'pass', remarks: '접지 시스템 확인 완료, 사이트 준비됨' },
-    { id: 4, inspectionNumber: 'DSI-2026-004', region: 'gwangju', siteLocation: '광주 서구 공공기관 건물', inspector: 'Choi Minkyu', inspectionDate: '2026-02-12', structuralCondition: 'fail', electricalSystem: 'conditional', safetyCompliance: 'fail', siteReadiness: 'fail', overallResult: 'fail', remarks: '지붕 구조물이 패널 하중 지지 불가, 보강 필요' },
-    { id: 5, inspectionNumber: 'DSI-2026-005', region: 'seoul', siteLocation: '경기 수원시 삼성전자 인근 창고', inspector: 'Yoo Jaesung', inspectionDate: '2026-02-11', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', overallResult: 'pass', remarks: '넓은 평지붕, 500kW 시스템 적합' },
-    { id: 6, inspectionNumber: 'DSI-2026-006', region: 'daegu', siteLocation: '대구 달성군 산업단지 공장', inspector: 'Bae Suzy', inspectionDate: '2026-02-10', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'conditional', siteReadiness: 'conditional', overallResult: 'conditional', remarks: '패널 구역 추가 방화 안전 조치 필요' },
-    { id: 7, inspectionNumber: 'DSI-2026-007', region: 'incheon', siteLocation: '인천 서구 검단 신도시 건물', inspector: 'Son Heungmin', inspectionDate: '2026-02-09', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', overallResult: 'pass', remarks: '최신 시설, 모든 요구사항 충족' },
-    { id: 8, inspectionNumber: 'DSI-2026-008', region: 'jeju', siteLocation: '제주 서귀포시 리조트 단지', inspector: 'Ko Changseok', inspectionDate: '2026-02-08', structuralCondition: 'conditional', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'conditional', overallResult: 'conditional', remarks: 'B, C 구역 경미한 지붕 수리 필요' },
-    { id: 9, inspectionNumber: 'DSI-2026-009', region: 'seoul', siteLocation: '서울 마포구 상암 디지털미디어시티', inspector: 'Jung Wooyoung', inspectionDate: '2026-02-07', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', overallResult: 'pass', remarks: '최고급 건물, 최상 상태' },
-    { id: 10, inspectionNumber: 'DSI-2026-010', region: 'busan', siteLocation: '부산 기장군 공장 건물', inspector: 'Park Jihoon', inspectionDate: '2026-02-06', structuralCondition: 'pass', electricalSystem: 'fail', safetyCompliance: 'conditional', siteReadiness: 'fail', overallResult: 'fail', remarks: '전기 시스템 노후화, 전면 교체 필요' },
-  ]);
+  const [items, setItems] = useState<SiteInspection[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/domestic-site-inspections').then(r => r.json()).then(data => { if (Array.isArray(data)) setItems(data); });
+  }, []);
 
   const [newItem, setNewItem] = useState<{ region: string; siteLocation: string; inspector: string; structuralCondition: InspResult; electricalSystem: InspResult; safetyCompliance: InspResult; siteReadiness: InspResult; remarks: string }>({ region: 'seoul', siteLocation: '', inspector: '', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', remarks: '' });
 
@@ -66,30 +59,38 @@ export default function DomesticSiteInspectionPage() {
     return matchSearch && matchRegion && matchResult;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/domestic-site-inspections?id=${id}`, { method: 'DELETE' });
       setItems(items.filter(o => o.id !== id));
     }
   };
 
-  const handleCreate = () => {
-    const newId = Math.max(...items.map(o => o.id)) + 1;
+  const handleCreate = async () => {
     const allResults: InspResult[] = [newItem.structuralCondition, newItem.electricalSystem, newItem.safetyCompliance, newItem.siteReadiness];
     const overall: InspResult = allResults.includes('fail') ? 'fail' : allResults.includes('conditional') ? 'conditional' : 'pass';
-    setItems([...items, {
-      id: newId,
-      inspectionNumber: `DSI-2026-${String(newId).padStart(3, '0')}`,
-      region: newItem.region,
-      siteLocation: newItem.siteLocation,
-      inspector: newItem.inspector,
-      inspectionDate: '2026-02-15',
-      structuralCondition: newItem.structuralCondition,
-      electricalSystem: newItem.electricalSystem,
-      safetyCompliance: newItem.safetyCompliance,
-      siteReadiness: newItem.siteReadiness,
-      overallResult: overall,
-      remarks: newItem.remarks,
-    }]);
+    const inspectionNumber = `DSI-2026-${String(Date.now()).slice(-3)}`;
+    const res = await fetch('/api/korea/domestic-site-inspections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inspectionNumber,
+        region: newItem.region,
+        siteLocation: newItem.siteLocation,
+        inspector: newItem.inspector,
+        inspectionDate: new Date().toISOString().slice(0, 10),
+        structuralCondition: newItem.structuralCondition,
+        electricalSystem: newItem.electricalSystem,
+        safetyCompliance: newItem.safetyCompliance,
+        siteReadiness: newItem.siteReadiness,
+        overallResult: overall,
+        remarks: newItem.remarks,
+      }),
+    });
+    const json = await res.json();
+    if (json.id) {
+      setItems([{ id: json.id, inspectionNumber, region: newItem.region, siteLocation: newItem.siteLocation, inspector: newItem.inspector, inspectionDate: new Date().toISOString().slice(0, 10), structuralCondition: newItem.structuralCondition, electricalSystem: newItem.electricalSystem, safetyCompliance: newItem.safetyCompliance, siteReadiness: newItem.siteReadiness, overallResult: overall, remarks: newItem.remarks }, ...items]);
+    }
     setIsAddModalOpen(false);
     setNewItem({ region: 'seoul', siteLocation: '', inspector: '', structuralCondition: 'pass', electricalSystem: 'pass', safetyCompliance: 'pass', siteReadiness: 'pass', remarks: '' });
   };

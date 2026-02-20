@@ -1,26 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { askAI, ChatMessage } from '@/lib/ai-utils';
-import { AI_PROMPTS, AI_MODELS } from '@/lib/ai-config';
+import { sendChatMessage } from '@/lib/gemini';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * AI Chatbot API
- * 
- * POST /api/ai/chatbot
- * 
- * Request body:
- * {
- *   message: string,
- *   context?: ChatMessage[],
- *   model?: string
- * }
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, context = [], model = AI_MODELS.GPT35 } = body;
+    const { message, context = [] } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -29,27 +16,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if OpenAI is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.GOOGLE_AI_API_KEY) {
       return NextResponse.json(
         {
           success: false,
-          error: 'AI chatbot is not configured. Please add OPENAI_API_KEY to environment variables.',
+          error: 'AI chatbot is not configured.',
           message: 'Sorry, AI assistant is currently unavailable. Please contact the administrator.',
         },
         { status: 503 }
       );
     }
 
-    // Call AI with chatbot prompt
-    const response = await askAI(
-      message,
-      AI_PROMPTS.CHATBOT,
-      context,
-      model
-    );
+    // Convert context from OpenAI format to Gemini format
+    const history = context.map((m: { role: string; content: string }) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
 
-    if (!response.success) {
+    const response = await sendChatMessage(message, history);
+
+    if (response.error) {
       return NextResponse.json(
         {
           success: false,
@@ -62,8 +48,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: response.data,
-      usage: response.usage,
+      message: response.text,
     });
 
   } catch (error) {
@@ -79,19 +64,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET endpoint for health check
- */
 export async function GET() {
-  const isConfigured = !!process.env.OPENAI_API_KEY;
-  
+  const isConfigured = !!process.env.GOOGLE_AI_API_KEY;
+
   return NextResponse.json({
-    service: 'AI Chatbot',
+    service: 'AI Chatbot (Gemini)',
     status: isConfigured ? 'available' : 'not configured',
     configured: isConfigured,
-    models: {
-      default: AI_MODELS.GPT35,
-      available: [AI_MODELS.GPT35, AI_MODELS.GPT35_16K, AI_MODELS.GPT4, AI_MODELS.GPT4_MINI],
-    },
   });
 }

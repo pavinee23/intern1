@@ -92,12 +92,18 @@ export default function AdminLoginPage() {
       console.log('🔍 Full response data:', JSON.stringify(data))
       console.log('🔍 User site:', userSite, 'typeID:', userTypeID, 'typeID type:', typeof userTypeID)
 
+      // Super users (typeID 4/7 or userId 1/7 or Executive/Admin dept) bypass site check entirely
+      const deptID = (data.departmentID || '').toString()
+      const isSuperUser = deptID === 'Executive' || deptID === 'Admin'
+        || userTypeID === 4 || userTypeID === 7
+        || data.userId === 1 || data.userId === 7
+
       // Allow specific republic korea users (pavinee, admin) to access
       const allowedRepublicKoreaUsers = ['pavinee', 'admin']
       const isAllowedRepublicKorea = userSite === 'republic korea' && allowedRepublicKoreaUsers.includes(data.username)
 
-      // Verify user's site is thailand, admin, or allowed republic korea user
-      if (userSite !== 'thailand' && userSite !== 'admin' && !isAllowedRepublicKorea) {
+      // Verify user's site - super users always pass
+      if (!isSuperUser && userSite !== 'thailand' && userSite !== 'admin' && !isAllowedRepublicKorea) {
         console.log('❌ Dashboard check failed:', userSite, 'username:', data.username)
         setError('This account is not authorized to access the Thailand system')
         return
@@ -182,12 +188,12 @@ export default function AdminLoginPage() {
             fontSize: 28,
             fontWeight: 700,
             color: '#1f2937',
-            marginBottom: 8
+            marginBottom: 4
           }}>
-            K Energy Save Co., Ltd. (Group of Zera)
+            K Energy Save Co., Ltd.
           </div>
-          <div style={{ fontSize: 16, color: '#6b7280', marginBottom: 4 }}>
-            K Energy Save Co., Ltd. (Group of Zera)
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>
+            (Group of Zera)
           </div>
           <div style={{ fontSize: 14, color: '#9ca3af', marginTop: 4 }}>
             Thailand Branch

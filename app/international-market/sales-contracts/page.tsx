@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -40,18 +40,11 @@ export default function SalesContractsPage() {
     { key: 'vietnam', name: t.vietnam },
   ];
 
-  const [items, setItems] = useState<SalesContract[]>([
-    { id: 1, contractNumber: 'SC-2026-001', branch: 'Korea', branchKey: 'korea', buyer: 'Seoul Metropolitan Government', seller: 'K Energy Save Co., Ltd', productName: 'Solar Panel System 500kW', quantity: 1, contractValue: 2500000000, contractDate: '2026-01-15', deliveryDate: '2026-06-30', status: 'active', remarks: 'Government green energy project phase 1' },
-    { id: 2, contractNumber: 'SC-2026-002', branch: 'Brunei', branchKey: 'brunei', buyer: 'Brunei Energy Authority', seller: 'K Energy Brunei Branch', productName: 'Energy Save Unit A200 System', quantity: 100, contractValue: 350000, contractDate: '2026-01-20', deliveryDate: '2026-05-15', status: 'active', remarks: 'National energy efficiency program' },
-    { id: 3, contractNumber: 'SC-2026-003', branch: 'Thailand', branchKey: 'thailand', buyer: 'Thai Solar Corp', seller: 'K Energy Thailand Branch', productName: 'Smart Inverter SI-3000', quantity: 200, contractValue: 42000000, contractDate: '2026-01-10', deliveryDate: '2026-04-30', status: 'active', remarks: 'Bulk supply agreement for solar farms' },
-    { id: 4, contractNumber: 'SC-2026-004', branch: 'Vietnam', branchKey: 'vietnam', buyer: 'Vietnam Electric Corp (EVN)', seller: 'K Energy Vietnam Branch', productName: 'Transformer T-5000', quantity: 10, contractValue: 9500000000, contractDate: '2025-12-01', deliveryDate: '2026-03-31', status: 'active', remarks: 'Grid upgrade project in Hanoi' },
-    { id: 5, contractNumber: 'SC-2026-005', branch: 'Korea', branchKey: 'korea', buyer: 'Samsung SDI', seller: 'K Energy Save Co., Ltd', productName: 'Battery Storage BS-500', quantity: 50, contractValue: 875000000, contractDate: '2025-11-15', deliveryDate: '2026-02-28', status: 'completed', remarks: 'R&D partnership supply' },
-    { id: 6, contractNumber: 'SC-2026-006', branch: 'Brunei', branchKey: 'brunei', buyer: 'BSP Asset Management', seller: 'K Energy Brunei Branch', productName: 'LED Lighting Module LM-100', quantity: 500, contractValue: 45000, contractDate: '2025-10-20', deliveryDate: '2026-01-31', status: 'completed', remarks: 'Office renovation project' },
-    { id: 7, contractNumber: 'SC-2026-007', branch: 'Thailand', branchKey: 'thailand', buyer: 'EGAT (Electricity Generating Authority)', seller: 'K Energy Thailand Branch', productName: 'Solar Controller SC-200', quantity: 300, contractValue: 16200000, contractDate: '2026-02-01', deliveryDate: '2026-07-31', status: 'pending', remarks: 'Awaiting final approval from EGAT board' },
-    { id: 8, contractNumber: 'SC-2026-008', branch: 'Vietnam', branchKey: 'vietnam', buyer: 'Formosa Ha Tinh Steel', seller: 'K Energy Vietnam Branch', productName: 'Power Monitoring System PMS', quantity: 20, contractValue: 1800000000, contractDate: '2025-09-01', deliveryDate: '2025-12-31', status: 'terminated', remarks: 'Contract terminated due to scope changes' },
-    { id: 9, contractNumber: 'SC-2026-009', branch: 'Korea', branchKey: 'korea', buyer: 'Hyundai E&C', seller: 'K Energy Save Co., Ltd', productName: 'EV Charger EC-300', quantity: 150, contractValue: 450000000, contractDate: '2026-02-10', deliveryDate: '2026-08-31', status: 'active', remarks: 'New apartment complex installation' },
-    { id: 10, contractNumber: 'SC-2026-010', branch: 'Thailand', branchKey: 'thailand', buyer: 'PTT Public Company', seller: 'K Energy Thailand Branch', productName: 'Energy Audit Kit EAK-1', quantity: 50, contractValue: 3750000, contractDate: '2025-12-15', deliveryDate: '2026-02-15', status: 'completed', remarks: 'Annual energy audit equipment supply' },
-  ]);
+  const [items, setItems] = useState<SalesContract[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/int-contracts').then(r => r.json()).then(data => { if (Array.isArray(data)) setItems(data); });
+  }, []);
 
   const [newItem, setNewItem] = useState({ branch: 'korea', buyer: '', productName: '', quantity: 0, contractValue: 0, deliveryDate: '', remarks: '' });
 
@@ -73,29 +66,37 @@ export default function SalesContractsPage() {
     return matchSearch && matchBranch && matchStatus;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/int-contracts?id=${id}`, { method: 'DELETE' });
       setItems(items.filter(o => o.id !== id));
     }
   };
 
-  const handleCreate = () => {
-    const newId = Math.max(...items.map(o => o.id)) + 1;
-    setItems([...items, {
-      id: newId,
-      contractNumber: `SC-2026-${String(newId).padStart(3, '0')}`,
-      branch: branches.find(b => b.key === newItem.branch)?.name || '',
-      branchKey: newItem.branch,
-      buyer: newItem.buyer,
-      seller: 'K Energy Save Co., Ltd',
-      productName: newItem.productName,
-      quantity: newItem.quantity,
-      contractValue: newItem.contractValue,
-      contractDate: '2026-02-15',
-      deliveryDate: newItem.deliveryDate,
-      status: 'pending',
-      remarks: newItem.remarks,
-    }]);
+  const handleCreate = async () => {
+    const contractNumber = `SC-2026-${String(Date.now()).slice(-3)}`;
+    const res = await fetch('/api/korea/int-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contractNumber,
+        branch: branches.find(b => b.key === newItem.branch)?.name || '',
+        branchKey: newItem.branch,
+        buyer: newItem.buyer,
+        seller: 'K Energy Save Co., Ltd',
+        productName: newItem.productName,
+        quantity: newItem.quantity,
+        contractValue: newItem.contractValue,
+        contractDate: new Date().toISOString().slice(0, 10),
+        deliveryDate: newItem.deliveryDate,
+        status: 'pending',
+        remarks: newItem.remarks,
+      }),
+    });
+    const json = await res.json();
+    if (json.id) {
+      setItems([{ id: json.id, contractNumber, branch: branches.find(b => b.key === newItem.branch)?.name || '', branchKey: newItem.branch, buyer: newItem.buyer, seller: 'K Energy Save Co., Ltd', productName: newItem.productName, quantity: newItem.quantity, contractValue: newItem.contractValue, contractDate: new Date().toISOString().slice(0, 10), deliveryDate: newItem.deliveryDate, status: 'pending', remarks: newItem.remarks }, ...items]);
+    }
     setIsAddModalOpen(false);
     setNewItem({ branch: 'korea', buyer: '', productName: '', quantity: 0, contractValue: 0, deliveryDate: '', remarks: '' });
   };

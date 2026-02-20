@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -35,8 +35,16 @@ export default function DomesticQuotationsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
 
-  // Sample data
-  const [quotations, setQuotations] = useState<DomesticQuotation[]>([
+  const [quotations, setQuotations] = useState<DomesticQuotation[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/domestic-quotations')
+      .then(r => r.json())
+      .then(data => setQuotations(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticQuotations: DomesticQuotation[] = [
     {
       id: '1',
       quotationNumber: 'DQ-2026-001',
@@ -127,7 +135,7 @@ export default function DomesticQuotationsPage() {
       lastModified: '2026-02-10',
       notes: '제주 해상풍력 연계 프로젝트'
     }
-  ]);
+  ];
 
   const regions = [
     { key: 'seoul', name: '서울/경기' },

@@ -94,7 +94,7 @@ export default function UserLogin() {
 				} catch (err) {
 					router.push('/sites')
 				}
-			}, 1500)
+			}, 300)
 			return
 			}
 
@@ -362,18 +362,19 @@ const styles: { [k: string]: React.CSSProperties } = {
 		marginBottom: 32
 	},
 	logoCircle: {
-		width: 140,
-		height: 140,
+		width: 120,
+		height: 120,
 		borderRadius: '50%',
-		background: '#ffffff',
-		margin: '0 auto 16px',
+		background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+		margin: '0 auto 20px',
 		display: 'flex',
 		alignItems: 'center',
 		justifyContent: 'center',
-		boxShadow: '0 8px 24px rgba(16, 185, 129, 0.5), 0 0 0 4px rgba(16, 185, 129, 0.1)',
+		boxShadow: `0 12px 40px rgba(16, 185, 129, 0.4), 0 4px 12px rgba(6, 78, 59, 0.2), 0 0 0 6px rgba(16, 185, 129, 0.08)`,
 		animation: 'float 3s ease-in-out infinite',
 		padding: 12,
-		overflow: 'hidden'
+		overflow: 'hidden',
+		border: '2px solid rgba(16, 185, 129, 0.2)'
 	},
 	logoImage: {
 		width: '100%',

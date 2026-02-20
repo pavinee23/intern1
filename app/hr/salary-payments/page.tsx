@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -41,9 +41,21 @@ export default function SalaryPaymentsPage() {
 
   const [selectedMonth, setSelectedMonth] = useState('2026-02');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [salaryPayments, setSalaryPayments] = useState<SalaryPayment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample salary payment data
-  const salaryPayments: SalaryPayment[] = [
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedMonth) params.set('month', selectedMonth);
+    if (selectedDepartment !== 'all') params.set('department', selectedDepartment);
+    fetch(`/api/korea/salary-payments?${params}`)
+      .then(r => r.json())
+      .then(data => { setSalaryPayments(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [selectedMonth, selectedDepartment]);
+
+  // Legacy static data removed — data now loaded from kr_salary_payments table
+  const _unused: SalaryPayment[] = [
     {
       id: 'PAY001',
       employeeId: 'EMP001',

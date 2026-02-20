@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -39,7 +39,16 @@ export default function ExpensesPage() {
     { value: 'other', label: t.other, color: 'bg-gray-100 text-gray-700' },
   ];
 
-  const [expenses, setExpenses] = useState<Expense[]>([
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/expenses')
+      .then(r => r.json())
+      .then(data => setExpenses(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticExpenses: Expense[] = [
     { id: 1, date: '2026-02-15', category: 'salary', description: locale === 'ko' ? '직원 급여 (156명)' : 'Employee Salary (156 persons)', amount: 45000000, paidBy: locale === 'ko' ? '회계팀' : 'Accounting Team', receipt: true },
     { id: 2, date: '2026-02-15', category: 'utilities', description: locale === 'ko' ? '전기요금' : 'Electricity bill', amount: 4500000, paidBy: locale === 'ko' ? '총무팀' : 'Admin Team', receipt: true },
     { id: 3, date: '2026-02-15', category: 'materials', description: locale === 'ko' ? 'LED 모듈 구매' : 'LED Module Purchase', amount: 22500000, paidBy: locale === 'ko' ? '생산팀' : 'Production Team', receipt: true },
@@ -60,7 +69,7 @@ export default function ExpensesPage() {
     { id: 18, date: '2026-02-09', category: 'transportation', description: locale === 'ko' ? '택배비' : 'Courier delivery fee', amount: 1200000, paidBy: locale === 'ko' ? '물류팀' : 'Logistics Team', receipt: true },
     { id: 19, date: '2026-02-08', category: 'office', description: locale === 'ko' ? '프린터 토너 구매' : 'Printer toner purchase', amount: 350000, paidBy: locale === 'ko' ? '총무팀' : 'Admin Team', receipt: true },
     { id: 20, date: '2026-02-07', category: 'other', description: locale === 'ko' ? '보험료 납부' : 'Insurance premium payment', amount: 3200000, paidBy: locale === 'ko' ? '경영지원팀' : 'Management Support', receipt: true },
-  ]);
+  ];
 
   const [newExpense, setNewExpense] = useState({
     date: '2026-02-15', category: 'salary', description: '', amount: 0, paidBy: '', recipient: '', receiptFile: '',
@@ -120,16 +129,30 @@ export default function ExpensesPage() {
   const totalExpenses = filtered.reduce((sum, e) => sum + e.amount, 0);
   const maxCategoryTotal = Math.max(...categorySummary.map(c => c.total), 1);
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/expenses?id=${id}`, { method: 'DELETE' });
       setExpenses(expenses.filter(e => e.id !== id));
     }
   };
 
-  const handleCreate = () => {
-    const newId = Math.max(...expenses.map(e => e.id)) + 1;
-    setExpenses([...expenses, {
-      id: newId,
+  const handleCreate = async () => {
+    const res = await fetch('/api/korea/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: newExpense.date,
+        category: newExpense.category,
+        description: newExpense.description,
+        amount: newExpense.amount,
+        paidBy: newExpense.paidBy,
+        recipient: newExpense.recipient,
+        receipt: !!newExpense.receiptFile,
+      })
+    });
+    const result = await res.json();
+    setExpenses(prev => [...prev, {
+      id: result.id || Date.now(),
       date: newExpense.date,
       category: newExpense.category,
       description: newExpense.description,

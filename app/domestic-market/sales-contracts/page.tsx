@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -37,18 +37,11 @@ export default function DomesticSalesContractsPage() {
     ? [{ key: 'seoul', name: '서울/경기' }, { key: 'busan', name: '부산/경남' }, { key: 'daegu', name: '대구/경북' }, { key: 'daejeon', name: '대전/충청' }, { key: 'gwangju', name: '광주/전라' }, { key: 'incheon', name: '인천/강원' }, { key: 'jeju', name: '제주' }]
     : [{ key: 'seoul', name: 'Seoul/Gyeonggi' }, { key: 'busan', name: 'Busan/Gyeongnam' }, { key: 'daegu', name: 'Daegu/Gyeongbuk' }, { key: 'daejeon', name: 'Daejeon/Chungcheong' }, { key: 'gwangju', name: 'Gwangju/Jeolla' }, { key: 'incheon', name: 'Incheon/Gangwon' }, { key: 'jeju', name: 'Jeju' }];
 
-  const [items, setItems] = useState<SalesContract[]>([
-    { id: 1, contractNumber: 'DSC-2026-001', region: '서울/경기', regionKey: 'seoul', buyer: '서울특별시청', seller: 'K Energy Save Co., Ltd', productName: '태양광 패널 시스템 500kW', quantity: 1, contractValue: 2500000000, contractDate: '2026-01-15', deliveryDate: '2026-06-30', status: 'active', remarks: '서울시 친환경 에너지 1단계 사업' },
-    { id: 2, contractNumber: 'DSC-2026-002', region: '부산/경남', regionKey: 'busan', buyer: '삼성중공업', seller: 'K Energy Save Co., Ltd', productName: '에너지 절감 장치 A200', quantity: 200, contractValue: 1800000000, contractDate: '2026-01-20', deliveryDate: '2026-05-15', status: 'active', remarks: '거제 조선소 에너지 효율화 프로젝트' },
-    { id: 3, contractNumber: 'DSC-2026-003', region: '대구/경북', regionKey: 'daegu', buyer: 'POSCO 포항제철', seller: 'K Energy Save Co., Ltd', productName: '스마트 인버터 SI-3000', quantity: 150, contractValue: 1350000000, contractDate: '2026-01-10', deliveryDate: '2026-04-30', status: 'active', remarks: '포항 제철소 전력 관리 고도화' },
-    { id: 4, contractNumber: 'DSC-2026-004', region: '대전/충청', regionKey: 'daejeon', buyer: 'KAIST', seller: 'K Energy Save Co., Ltd', productName: '전력 모니터링 시스템 PMS', quantity: 5, contractValue: 450000000, contractDate: '2025-12-01', deliveryDate: '2026-03-31', status: 'completed', remarks: '연구단지 전력 모니터링 구축 완료' },
-    { id: 5, contractNumber: 'DSC-2026-005', region: '서울/경기', regionKey: 'seoul', buyer: '현대건설', seller: 'K Energy Save Co., Ltd', productName: 'EV 충전기 EC-300', quantity: 300, contractValue: 900000000, contractDate: '2025-11-15', deliveryDate: '2026-02-28', status: 'completed', remarks: '신규 아파트 단지 충전 인프라' },
-    { id: 6, contractNumber: 'DSC-2026-006', region: '광주/전라', regionKey: 'gwangju', buyer: '한국전력공사 전남지사', seller: 'K Energy Save Co., Ltd', productName: 'LED 조명 모듈 LM-100', quantity: 1000, contractValue: 320000000, contractDate: '2025-10-20', deliveryDate: '2026-01-31', status: 'completed', remarks: '공공기관 LED 교체 사업' },
-    { id: 7, contractNumber: 'DSC-2026-007', region: '인천/강원', regionKey: 'incheon', buyer: '인천국제공항공사', seller: 'K Energy Save Co., Ltd', productName: '태양광 컨트롤러 SC-200', quantity: 100, contractValue: 680000000, contractDate: '2026-02-01', deliveryDate: '2026-07-31', status: 'pending', remarks: '공항 지붕 태양광 설치 승인 대기' },
-    { id: 8, contractNumber: 'DSC-2026-008', region: '제주', regionKey: 'jeju', buyer: '제주에너지공사', seller: 'K Energy Save Co., Ltd', productName: '풍력 변환 시스템 WCS-500', quantity: 10, contractValue: 2200000000, contractDate: '2026-02-05', deliveryDate: '2026-09-30', status: 'pending', remarks: '제주 해상풍력 연계 프로젝트' },
-    { id: 9, contractNumber: 'DSC-2026-009', region: '부산/경남', regionKey: 'busan', buyer: 'LG화학 울산공장', seller: 'K Energy Save Co., Ltd', productName: '배터리 저장 시스템 BS-500', quantity: 30, contractValue: 1050000000, contractDate: '2025-09-01', deliveryDate: '2025-12-31', status: 'terminated', remarks: '사업 범위 변경으로 계약 해지' },
-    { id: 10, contractNumber: 'DSC-2026-010', region: '대구/경북', regionKey: 'daegu', buyer: '경북도청', seller: 'K Energy Save Co., Ltd', productName: '에너지 감사 키트 EAK-1', quantity: 50, contractValue: 180000000, contractDate: '2026-01-25', deliveryDate: '2026-04-15', status: 'active', remarks: '경북 공공건물 에너지 감사 장비' },
-  ]);
+  const [items, setItems] = useState<SalesContract[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/domestic-contracts').then(r => r.json()).then(data => { if (Array.isArray(data)) setItems(data); });
+  }, []);
 
   const [newItem, setNewItem] = useState({ region: 'seoul', buyer: '', productName: '', quantity: 0, contractValue: 0, deliveryDate: '', remarks: '' });
 
@@ -67,29 +60,38 @@ export default function DomesticSalesContractsPage() {
     return matchSearch && matchRegion && matchStatus;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/domestic-contracts?id=${id}`, { method: 'DELETE' });
       setItems(items.filter(o => o.id !== id));
     }
   };
 
-  const handleCreate = () => {
-    const newId = Math.max(...items.map(o => o.id)) + 1;
-    setItems([...items, {
-      id: newId,
-      contractNumber: `DSC-2026-${String(newId).padStart(3, '0')}`,
-      region: regions.find(r => r.key === newItem.region)?.name || '',
-      regionKey: newItem.region,
-      buyer: newItem.buyer,
-      seller: 'K Energy Save Co., Ltd',
-      productName: newItem.productName,
-      quantity: newItem.quantity,
-      contractValue: newItem.contractValue,
-      contractDate: '2026-02-15',
-      deliveryDate: newItem.deliveryDate,
-      status: 'pending',
-      remarks: newItem.remarks,
-    }]);
+  const handleCreate = async () => {
+    const contractNumber = `DSC-2026-${String(Date.now()).slice(-3)}`;
+    const res = await fetch('/api/korea/domestic-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contractNumber,
+        region: regions.find(r => r.key === newItem.region)?.name || '',
+        regionKey: newItem.region,
+        buyer: newItem.buyer,
+        seller: 'K Energy Save Co., Ltd',
+        productName: newItem.productName,
+        quantity: newItem.quantity,
+        contractValue: newItem.contractValue,
+        contractDate: new Date().toISOString().slice(0, 10),
+        deliveryDate: newItem.deliveryDate,
+        status: 'pending',
+        remarks: newItem.remarks,
+      }),
+    });
+    const json = await res.json();
+    if (json.id) {
+      const newRow: SalesContract = { id: json.id, contractNumber, region: regions.find(r => r.key === newItem.region)?.name || '', regionKey: newItem.region, buyer: newItem.buyer, seller: 'K Energy Save Co., Ltd', productName: newItem.productName, quantity: newItem.quantity, contractValue: newItem.contractValue, contractDate: new Date().toISOString().slice(0, 10), deliveryDate: newItem.deliveryDate, status: 'pending', remarks: newItem.remarks };
+      setItems([newRow, ...items]);
+    }
     setIsAddModalOpen(false);
     setNewItem({ region: 'seoul', buyer: '', productName: '', quantity: 0, contractValue: 0, deliveryDate: '', remarks: '' });
   };

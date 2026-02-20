@@ -7,7 +7,6 @@ export default function KoreaAdminLoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [site, setSite] = useState('republic korea')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,7 +19,7 @@ export default function KoreaAdminLoginPage() {
       const res = await fetch('/api/user/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, site, pageName: '/Korea/Admin-Login' })
+        body: JSON.stringify({ username, password, pageName: '/Korea/Admin-Login' })
       })
 
       const data = await res.json()
@@ -30,7 +29,6 @@ export default function KoreaAdminLoginPage() {
         return
       }
 
-      const userSite = (data.site || '').toLowerCase().trim()
       const userTypeID = parseInt(data.typeID)
 
       // Show success notification
@@ -60,11 +58,36 @@ export default function KoreaAdminLoginPage() {
         setTimeout(() => { toast.style.animation = 'slideIn 0.3s ease-out reverse'; setTimeout(() => toast.remove(), 300) }, 3000)
       } catch (_) {}
 
-      // Verify user access
-      if (userSite !== 'republic korea' && userSite !== 'admin' && userTypeID !== 1 && userTypeID !== 2) {
-        setError('This account is not authorized to access the Korea Admin system')
-        return
+      const deptID = data.departmentID || ''
+
+      // Map departmentID → URL slug for /login/[department]
+      const userId = data.userId
+
+      // Super users (admin userId 1/7, typeID 4/7) → executive
+      const isSuperUser = userId === 1 || userId === 7 || userTypeID === 4 || userTypeID === 7
+
+      const deptToSlug: Record<string, string> = {
+        'Executive':           'executive',
+        'Admin':               'executive',
+        'CRM':                 'executive',
+        'HR':                  'hr',
+        'Production':          'production',
+        'InternationalMarket': 'international-market',
+        'DomesticMarket':      'domestic-market',
+        'QualityControl':      'quality-control',
+        'AfterSales':          'after-sales',
+        'Maintenance':         'maintenance',
+        'RnD':                 'research-development',
+        'Logistics':           'logistics',
+        'Branch Manager':      'executive',
+        'CustomerMgmt':        'customers',
+        'Translator':          'translator',
+        'AIAssistant':         'ai-assistant',
+        'BruneiChat':          'chat-brunei',
+        'VietnamChat':         'chat-vietnam',
       }
+      const slug = isSuperUser ? 'executive' : deptToSlug[deptID]
+      const redirectPath = '/korea-main'
 
       // Store user data and token
       localStorage.setItem('k_system_admin_user', JSON.stringify({
@@ -73,12 +96,12 @@ export default function KoreaAdminLoginPage() {
         name: data.name,
         email: data.email,
         site: data.site,
-        typeID: userTypeID
+        typeID: userTypeID,
+        departmentID: deptID
       }))
       localStorage.setItem('k_system_admin_token', data.token || '')
 
-      // Redirect to Thailand dashboard (shared system for now)
-      router.push('/Thailand/Admin-Login/dashboard')
+      router.push(redirectPath)
     } catch (e: any) {
       setError(e.message || 'Connection error occurred')
     } finally {
@@ -109,7 +132,10 @@ export default function KoreaAdminLoginPage() {
             <img src="/k-energy-save-logo.jpg" alt="K Energy Save Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', padding: 4 }} />
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#1f2937', letterSpacing: '-0.02em' }}>
-            K Energy Save Co., Ltd. (Group of Zera)
+            K Energy Save Co., Ltd.
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#4b5563', marginTop: 2 }}>
+            (Group of Zera)
           </div>
           <div style={{ fontSize: 14, color: '#94a3b8', marginTop: 4 }}>
             Republic of Korea - Headquarters
@@ -185,28 +211,6 @@ export default function KoreaAdminLoginPage() {
               onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
               required
             />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#374151' }}>
-              Site
-            </label>
-            <select
-              value={site}
-              onChange={(e) => setSite(e.target.value)}
-              style={{
-                width: '100%', padding: '11px 14px', fontSize: 15,
-                borderRadius: 10, border: '1px solid #e2e8f0', outline: 'none',
-                transition: 'border-color 0.2s', boxSizing: 'border-box',
-                background: '#fff', cursor: 'pointer'
-              }}
-              onFocus={e => (e.target.style.borderColor = '#6b7280')}
-              onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-              required
-            >
-              <option value="republic korea">Republic Korea</option>
-              <option value="admin">Admin</option>
-            </select>
           </div>
 
           <button

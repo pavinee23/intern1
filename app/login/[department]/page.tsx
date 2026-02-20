@@ -104,25 +104,128 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
   const config = departmentConfigs[params.department] || departmentConfigs.executive;
   const Icon = config.icon;
 
+  // Maps departmentID → default redirect (used for normal users)
+  const deptMap: Record<string, string> = {
+    'Executive':           '/executive',
+    'Admin':               '/executive',
+    'HR':                  '/hr/dashboard',
+    'Production':          '/production/dashboard',
+    'InternationalMarket': '/international-market/dashboard',
+    'DomesticMarket':      '/domestic-market/dashboard',
+    'QualityControl':      '/quality-control/dashboard',
+    'AfterSales':          '/after-sales/dashboard',
+    'Maintenance':         '/maintenance/dashboard',
+    'RnD':                 '/research-development/dashboard',
+    'Logistics':           '/logistics/dashboard',
+    'Branch Manager':      '/executive',
+    'CustomerMgmt':        '/customers',
+    'Translator':          '/translator',
+    'AIAssistant':         '/ai-assistant',
+    'BruneiChat':          '/chat/brunei',
+    'VietnamChat':         '/chat/vietnam',
+  };
+
+  // Maps URL slug → redirect path
+  const slugMap: Record<string, string> = {
+    'executive':             '/executive',
+    'hr':                    '/hr/dashboard',
+    'production':            '/production/dashboard',
+    'international-market':  '/international-market/dashboard',
+    'domestic-market':       '/domestic-market/dashboard',
+    'quality-control':       '/quality-control/dashboard',
+    'after-sales':           '/after-sales/dashboard',
+    'maintenance':           '/maintenance/dashboard',
+    'research-development':  '/research-development/dashboard',
+    'logistics':             '/logistics/dashboard',
+    'customers':             '/customers',
+    'translator':            '/translator',
+    'ai-assistant':          '/ai-assistant',
+    'chat-brunei':           '/chat/brunei',
+    'chat-vietnam':          '/chat/vietnam',
+  };
+
+  // Maps departmentID from DB → allowed URL slug(s)
+  const deptIDtoSlug: Record<string, string[]> = {
+    'Executive':           ['executive'],
+    'Admin':               ['executive'],
+    'CRM':                 ['executive', 'hr', 'production', 'international-market', 'domestic-market', 'quality-control', 'after-sales', 'maintenance', 'research-development', 'logistics', 'customers', 'translator', 'ai-assistant', 'chat-brunei', 'chat-vietnam'],
+    'Branch Manager':      ['executive'],
+    'HR':                  ['hr'],
+    'Production':          ['production'],
+    'InternationalMarket': ['international-market'],
+    'DomesticMarket':      ['domestic-market'],
+    'QualityControl':      ['quality-control'],
+    'AfterSales':          ['after-sales'],
+    'Maintenance':         ['maintenance'],
+    'RnD':                 ['research-development'],
+    'Logistics':           ['logistics'],
+    'CustomerMgmt':        ['customers'],
+    'Translator':          ['translator'],
+    'AIAssistant':         ['ai-assistant'],
+    'BruneiChat':          ['chat-brunei'],
+    'VietnamChat':         ['chat-vietnam'],
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simulate login process
-    setTimeout(() => {
-      if (username && password) {
-        // Redirect to department-specific dashboard
-        if (params.department === 'executive') {
-          router.push('/executive');
-        } else {
-          router.push(`/${params.department}/dashboard`);
-        }
-      } else {
-        setError(t.loginError);
+    try {
+      const res = await fetch('/api/user/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, pageName: `/login/${params.department}` })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setError(data.error || t.loginError);
+        return;
       }
+
+      const userTypeID = parseInt(data.typeID);
+      const deptID = data.departmentID || '';
+      const userId = data.userId;
+
+      // Only Executive and Admin (and typeID 4/7, userId 1/7) can access any department/branch
+      const isSuperUser = userTypeID === 4 || userTypeID === 7 || userId === 1 || userId === 7
+        || deptID === 'Executive' || deptID === 'Admin';
+
+      // Check if this user belongs to the department they are trying to log into
+      if (!isSuperUser) {
+        const allowedSlugs = deptIDtoSlug[deptID] || [];
+        if (!allowedSlugs.includes(params.department)) {
+          setError(
+            locale === 'ko'
+              ? '이 부서에 접근 권한이 없습니다.'
+              : 'You do not have access to this department.'
+          );
+          return;
+        }
+      }
+
+      const redirectPath = '/department' in slugMap ? slugMap[params.department] : deptMap[deptID] || '/Korea/Admin-Login';
+
+      // Store user data and token
+      localStorage.setItem('k_system_admin_user', JSON.stringify({
+        userId: data.userId,
+        username: data.username,
+        name: data.name,
+        email: data.email,
+        site: data.site,
+        typeID: userTypeID,
+        departmentID: deptID
+      }));
+      localStorage.setItem('k_system_admin_token', data.token || '');
+
+      router.push(redirectPath);
+    } catch (err: any) {
+      setError(err.message || 'Connection error occurred');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

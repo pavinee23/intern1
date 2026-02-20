@@ -86,8 +86,16 @@ export default function InternationalQuotationsPage() {
     };
   }, [showBranchDropdown, showStatusDropdown]);
 
-  // Sample data - Quotations from international branches
-  const [quotations, setQuotations] = useState<Quotation[]>([
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/quotations')
+      .then(r => r.json())
+      .then(data => setQuotations(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticQuotations: Quotation[] = [
     {
       id: '1',
       quotationNumber: 'IQ-2026-001',
@@ -164,7 +172,7 @@ export default function InternationalQuotationsPage() {
       lastModified: '2026-02-01',
       notes: 'System installed and operational'
     }
-  ]);
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {

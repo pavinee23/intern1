@@ -23,8 +23,5 @@ export function SiteProvider({ children }: { children: ReactNode }) {
 
 export function useSite() {
   const context = useContext(SiteContext);
-  if (context === undefined) {
-    throw new Error("useSite must be used within a SiteProvider");
-  }
-  return context;
+  return context ?? { selectedSite: 'thailand' as Site, setSelectedSite: () => {} };
 }

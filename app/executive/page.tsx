@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft, TrendingUp, TrendingDown, AlertCircle, Target, 
@@ -110,6 +110,14 @@ export default function ExecutiveDashboard() {
   const [goalsView, setGoalsView] = useState<'byBranch' | 'byDepartment'>('byBranch');
   const [selectedGoalDepartment, setSelectedGoalDepartment] = useState<string>('Executive');
   const [selectedSection, setSelectedSection] = useState<'all' | 'keyMetrics' | 'pendingBills' | 'evaluations' | 'issues' | 'goals' | 'departmentPerformance' | 'recentUpdates'>('all');
+  const [korExec, setKorExec] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/korea/executive')
+      .then(r => r.json())
+      .then(data => setKorExec(data))
+      .catch(() => {});
+  }, []);
 
   const openBillDetails = (bill: BranchData['pendingBills'][0]) => {
     setSelectedBill(bill);
@@ -321,17 +329,17 @@ export default function ExecutiveDashboard() {
       country: 'korea',
       countryCode: 'KR',
       currency: '₩',
-      revenue: 158420000000,
-      profit: 42180000000,
-      expenses: 116240000000,
-      employees: 156,
-      performance: 98,
-      issues: [
+      revenue: korExec?.kpis?.[0]?.revenue ?? 158420000000,
+      profit: korExec?.kpis?.[0]?.profit ?? 42180000000,
+      expenses: korExec?.kpis?.[0]?.expenses ?? 116240000000,
+      employees: korExec?.kpis?.[0]?.employees ?? 156,
+      performance: korExec?.kpis?.[0]?.performance ?? 98,
+      issues: korExec?.issues?.length > 0 ? korExec.issues.map((i: any) => ({ id: i.id, severity: i.severity, title: i.title, department: i.department })) : [
         { id: 1, severity: 'medium', title: 'Global expansion coordination needs enhancement', department: 'Executive' },
         { id: 2, severity: 'low', title: 'New headquarters building planning', department: 'Executive' },
         { id: 3, severity: 'medium', title: 'AI integration project timeline adjustment', department: 'R&D' }
       ],
-      goals: [
+      goals: korExec?.goals?.length > 0 ? korExec.goals.map((g: any) => ({ id: g.id, title: g.title, progress: g.progress, deadline: g.deadline, status: g.status })) : [
         { id: 1, title: 'Establish 4th international branch by Q3', progress: 65, deadline: '2026-09-30', status: 'on-track' },
         { id: 2, title: 'Launch next-gen energy platform', progress: 78, deadline: '2026-06-30', status: 'on-track' },
         { id: 3, title: 'Achieve 50% increase in global market share', progress: 52, deadline: '2026-12-31', status: 'on-track' }
@@ -369,7 +377,7 @@ export default function ExecutiveDashboard() {
         { id: 2, date: '2026-02-11', title: '4th international branch approved', description: 'Board approved expansion to new Southeast Asian market', updatedBy: 'Executive Committee' },
         { id: 3, date: '2026-02-08', title: 'Innovation award received', description: 'National technology innovation award for energy saving platform', updatedBy: 'R&D Department' }
       ],
-      pendingBills: [
+      pendingBills: korExec?.bills?.length > 0 ? korExec.bills.map((b: any) => ({ ...b, justification: b.reason || '', attachments: 0 })) : [
         { id: 1, department: 'Executive', description: 'New headquarters building - Phase 1 design', amount: 2800000000, submittedDate: '2026-02-13', priority: 'urgent', category: 'Capital Investment', requestedBy: 'Kim Min-ji - CEO', reason: 'Headquarters expansion for growth', justification: 'Current headquarters at 95% capacity. New building accommodates 300 employees, includes innovation center, executive facilities. Architectural design competition winner selected. Expected completion: 18 months. Property value appreciation estimated 40%.', approvalStatus: 'pending', attachments: 25 },
         { id: 2, department: 'R&D', description: 'AI research center establishment', amount: 1650000000, submittedDate: '2026-02-12', priority: 'urgent', category: 'Research', requestedBy: 'Lee Ji-eun - CTO', reason: 'Next-generation technology development', justification: 'AI integration critical for competitive advantage. Center includes advanced computing infrastructure, research labs, 15 AI specialists. Expected to reduce product development cycle by 35%. Patent pipeline potential: 10+ within 2 years.', approvalStatus: 'pending', attachments: 18 },
         { id: 3, department: 'International Market', description: '4th branch setup - Singapore', amount: 4200000000, submittedDate: '2026-02-14', priority: 'urgent', category: 'Expansion', requestedBy: 'Park Sung-ho - CFO', reason: 'Strategic Southeast Asian expansion', justification: 'Singapore chosen as regional hub for Southeast Asia expansion. Includes office lease, initial inventory, staffing 25 employees, marketing launch. Market analysis shows 125M potential customers, estimated 5-year ROI: 280%. Government incentives secured.', approvalStatus: 'pending', attachments: 32 },

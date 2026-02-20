@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -39,8 +39,16 @@ export default function PendingOrdersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
 
-  // Sample data
-  const [orders] = useState<Order[]>([
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/production-orders')
+      .then(r => r.json())
+      .then(data => setOrders(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticOrders: Order[] = [
     {
       id: '1',
       orderNumber: 'PO-2026-001',
@@ -136,10 +144,10 @@ export default function PendingOrdersPage() {
         { name: 'Sensor PCB', code: 'PCB-SENS-V2', quantity: 200, unit: 'pcs' },
         { name: 'Battery Holder', code: 'BH-CR2032', quantity: 200, unit: 'pcs' },
         { name: 'Plastic Casing', code: 'CS-WS-WHT', quantity: 200, unit: 'pcs' },
-        { name: 'CR2032 Battery', code: 'BAT-CR2032', quantity: 200, unit: 'pcs' },
+        { name: 'CR2032 Battery', code: 'BAT-CR2032', quantity: 200, unit: 'pcs' as const },
       ]
     },
-  ]);
+  ];
 
   const getStatusBadge = (status: string) => {
     const styles = {

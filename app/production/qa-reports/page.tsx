@@ -55,7 +55,7 @@ export default function QAReportsPage() {
 
   async function fetchReports() {
     try {
-      const res = await fetch('/api/production/qa-reports');
+      const res = await fetch('/api/korea/qa-reports');
       const json = await res.json();
       if (json.success) setReports(json.data);
     } catch (e) {
@@ -133,7 +133,7 @@ export default function QAReportsPage() {
     }
     try {
       if (editing) {
-        const res = await fetch('/api/production/qa-reports', {
+        const res = await fetch('/api/korea/qa-reports', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editing.id, updates: form }),
@@ -144,7 +144,7 @@ export default function QAReportsPage() {
           setModalOpen(false);
         }
       } else {
-        const res = await fetch('/api/production/qa-reports', {
+        const res = await fetch('/api/korea/qa-reports', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
@@ -166,7 +166,7 @@ export default function QAReportsPage() {
       : `${id}\n\nDelete this test result?`;
     if (!confirm(msg)) return;
     try {
-      const res = await fetch(`/api/production/qa-reports?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const res = await fetch(`/api/korea/qa-reports?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
         await fetchReports();

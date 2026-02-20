@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -67,164 +67,25 @@ export default function DomesticShipmentsPage() {
     { key: 'jeju', name: t.jejuIsland, emoji: '🏝️' },
   ];
 
-  // Sample data for domestic shipments within Korea
-  const [shipments, setShipments] = useState<DomesticShipment[]>([
-    {
-      id: '1',
-      shipmentNumber: 'DS-2026-001',
-      orderNumber: 'DO-2026-001',
-      destinationRegion: '서울/수도권',
-      destinationRegionKey: 'seoul',
-      destinationAddress: '서울특별시 강남구 역삼동 123번길 45, KSAVE 코리아 본사',
-      status: 'in-transit',
-      shipDate: '2026-02-15',
-      estimatedDelivery: '2026-02-16',
-      carrier: 'CJ대한통운',
-      trackingNumber: 'CJ123456789001',
-      priority: 'urgent',
-      customerName: '에너지절약 솔루션 (주)',
-      contactPerson: '김민수',
-      contactPhone: '02-1234-5678',
-      totalWeight: '150 kg',
-      totalBoxes: 3,
-      shipmentMethod: 'express',
-      deliveryFee: 25000,
-      packagingNote: '정밀기기 - 충격주의',
-      items: [
-        { productName: 'KSAVE 메인 컨트롤러', productCode: 'KC-M2024', quantity: 20, unit: '개', weight: '80 kg', dimensions: '40x30x20 cm' },
-        { productName: 'KSAVE 센서 모듈', productCode: 'KS-V3', quantity: 20, unit: '세트', weight: '40 kg', dimensions: '25x20x15 cm' },
-        { productName: 'KSAVE 디스플레이', productCode: 'KD-LCD5', quantity: 20, unit: '개', weight: '30 kg', dimensions: '30x25x10 cm' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 16:30', location: '서울 송파구 배송센터', status: '배송 중', notes: '최종 배송지로 출발, 내일 오전 도착 예정' },
-        { timestamp: '2026-02-15 14:00', location: '경기 성남 물류센터', status: '경유지 도착', notes: '서울 배송센터로 이동 중' },
-        { timestamp: '2026-02-15 09:00', location: '부산 본사 창고', status: '출발', notes: '포장 완료 후 서울로 출발' }
-      ]
-    },
-    {
-      id: '2',
-      shipmentNumber: 'DS-2026-002',
-      orderNumber: 'DO-2026-002',
-      destinationRegion: '부산/경남',
-      destinationRegionKey: 'busan',
-      destinationAddress: '부산광역시 기장군 정관읍 산업단지로 789, 부산 에너지타운',
-      status: 'ready-to-ship',
-      estimatedDelivery: '2026-02-17',
-      carrier: '롯데택배',
-      trackingNumber: 'LOTTE987654321',
-      priority: 'normal',
-      customerName: '부산 그린에너지',
-      contactPerson: '박영희',
-      contactPhone: '051-987-6543',
-      totalWeight: '200 kg',
-      totalBoxes: 4,
-      shipmentMethod: 'standard',
-      deliveryFee: 18000,
-      items: [
-        { productName: 'KSAVE 산업용 모델', productCode: 'KI-2024', quantity: 15, unit: '대', weight: '120 kg' },
-        { productName: '설치 키트', productCode: 'KIT-STD', quantity: 15, unit: '세트', weight: '50 kg' },
-        { productName: '매뉴얼 및 부속품', productCode: 'DOC-KR', quantity: 15, unit: '세트', weight: '30 kg' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 17:00', location: '부산 본사 창고', status: '포장 완료', notes: '내일 오전 출발 예정' },
-        { timestamp: '2026-02-15 10:00', location: '부산 본사 창고', status: '준비 중', notes: '주문 확인 및 제품 준비 완료' }
-      ]
-    },
-    {
-      id: '3',
-      shipmentNumber: 'DS-2026-003',
-      orderNumber: 'DO-2026-003',
-      destinationRegion: '대구/경북',
-      destinationRegionKey: 'daegu',
-      destinationAddress: '대구광역시 달성군 현풍읍 테크노중앙대로 456, 대구 스마트시티',
-      status: 'delivered',
-      shipDate: '2026-02-13',
-      estimatedDelivery: '2026-02-14',
-      actualDelivery: '2026-02-14',
-      carrier: '한진택배',
-      trackingNumber: 'HANJIN456789123',
-      priority: 'normal',
-      customerName: '대구 신재생에너지 협회',
-      contactPerson: '이철수',
-      contactPhone: '053-456-7890',
-      totalWeight: '180 kg',
-      totalBoxes: 5,
-      shipmentMethod: 'standard',
-      deliveryFee: 22000,
-      items: [
-        { productName: 'KSAVE 상업용 패키지', productCode: 'KC-COM24', quantity: 12, unit: '세트', weight: '144 kg' },
-        { productName: '모니터링 소프트웨어', productCode: 'SW-MON', quantity: 12, unit: '라이선스', weight: '1 kg' },
-        { productName: '설치 도구', productCode: 'TOOL-PRO', quantity: 1, unit: '세트', weight: '35 kg' }
-      ],
-      updates: [
-        { timestamp: '2026-02-14 15:30', location: '대구 달성군 배송완료', status: '배송 완료', notes: '고객 직접 수령, 설치 일정 협의 완료' },
-        { timestamp: '2026-02-14 12:00', location: '대구 북구 배송센터', status: '배송 중', notes: '배송기사 출발' },
-        { timestamp: '2026-02-13 18:00', location: '대구 배송센터', status: '도착', notes: '대구 지역 배송센터 도착' },
-        { timestamp: '2026-02-13 08:00', location: '부산 본사', status: '발송', notes: '대구행 트럭 출발' }
-      ]
-    },
-    {
-      id: '4',
-      shipmentNumber: 'DS-2026-004',
-      orderNumber: 'DO-2026-004',
-      destinationRegion: '대전/충청',
-      destinationRegionKey: 'daejeon',
-      destinationAddress: '대전광역시 유성구 대덕대로 321, 대덕연구개발특구 내',
-      status: 'delayed',
-      shipDate: '2026-02-14',
-      estimatedDelivery: '2026-02-16',
-      carrier: '우체국택배',
-      trackingNumber: 'POST789123456',
-      priority: 'urgent',
-      customerName: '대전 R&D 센터',
-      contactPerson: '정현우',
-      contactPhone: '042-321-9876',
-      totalWeight: '95 kg',
-      totalBoxes: 2,
-      shipmentMethod: 'express',
-      deliveryFee: 35000,
-      packagingNote: '연구용 샘플 - 온도 관리 필요',
-      items: [
-        { productName: 'KSAVE 프로토타입', productCode: 'KP-BETA', quantity: 5, unit: '대', weight: '75 kg' },
-        { productName: '테스트 장비', productCode: 'TEST-KIT', quantity: 1, unit: '세트', weight: '20 kg' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 18:00', location: '대전 집하장', status: '지연', notes: '악천후로 인한 운송 지연, 내일 오후 배송 예정' },
-        { timestamp: '2026-02-15 10:00', location: '천안 경유지', status: '경유', notes: '대전으로 향하는 중' },
-        { timestamp: '2026-02-14 16:00', location: '충남 아산', status: '이동 중', notes: '대전 방향으로 이동' },
-        { timestamp: '2026-02-14 09:00', location: '부산 본사', status: '출발', notes: '대전행 특송 출발' }
-      ]
-    },
-    {
-      id: '5',
-      shipmentNumber: 'DS-2026-005',
-      orderNumber: 'DO-2026-005',
-      destinationRegion: '제주도',
-      destinationRegionKey: 'jeju',
-      destinationAddress: '제주특별자치도 제주시 첨단로 159, 제주테크노파크',
-      status: 'packed',
-      estimatedDelivery: '2026-02-19',
-      carrier: '제주항공화물',
-      trackingNumber: 'JEJU2024789456',
-      priority: 'normal',
-      customerName: '제주 친환경에너지',
-      contactPerson: '강민정',
-      contactPhone: '064-123-4567',
-      totalWeight: '120 kg',
-      totalBoxes: 3,
-      shipmentMethod: 'express',
-      deliveryFee: 45000,
-      packagingNote: '항공 운송 - 리튬배터리 포함',
-      items: [
-        { productName: 'KSAVE 태양광 연동형', productCode: 'KS-SOLAR', quantity: 8, unit: '대', weight: '80 kg' },
-        { productName: '배터리 팩', productCode: 'BATT-LI', quantity: 8, unit: '개', weight: '32 kg' },
-        { productName: '인버터 모듈', productCode: 'INV-GRID', quantity: 8, unit: '개', weight: '8 kg' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 14:00', location: '부산 본사 창고', status: '포장 완료', notes: '항공 운송을 위한 특수 포장 완료, 내일 김포공항 이송' }
-      ]
-    }
-  ]);
+  const [shipments, setShipments] = useState<DomesticShipment[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/domestic-shipments').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setShipments(data.map((r: any) => ({
+        ...r,
+        items: r.items ?? [],
+        updates: r.updates ?? [],
+        customerName: r.customerName ?? '',
+        contactPerson: r.contactPerson ?? '',
+        contactPhone: r.contactPhone ?? '',
+        totalWeight: r.totalWeight ?? '',
+        totalBoxes: r.totalBoxes ?? 0,
+        shipmentMethod: r.shipmentMethod ?? 'truck',
+        deliveryFee: r.deliveryFee ?? 0,
+      })));
+    });
+  }, []);
+
 
   const filteredShipments = shipments.filter(shipment => {
     const matchesSearch = shipment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||

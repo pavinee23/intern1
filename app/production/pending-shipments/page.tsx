@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -53,124 +53,23 @@ export default function PendingShipmentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
 
-  // Sample data
-  const [shipments, setShipments] = useState<Shipment[]>([
-    {
-      id: '1',
-      shipmentNumber: 'SH-2026-001',
-      orderNumber: 'PO-2026-001',
-      destination: 'Korea',
-      destinationCode: 'KR',
-      destinationAddress: '123 Gangnam-gu, Seoul, South Korea',
-      status: 'ready-to-ship',
-      estimatedDelivery: '2026-02-18',
-      carrier: 'DHL Express',
-      trackingNumber: 'DHL1234567890KR',
-      priority: 'urgent',
-      customerName: 'Seoul Energy Corp.',
-      contactPerson: 'Kim Min-ji',
-      contactPhone: '+82-2-1234-5678',
-      totalWeight: '250 kg',
-      totalBoxes: 5,
-      packagingNote: 'Handle with care - fragile electronic components',
-      shipmentMethod: 'land',
-      items: [
-        { productName: 'Main Control Unit', productCode: 'MCU-A2024', quantity: 50, unit: 'pcs', weight: '100 kg', dimensions: '50x40x30 cm' },
-        { productName: 'Power Module', productCode: 'PM-500W', quantity: 50, unit: 'pcs', weight: '75 kg', dimensions: '40x30x20 cm' },
-        { productName: 'Display Panel', productCode: 'DP-LCD7', quantity: 50, unit: 'pcs', weight: '50 kg', dimensions: '30x25x15 cm' },
-        { productName: 'Sensor Array', productCode: 'SA-V3', quantity: 50, unit: 'sets', weight: '25 kg', dimensions: '20x15x10 cm' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 16:00', location: 'Seoul Distribution Center', status: 'In Transit', notes: 'Arrived at Seoul hub, preparing for final delivery' },
-        { timestamp: '2026-02-15 12:00', location: 'Busan Checkpoint', status: 'In Transit', notes: 'Passed checkpoint, heading to Seoul' },
-        { timestamp: '2026-02-15 08:00', location: 'Warehouse', status: 'Dispatched', notes: 'Package dispatched from main warehouse' }
-      ]
-    },
-    {
-      id: '2',
-      shipmentNumber: 'SH-2026-002',
-      orderNumber: 'PO-2026-003',
-      destination: 'Brunei',
-      destinationCode: 'BN',
-      destinationAddress: '45 Jalan Menteri Besar, Bandar Seri Begawan, Brunei',
-      status: 'packed',
-      estimatedDelivery: '2026-02-22',
-      priority: 'normal',
-      customerName: 'Brunei Utilities Ltd.',
-      contactPerson: 'Ahmad Hassan',
-      contactPhone: '+673-222-3456',
-      totalWeight: '180 kg',
-      totalBoxes: 4,
-      shipmentMethod: 'sea',
-      items: [
-        { productName: 'Energy Monitor Pro', productCode: 'EMP-2024', quantity: 30, unit: 'pcs', weight: '120 kg' },
-        { productName: 'Smart Sensors', productCode: 'SS-V2', quantity: 30, unit: 'sets', weight: '60 kg' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 14:30', location: 'Muara Port - Customs', status: 'Customs Clearance', notes: 'Under customs inspection, expected clearance today' },
-        { timestamp: '2026-02-14 18:00', location: 'Muara Port', status: 'Arrived', notes: 'Vessel arrived at destination port' },
-        { timestamp: '2026-02-12 10:00', location: 'Port of Busan', status: 'Departed', notes: 'Loaded on vessel MS Pacific Star' }
-      ]
-    },
-    {
-      id: '3',
-      shipmentNumber: 'SH-2026-003',
-      orderNumber: 'PO-2026-004',
-      destination: 'Thailand',
-      destinationCode: 'TH',
-      destinationAddress: '789 Sukhumvit Road, Bangkok, Thailand',
-      status: 'ready-to-ship',
-      estimatedDelivery: '2026-02-19',
-      carrier: 'Kerry Express',
-      trackingNumber: 'KERRY9876543210TH',
-      priority: 'normal',
-      customerName: 'Bangkok Smart Energy',
-      contactPerson: 'Somchai Prasert',
-      contactPhone: '+66-2-345-6789',
-      totalWeight: '320 kg',
-      totalBoxes: 6,
-      packagingNote: 'Waterproof packaging required',
-      shipmentMethod: 'sea',
-      items: [
-        { productName: 'Industrial Controller', productCode: 'IC-X500', quantity: 40, unit: 'pcs', weight: '200 kg', dimensions: '60x50x40 cm' },
-        { productName: 'Cooling System', productCode: 'CS-T300', quantity: 40, unit: 'pcs', weight: '120 kg', dimensions: '45x35x25 cm' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 10:00', location: 'South China Sea', status: 'In Transit', notes: 'Vessel en route, weather conditions favorable' },
-        { timestamp: '2026-02-13 14:00', location: 'Port of Busan', status: 'Departed', notes: 'Departed on vessel MS Thai Express' },
-        { timestamp: '2026-02-13 08:00', location: 'Warehouse', status: 'Preparing', notes: 'Cargo prepared and loaded' }
-      ]
-    },
-    {
-      id: '4',
-      shipmentNumber: 'SH-2026-004',
-      orderNumber: 'PO-2026-005',
-      destination: 'Vietnam',
-      destinationCode: 'VN',
-      destinationAddress: '456 Nguyen Hue Boulevard, Ho Chi Minh City, Vietnam',
-      status: 'in-transit',
-      shipDate: '2026-02-14',
-      estimatedDelivery: '2026-02-17',
-      carrier: 'Vietnam Post EMS',
-      trackingNumber: 'VN1234567890EMS',
-      priority: 'urgent',
-      customerName: 'Vietnam Green Tech',
-      contactPerson: 'Nguyen Van An',
-      contactPhone: '+84-28-765-4321',
-      totalWeight: '210 kg',
-      totalBoxes: 5,
-      shipmentMethod: 'sea',
-      items: [
-        { productName: 'Smart Gateway', productCode: 'SG-2024', quantity: 35, unit: 'pcs', weight: '140 kg' },
-        { productName: 'Network Module', productCode: 'NM-W100', quantity: 35, unit: 'pcs', weight: '70 kg' }
-      ],
-      updates: [
-        { timestamp: '2026-02-15 09:00', location: 'Hanoi Branch', status: 'Delivered', notes: 'Successfully delivered and signed by recipient' },
-        { timestamp: '2026-02-14 16:00', location: 'Hanoi Distribution', status: 'Out for Delivery', notes: 'Final delivery in progress' },
-        { timestamp: '2026-02-13 10:00', location: 'Hai Phong Port', status: 'Customs Cleared', notes: 'Cleared customs, heading to Hanoi' }
-      ]
-    }
-  ]);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/production-shipments').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setShipments(data.map((r: any) => ({
+        ...r,
+        items: r.items ?? [],
+        updates: r.updates ?? [],
+        customerName: r.customerName ?? '',
+        contactPerson: r.contactPerson ?? '',
+        contactPhone: r.contactPhone ?? '',
+        totalWeight: r.totalWeight ?? '',
+        totalBoxes: r.totalBoxes ?? 0,
+        shipmentMethod: r.shipmentMethod ?? 'sea',
+      })));
+    });
+  }, []);
 
   const getStatusBadge = (status: string) => {
     const styles = {

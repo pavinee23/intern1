@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -32,50 +32,11 @@ export default function DailyIssuesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-  const [issues] = useState<Issue[]>([
-    {
-      id: '1',
-      issueNumber: 'ISS-2026-001',
-      title: 'Microcontroller Component Shortage',
-      description: 'Critical shortage of STM32F4 microcontrollers affecting Model A-2024 production line. Current inventory: 50 units, needed: 500 units.',
-      severity: 'critical',
-      status: 'open',
-      category: 'materials',
-      reportedBy: 'Kim Min-joon',
-      reportedDate: '2026-02-15 08:30',
-      department: 'Production',
-      productionLine: 'Line A-1',
-      affectedOrders: ['PO-2026-001', 'PO-2026-002', 'PO-2026-006']
-    },
-    {
-      id: '2',
-      issueNumber: 'ISS-2026-002',
-      title: 'Assembly Line Conveyor Belt Malfunction',
-      description: 'Main conveyor belt on Line B experiencing intermittent stops. Belt tension sensor showing irregular readings. Maintenance required immediately.',
-      severity: 'high',
-      status: 'in-progress',
-      category: 'equipment',
-      reportedBy: 'Park Ji-hun',
-      reportedDate: '2026-02-15 10:15',
-      assignedTo: 'Maintenance Team',
-      department: 'Production',
-      productionLine: 'Line B-2',
-      affectedOrders: ['PO-2026-003', 'PO-2026-004']
-    },
-    {
-      id: '3',
-      issueNumber: 'ISS-2026-003',
-      title: 'Quality Control Test Failure Rate Increase',
-      description: 'LCD display units showing 12% failure rate during final QC testing (normal: 2%). Investigation into supplier batch quality required. Suspected moisture damage during shipping.',
-      severity: 'high',
-      status: 'open',
-      category: 'quality',
-      reportedBy: 'Lee Soo-jin',
-      reportedDate: '2026-02-15 14:00',
-      department: 'Quality Control',
-      affectedOrders: ['PO-2026-005']
-    }
-  ]);
+  const [issues, setIssues] = useState<Issue[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/daily-issues').then(r => r.json()).then(data => { if (Array.isArray(data)) setIssues(data); });
+  }, []);
 
   const getSeverityInfo = (severity: string) => {
     const severities = {

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
+import './styles/globals.css'
 import { LocaleProvider } from '@/lib/LocaleContext'
-
-const inter = Inter({ subsets: ['latin'] })
+import { LocaleProvider as ContextLocaleProvider } from '@/context/LocaleContext'
+import { SiteProvider } from '@/lib/SiteContext'
 
 export const metadata: Metadata = {
   title: 'Korea Management System',
@@ -20,10 +20,14 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
       </head>
-      <body className={inter.className}>
-        <LocaleProvider>
-          {children}
-        </LocaleProvider>
+      <body>
+        <SiteProvider>
+          <LocaleProvider>
+            <ContextLocaleProvider>
+              {children}
+            </ContextLocaleProvider>
+          </LocaleProvider>
+        </SiteProvider>
       </body>
     </html>
   )

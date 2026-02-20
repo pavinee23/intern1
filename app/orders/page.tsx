@@ -1,7 +1,7 @@
 'use client';
 
 import { Package, Search, Filter, Eye, Download, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocale } from '@/context/LocaleContext';
 import { translations } from '@/translations';
 
@@ -9,10 +9,18 @@ export default function OrdersPage() {
   const { locale } = useLocale();
   const t = translations[locale];
   const [filter, setFilter] = useState('all');
+  const [orders, setOrders] = useState<any[]>([]);
 
-  const orders = [
-    { 
-      id: 'ORD-2024-001', 
+  useEffect(() => {
+    fetch('/api/korea/orders')
+      .then(r => r.json())
+      .then(data => setOrders(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticOrders = [
+    {
+      id: 'ORD-2024-001',
       date: '2026-02-10', 
       product: 'Wireless Headphones', 
       quantity: 1, 
@@ -57,6 +65,8 @@ export default function OrdersPage() {
       tracking: 'N/A'
     },
   ];
+
+  const filteredOrders = filter === 'all' ? orders : orders.filter((o: any) => o.status === filter);
 
   return (
     <div className="p-4 md:p-6">
@@ -145,7 +155,7 @@ export default function OrdersPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {orders.map((order) => (
+            {filteredOrders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{order.id}</div>

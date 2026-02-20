@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -59,7 +59,16 @@ export default function MaterialsListPage() {
     notes: '',
   });
 
-  const [materials, setMaterials] = useState<Material[]>([
+  const [materials, setMaterials] = useState<Material[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/materials')
+      .then(r => r.json())
+      .then(data => setMaterials(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticMaterials: Material[] = [
     {
       id: '1',
       materialCode: 'MAT-E-001',
@@ -246,7 +255,7 @@ export default function MaterialsListPage() {
       requiredDate: '2026-02-27',
       status: 'approved'
     }
-  ]);
+  ];
 
   const getCategoryInfo = (category: string) => {
     const categories = {
@@ -340,11 +349,12 @@ export default function MaterialsListPage() {
     setSelectedMaterial(null);
   };
 
-  const handleDeleteMaterial = (material: Material) => {
+  const handleDeleteMaterial = async (material: Material) => {
     const message = locale === 'ko'
       ? `${material.materialName} (${material.materialCode})\n\n이 자재를 삭제하시겠습니까?`
       : `${material.materialName} (${material.materialCode})\n\nDelete this material?`;
     if (confirm(message)) {
+      await fetch(`/api/korea/materials?id=${material.id}`, { method: 'DELETE' });
       setMaterials(prev => prev.filter(m => m.id !== material.id));
       alert(locale === 'ko' ? '삭제되었습니다!' : 'Deleted successfully!');
     }
@@ -366,6 +376,7 @@ export default function MaterialsListPage() {
       requiredDate: editRequiredDate,
       notes: editNotes || undefined,
     };
+    fetch('/api/korea/materials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) }).catch(() => {});
     setMaterials(prev => prev.map(m => m.id === updated.id ? updated : m));
     setSelectedMaterial(updated);
     alert(locale === 'ko' ? '저장되었습니다!' : 'Saved successfully!');
@@ -400,16 +411,14 @@ export default function MaterialsListPage() {
     });
   };
 
-  const handleCreateMaterial = () => {
+  const handleCreateMaterial = async () => {
     if (!newMaterial.materialCode || !newMaterial.materialName) {
       alert(locale === 'ko' ? '자재 코드와 자재명을 입력해주세요.' : 'Please enter material code and name.');
       return;
     }
-    const created: Material = {
-      id: String(materials.length + 1),
-      ...newMaterial,
-      notes: newMaterial.notes || undefined,
-    };
+    const id = `MAT-${Date.now()}`;
+    const created: Material = { id, ...newMaterial, notes: newMaterial.notes || undefined };
+    await fetch('/api/korea/materials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(created) });
     setMaterials(prev => [...prev, created]);
     resetNewMaterialForm();
     setIsAddModalOpen(false);

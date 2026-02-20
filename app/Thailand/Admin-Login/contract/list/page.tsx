@@ -49,7 +49,7 @@ export default function ContractListPage() {
 
   const L = (en: string, th: string) => locale === 'th' ? th : en
 
-  const getAuthHeaders = () => {
+  const getAuthHeaders = (): Record<string, string> => {
     try {
       const t = localStorage.getItem('k_system_admin_token') || ''
       return t ? { Authorization: `Bearer ${t}` } : {}

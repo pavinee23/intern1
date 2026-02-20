@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -39,18 +39,11 @@ export default function SalesApprovalsPage() {
     { key: 'vietnam', name: t.vietnam },
   ];
 
-  const [items, setItems] = useState<SalesApproval[]>([
-    { id: 1, approvalNumber: 'SA-2026-001', branch: 'Korea', branchKey: 'korea', productName: 'K-Energy Solar Panel 500W', quantity: 200, amount: 360000000, requestedBy: 'Kim Minjun', approvedBy: 'Park Jihye', approvalDate: '2026-02-15', status: 'approved', remarks: 'Bulk order for Seoul project' },
-    { id: 2, approvalNumber: 'SA-2026-002', branch: 'Brunei', branchKey: 'brunei', productName: 'Energy Save Unit A200', quantity: 50, amount: 125000, requestedBy: 'Ahmad Razak', approvedBy: '-', approvalDate: '2026-02-14', status: 'pending', remarks: 'Awaiting branch manager approval' },
-    { id: 3, approvalNumber: 'SA-2026-003', branch: 'Thailand', branchKey: 'thailand', productName: 'Smart Inverter SI-3000', quantity: 100, amount: 18500000, requestedBy: 'Somchai Wongsakul', approvedBy: 'Nattapong Srisai', approvalDate: '2026-02-13', status: 'approved', remarks: 'Bangkok industrial zone' },
-    { id: 4, approvalNumber: 'SA-2026-004', branch: 'Vietnam', branchKey: 'vietnam', productName: 'Battery Storage BS-500', quantity: 30, amount: 2700000000, requestedBy: 'Nguyen Van Minh', approvedBy: '-', approvalDate: '2026-02-12', status: 'pending', remarks: 'Ho Chi Minh City warehouse' },
-    { id: 5, approvalNumber: 'SA-2026-005', branch: 'Korea', branchKey: 'korea', productName: 'LED Lighting Module LM-100', quantity: 500, amount: 45000000, requestedBy: 'Lee Seunghyun', approvedBy: 'Choi Yuna', approvalDate: '2026-02-11', status: 'approved', remarks: 'Government contract supply' },
-    { id: 6, approvalNumber: 'SA-2026-006', branch: 'Brunei', branchKey: 'brunei', productName: 'Power Monitoring System PMS', quantity: 10, amount: 85000, requestedBy: 'Hassan Abdullah', approvedBy: '-', approvalDate: '2026-02-10', status: 'rejected', remarks: 'Budget exceeded - resubmit Q2' },
-    { id: 7, approvalNumber: 'SA-2026-007', branch: 'Thailand', branchKey: 'thailand', productName: 'Solar Controller SC-200', quantity: 150, amount: 6750000, requestedBy: 'Preecha Thongkam', approvedBy: 'Nattapong Srisai', approvalDate: '2026-02-09', status: 'approved', remarks: 'Chiang Mai solar farm' },
-    { id: 8, approvalNumber: 'SA-2026-008', branch: 'Vietnam', branchKey: 'vietnam', productName: 'Transformer T-5000', quantity: 5, amount: 4500000000, requestedBy: 'Tran Duc Anh', approvedBy: 'Le Thi Huong', approvalDate: '2026-02-08', status: 'approved', remarks: 'Hanoi industrial park' },
-    { id: 9, approvalNumber: 'SA-2026-009', branch: 'Korea', branchKey: 'korea', productName: 'EV Charger EC-300', quantity: 80, amount: 192000000, requestedBy: 'Jung Wooyoung', approvedBy: '-', approvalDate: '2026-02-07', status: 'pending', remarks: 'Highway rest area project' },
-    { id: 10, approvalNumber: 'SA-2026-010', branch: 'Brunei', branchKey: 'brunei', productName: 'Energy Audit Kit EAK-1', quantity: 20, amount: 36000, requestedBy: 'Mohd Iskandar', approvedBy: 'Ahmad Razak', approvalDate: '2026-02-06', status: 'approved', remarks: 'Annual maintenance supply' },
-  ]);
+  const [items, setItems] = useState<SalesApproval[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/int-approvals').then(r => r.json()).then(data => { if (Array.isArray(data)) setItems(data); });
+  }, []);
 
   const [newItem, setNewItem] = useState({ branch: 'korea', productName: '', quantity: 0, amount: 0, requestedBy: '', remarks: '' });
 
@@ -72,29 +65,37 @@ export default function SalesApprovalsPage() {
     return matchSearch && matchBranch && matchStatus;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/int-approvals?id=${id}`, { method: 'DELETE' });
       setItems(items.filter(o => o.id !== id));
     }
   };
 
-  const handleCreate = () => {
-    const newId = Math.max(...items.map(o => o.id)) + 1;
+  const handleCreate = async () => {
+    const approvalNumber = `SA-2026-${String(Date.now()).slice(-3)}`;
     const branchName = branches.find(b => b.key === newItem.branch)?.name || newItem.branch;
-    setItems([...items, {
-      id: newId,
-      approvalNumber: `SA-2026-${String(newId).padStart(3, '0')}`,
-      branch: branchName,
-      branchKey: newItem.branch,
-      productName: newItem.productName,
-      quantity: newItem.quantity,
-      amount: newItem.amount,
-      requestedBy: newItem.requestedBy,
-      approvedBy: '-',
-      approvalDate: '2026-02-15',
-      status: 'pending',
-      remarks: newItem.remarks,
-    }]);
+    const res = await fetch('/api/korea/int-approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        approvalNumber,
+        branch: branchName,
+        branchKey: newItem.branch,
+        productName: newItem.productName,
+        quantity: newItem.quantity,
+        amount: newItem.amount,
+        requestedBy: newItem.requestedBy,
+        approvedBy: '-',
+        approvalDate: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        remarks: newItem.remarks,
+      }),
+    });
+    const json = await res.json();
+    if (json.id) {
+      setItems([{ id: json.id, approvalNumber, branch: branchName, branchKey: newItem.branch, productName: newItem.productName, quantity: newItem.quantity, amount: newItem.amount, requestedBy: newItem.requestedBy, approvedBy: '-', approvalDate: new Date().toISOString().slice(0, 10), status: 'pending', remarks: newItem.remarks }, ...items]);
+    }
     setIsAddModalOpen(false);
     setNewItem({ branch: 'korea', productName: '', quantity: 0, amount: 0, requestedBy: '', remarks: '' });
   };

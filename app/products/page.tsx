@@ -1,7 +1,7 @@
 'use client';
 
 import { Package, Search, Heart, ShoppingCart, Star, Zap, Shield, Leaf } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocale } from '@/context/LocaleContext';
 import { translations } from '@/translations';
 import Image from 'next/image';
@@ -11,8 +11,16 @@ export default function ProductsPage() {
   const t = translations[locale];
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [products, setProducts] = useState<any[]>([]);
 
-  const products = [
+  useEffect(() => {
+    fetch('/api/korea/products')
+      .then(r => r.json())
+      .then(data => setProducts(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticProducts = [
     {
       id: 1,
       name: 'K-SAVER 10',

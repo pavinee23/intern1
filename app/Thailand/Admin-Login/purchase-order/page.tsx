@@ -44,7 +44,7 @@ export default function PurchaseOrderPage() {
 
   const lang = locale
   const L = (en: string, th: string) => lang === 'th' ? th : en
-  const getAuthHeaders = () => {
+  const getAuthHeaders = (): Record<string, string> => {
     try {
       const t = localStorage.getItem('k_system_admin_token') || ''
       return t ? { Authorization: `Bearer ${t}` } : {}

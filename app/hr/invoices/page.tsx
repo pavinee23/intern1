@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -58,7 +58,16 @@ export default function InvoicesPage() {
     { id: 10, contractNumber: 'DSC-2026-010', buyer: '경북도청 (Gyeongbuk Provincial Office)', productName: '에너지 감사 키트 EAK-1', quantity: 50, contractValue: 180000000, market: 'domestic', region: '대구/경북' },
   ]);
 
-  const [invoices, setInvoices] = useState<Invoice[]>([
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/hr-invoices')
+      .then(r => r.json())
+      .then(data => setInvoices(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const _staticInvoices: Invoice[] = [
     { id: 1, invoiceNumber: 'INV-2026-001', customer: 'Brunei Energy Corp', issueDate: '2026-02-15', dueDate: '2026-03-15', items: [{ name: 'Solar Inverter SI-5000', quantity: 20, unit: 'pcs', unitPrice: 3500000 }], subtotal: 70000000, taxRate: 10, taxAmount: 7000000, totalAmount: 77000000, paymentStatus: 'paid', notes: 'Payment received via wire transfer' },
     { id: 2, invoiceNumber: 'INV-2026-002', customer: 'Thailand Power Solutions', issueDate: '2026-02-14', dueDate: '2026-03-14', items: [{ name: 'Energy Saver Module ESM-200', quantity: 100, unit: 'pcs', unitPrice: 850000 }], subtotal: 85000000, taxRate: 10, taxAmount: 8500000, totalAmount: 93500000, paymentStatus: 'partial', notes: '50% deposit received' },
     { id: 3, invoiceNumber: 'INV-2026-003', customer: 'Vietnam Green Tech', issueDate: '2026-02-13', dueDate: '2026-03-13', items: [{ name: 'LED Controller LC-300', quantity: 500, unit: 'pcs', unitPrice: 120000 }], subtotal: 60000000, taxRate: 10, taxAmount: 6000000, totalAmount: 66000000, paymentStatus: 'unpaid', notes: '' },
@@ -69,7 +78,7 @@ export default function InvoicesPage() {
     { id: 8, invoiceNumber: 'INV-2026-008', customer: 'KT Telecom', issueDate: '2026-02-08', dueDate: '2026-03-08', items: [{ name: 'UPS System UPS-3000', quantity: 25, unit: 'pcs', unitPrice: 6200000 }], subtotal: 155000000, taxRate: 10, taxAmount: 15500000, totalAmount: 170500000, paymentStatus: 'paid', notes: '' },
     { id: 9, invoiceNumber: 'INV-2026-009', customer: 'Daegu Industrial Zone', issueDate: '2026-02-07', dueDate: '2026-03-07', items: [{ name: 'Voltage Regulator VR-200', quantity: 80, unit: 'pcs', unitPrice: 950000 }], subtotal: 76000000, taxRate: 10, taxAmount: 7600000, totalAmount: 83600000, paymentStatus: 'unpaid', notes: '' },
     { id: 10, invoiceNumber: 'INV-2026-010', customer: 'Gwangju Solar Farm', issueDate: '2026-02-06', dueDate: '2026-03-06', items: [{ name: 'Solar Panel SP-400W', quantity: 300, unit: 'pcs', unitPrice: 350000 }], subtotal: 105000000, taxRate: 10, taxAmount: 10500000, totalAmount: 115500000, paymentStatus: 'partial', notes: '30% advance paid' },
-  ]);
+  ];
 
   const [newInvoice, setNewInvoice] = useState({
     salesContractId: '', customer: '', issueDate: '2026-02-15', dueDate: '', itemName: '', quantity: 0, unit: 'pcs', unitPrice: 0, notes: '', paymentMethod: 'bank_transfer'
@@ -112,8 +121,9 @@ export default function InvoicesPage() {
     return matchSearch && matchStatus;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
+      await fetch(`/api/korea/hr-invoices?id=${id}`, { method: 'DELETE' }).catch(() => {});
       setInvoices(invoices.filter(inv => inv.id !== id));
     }
   };
@@ -609,25 +619,32 @@ export default function InvoicesPage() {
     printWindow.document.close();
   };
 
-  const handleCreate = () => {
-    const newId = Math.max(...invoices.map(inv => inv.id)) + 1;
+  const handleCreate = async () => {
     const subtotal = newInvoice.quantity * newInvoice.unitPrice;
     const taxAmount = Math.round(subtotal * 0.1);
-    setInvoices([...invoices, {
-      id: newId,
-      invoiceNumber: `INV-2026-${String(newId).padStart(3, '0')}`,
-      customer: newInvoice.customer,
-      issueDate: newInvoice.issueDate,
-      dueDate: newInvoice.dueDate,
-      items: [{ name: newInvoice.itemName, quantity: newInvoice.quantity, unit: newInvoice.unit, unitPrice: newInvoice.unitPrice }],
-      subtotal,
-      taxRate: 10,
-      taxAmount,
-      totalAmount: subtotal + taxAmount,
-      paymentStatus: 'unpaid',
-      notes: `${newInvoice.notes}${newInvoice.notes ? ' | ' : ''}Payment Method: ${newInvoice.paymentMethod === 'bank_transfer' ? (locale === 'ko' ? 'Bank Transfer (계좌 이체)' : 'Bank Transfer') : (locale === 'ko' ? 'Credit Card (신용카드)' : 'Credit Card')}`,
-      salesContractNumber: salesContracts.find(c => c.id === Number(newInvoice.salesContractId))?.contractNumber,
-    }]);
+    const notes = `${newInvoice.notes}${newInvoice.notes ? ' | ' : ''}Payment Method: ${newInvoice.paymentMethod === 'bank_transfer' ? (locale === 'ko' ? 'Bank Transfer (계좌 이체)' : 'Bank Transfer') : (locale === 'ko' ? 'Credit Card (신용카드)' : 'Credit Card')}`;
+    const salesContractNumber = salesContracts.find(c => c.id === Number(newInvoice.salesContractId))?.contractNumber;
+    const res = await fetch('/api/korea/hr-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer: newInvoice.customer,
+        issueDate: newInvoice.issueDate,
+        dueDate: newInvoice.dueDate,
+        subtotal,
+        taxRate: 10,
+        taxAmount,
+        totalAmount: subtotal + taxAmount,
+        paymentStatus: 'unpaid',
+        notes,
+        salesContractNumber,
+        items: [{ name: newInvoice.itemName, quantity: newInvoice.quantity, unit: newInvoice.unit, unitPrice: newInvoice.unitPrice }],
+      }),
+    }).catch(() => null);
+    if (res?.ok) {
+      const saved = await res.json().catch(() => null);
+      if (saved) setInvoices(prev => [...prev, saved]);
+    }
     setIsAddModalOpen(false);
     setNewInvoice({ salesContractId: '', customer: '', issueDate: '2026-02-15', dueDate: '', itemName: '', quantity: 0, unit: 'pcs', unitPrice: 0, notes: '', paymentMethod: 'bank_transfer' });
   };

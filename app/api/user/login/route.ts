@@ -18,14 +18,8 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!site) {
-      return NextResponse.json({
-        error: 'Please enter Site / Branch'
-      }, { status: 400 })
-    }
-
-    // Authenticate user
-    const user = await authenticateUser(username, password, site)
+    // Authenticate user (site is optional - if not provided, any site is accepted)
+    const user = await authenticateUser(username, password, site || undefined)
 
     if (!user) {
       console.log('❌ Login failed: Invalid credentials or site')
@@ -35,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Record login log to database
-    await recordLoginLog(user.userId, pageName || '/sites')
+    recordLoginLog(user.userId, pageName || "/sites").catch(() => {})
 
     // Generate simple token (JWT can be used for production)
     const token = Buffer.from(`${user.userId}-${Date.now()}-${Math.random()}`).toString('base64')
@@ -51,7 +45,8 @@ export async function POST(req: NextRequest) {
       name: user.name,
       email: user.email,
       site: user.site,
-      typeID: user.typeID
+      typeID: user.typeID,
+      departmentID: user.departmentID
     })
 
   } catch (err: any) {

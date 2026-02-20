@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -31,72 +31,11 @@ export default function ProductionUpdatesPage() {
   const [selectedUpdate, setSelectedUpdate] = useState<ProductionUpdate | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [updates] = useState<ProductionUpdate[]>([
-    {
-      id: '1',
-      orderNumber: 'PO-2026-001',
-      productName: 'Energy Saving System Model A-2024',
-      branch: 'Korea',
-      branchCode: 'KR',
-      totalQuantity: 50,
-      completedQuantity: 35,
-      progressPercent: 70,
-      currentStage: 'testing',
-      assignedTeam: 'Team Alpha',
-      startDate: '2026-02-10',
-      estimatedCompletion: '2026-02-20',
-      lastUpdate: '2026-02-15 14:30',
-      notes: 'Testing phase progressing well, minor adjustments needed'
-    },
-    {
-      id: '2',
-      orderNumber: 'PO-2026-003',
-      productName: 'Energy Monitor Pro',
-      branch: 'Brunei',
-      branchCode: 'BN',
-      totalQuantity: 30,
-      completedQuantity: 28,
-      progressPercent: 93,
-      currentStage: 'packaging',
-      assignedTeam: 'Team Beta',
-      startDate: '2026-02-08',
-      estimatedCompletion: '2026-02-18',
-      lastUpdate: '2026-02-15 11:00',
-      notes: 'Almost ready for shipment'
-    },
-    {
-      id: '3',
-      orderNumber: 'PO-2026-004',
-      productName: 'Industrial Controller IC-X500',
-      branch: 'Thailand',
-      branchCode: 'TH',
-      totalQuantity: 40,
-      completedQuantity: 20,
-      progressPercent: 50,
-      currentStage: 'assembly',
-      assignedTeam: 'Team Gamma',
-      startDate: '2026-02-12',
-      estimatedCompletion: '2026-02-22',
-      lastUpdate: '2026-02-15 09:15',
-      notes: 'On schedule, additional components arrived'
-    },
-    {
-      id: '4',
-      orderNumber: 'PO-2026-005',
-      productName: 'Smart Gateway SG-2024',
-      branch: 'Vietnam',
-      branchCode: 'VN',
-      totalQuantity: 35,
-      completedQuantity: 35,
-      progressPercent: 100,
-      currentStage: 'ready',
-      assignedTeam: 'Team Delta',
-      startDate: '2026-02-05',
-      estimatedCompletion: '2026-02-15',
-      lastUpdate: '2026-02-15 08:00',
-      notes: 'Completed and ready for shipment'
-    }
-  ]);
+  const [updates, setUpdates] = useState<ProductionUpdate[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/production-updates').then(r => r.json()).then(data => { if (Array.isArray(data)) setUpdates(data); });
+  }, []);
 
   const getStageInfo = (stage: string) => {
     const stages = {

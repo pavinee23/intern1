@@ -98,6 +98,27 @@ const departmentConfigs: Record<string, DepartmentConfig> = {
     color: 'cyan-500',
     bgGradient: 'from-cyan-600 to-sky-600',
     icon: '🔬'
+  },
+  'executive': {
+    name: 'Executive',
+    nameKey: 'executiveDepartment',
+    color: 'slate-600',
+    bgGradient: 'from-slate-600 to-slate-800',
+    icon: '🏢'
+  },
+  'admin': {
+    name: 'Admin',
+    nameKey: 'executiveDepartment',
+    color: 'slate-600',
+    bgGradient: 'from-slate-600 to-slate-800',
+    icon: '🛡️'
+  },
+  'branch-manager': {
+    name: 'Branch Manager',
+    nameKey: 'executiveDepartment',
+    color: 'slate-500',
+    bgGradient: 'from-slate-500 to-slate-700',
+    icon: '🏬'
   }
 };
 
@@ -119,9 +140,24 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Load user name from localStorage
+    // Load user name from login session first, then fallback to chat-user-name
     const savedName = localStorage.getItem('chat-user-name');
-    if (savedName) {
+    const adminUser = localStorage.getItem('k_system_admin_user');
+    if (adminUser) {
+      try {
+        const user = JSON.parse(adminUser);
+        const displayName = user.name || user.username || savedName || '';
+        if (displayName) {
+          setUserName(displayName);
+          localStorage.setItem('chat-user-name', displayName);
+        } else {
+          setShowNamePrompt(true);
+        }
+      } catch {
+        if (savedName) setUserName(savedName);
+        else setShowNamePrompt(true);
+      }
+    } else if (savedName) {
       setUserName(savedName);
     } else {
       setShowNamePrompt(true);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -75,6 +75,29 @@ export default function InvoicesPage() {
   const calculateTotal = () => {
     return invoiceData.quantity * invoiceData.unitPrice;
   };
+
+  const handleSendInvoice = useCallback(async () => {
+    const contract = contracts.find(c => c.id === selectedContract);
+    if (!contract) return;
+    await fetch('/api/korea/domestic-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contractId: selectedContract,
+        customer: contract.customer,
+        product: contract.product,
+        region: contract.region,
+        issueDate: invoiceData.issueDate,
+        paymentDueDate: invoiceData.paymentDueDate,
+        quantity: invoiceData.quantity,
+        unitPrice: invoiceData.unitPrice,
+        totalAmount: calculateTotal(),
+        paymentMethod: invoiceData.paymentMethod,
+        notes: invoiceData.notes,
+      }),
+    }).catch(() => {});
+    router.push('/domestic-market/dashboard');
+  }, [selectedContract, invoiceData, contracts, router]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR').format(amount);
@@ -319,7 +342,7 @@ export default function InvoicesPage() {
               {locale === 'ko' ? '임시저장' : 'Save Draft'}
             </button>
             
-            <button className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+            <button onClick={handleSendInvoice} className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
               <Send className="w-4 h-4" />
               {locale === 'ko' ? '인보이스 발송' : 'Send Invoice'}
             </button>

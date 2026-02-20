@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 type Machine = {
   id: string
@@ -637,27 +638,50 @@ export default function SitesPage() {
             <ServiceCard name="Telegraf" status={services?.telegraf?.ok} />
             <ServiceCard name="MQTT" status={services?.mqtt?.ok} />
           </div>
-          <button
+          <Link
+            href="/dashboard"
             className="k-btn k-btn-primary crisp-text"
-            onClick={() => router.push('/Ksave-list')}
             style={{
               background: 'linear-gradient(135deg, #10b981, #059669)',
               color: '#fff',
               padding: '14px 28px',
               borderRadius: 12,
-              border: 0,
               fontSize: 16,
               fontWeight: 700,
               boxShadow: '0 8px 24px rgba(16, 185, 129, 0.35)',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
-              letterSpacing: '0.3px'
+              letterSpacing: '0.3px',
+              textDecoration: 'none',
+              display: 'inline-block'
             }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseOver={(e) => (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'}
           >
-            <span>📋 Pre-installation List</span>
-          </button>
+            🖥️ Monitoring System
+          </Link>
+          <Link
+            href="/customer-dashboard-login"
+            className="k-btn k-btn-primary crisp-text"
+            style={{
+              background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+              color: '#fff',
+              padding: '14px 28px',
+              borderRadius: 12,
+              fontSize: 16,
+              fontWeight: 700,
+              boxShadow: '0 8px 24px rgba(139, 92, 246, 0.35)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              letterSpacing: '0.3px',
+              textDecoration: 'none',
+              display: 'inline-block'
+            }}
+            onMouseOver={(e) => (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'}
+          >
+            👥 Customer Dashboard
+          </Link>
           <button
             className="k-btn k-btn-primary crisp-text"
             onClick={handleOpenAllBefore}

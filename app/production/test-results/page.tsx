@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -37,8 +37,15 @@ export default function TestResultsPage() {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterResult, setFilterResult] = useState<string>('all');
 
-  const [testResults] = useState<TestResult[]>([
-    {
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+
+  useEffect(() => {
+    fetch('/api/korea/test-results').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setTestResults(data.map((r: any) => ({ ...r, parameters: r.parameters ?? [] })));
+    });
+  }, []);
+
+  const _staticTestResults = [{
       id: '1',
       testNumber: 'TEST-2026-001',
       productName: 'Energy Saving System Model A-2024',
@@ -374,7 +381,8 @@ export default function TestResultsPage() {
         { name: 'Drop Test', expected: '1m height', actual: '1.2m', status: 'pass' }
       ]
     }
-  ]);
+  ];
+  void _staticTestResults;
 
   const getTestTypeInfo = (type: string) => {
     const types = {
