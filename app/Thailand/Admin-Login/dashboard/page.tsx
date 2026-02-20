@@ -279,6 +279,33 @@ export default function ThailandAdminDashboard() {
         </svg>
       ),
       color: '#f59e0b'
+    },
+    {
+      title: 'Pre-Installation Analysis',
+      titleTh: 'วิเคราะห์ก่อนติดตั้ง',
+      desc: 'Current & Power Analysis',
+      descTh: 'วิเคราะห์กระแสและพลังงาน',
+      href: '/Thailand/Admin-Login/pre-installation-analysis',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+          <path d="M13 21h4a2 2 0 0 0 2-2v-4"/><polyline points="19 9 13 9 13 3"/>
+        </svg>
+      ),
+      color: '#8b5cf6'
+    },
+    {
+      title: 'Power Calculator',
+      titleTh: 'คำนวณค่าไฟฟ้า',
+      desc: 'Electricity Cost Calculator',
+      descTh: 'คำนวณค่าไฟฟ้าและพลังงาน',
+      href: '/Thailand/Admin-Login/power-calculator',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      ),
+      color: '#eab308'
     }
   ]
 

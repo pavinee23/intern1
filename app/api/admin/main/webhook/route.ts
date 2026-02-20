@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     const info = {
       name: 'admin-main-webhook',
       description: 'Webhook for admin main page actions',
-      availableRoutes: ['/admin/AdminKsavelogin','/admin/tokens','/admin/add-machine','/admin/main/report']
+      availableRoutes: ['/admin/adminsystem','/admin/tokens','/admin/add-machine','/admin/main/report']
     }
 
     return NextResponse.json({ ok: true, info, query })

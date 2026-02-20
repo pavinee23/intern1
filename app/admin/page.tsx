@@ -15,12 +15,12 @@ export default function AdminPage() {
         setIsAuthenticated(true)
       } else {
         setIsAuthenticated(false)
-        router.replace('/admin/AdminKsavelogin')
+        router.replace('/admin/adminsystem')
       }
     } catch (error) {
       console.error('Authentication check failed:', error)
       setIsAuthenticated(false)
-      router.replace('/admin/AdminKsavelogin')
+      router.replace('/admin/adminsystem')
     }
   }, [router])
 

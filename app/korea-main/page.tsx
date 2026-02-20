@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Home, Users, FileText, BarChart3, Settings, Bell, MapPin, Package, Headphones, Wrench, Briefcase, FlaskConical, MessageCircle, Globe, Network } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -13,6 +14,27 @@ export default function HomePage() {
   const pathname = usePathname();
   const { locale } = useLocale();
   const t = translations[locale];
+
+  const [currentUser, setCurrentUser] = useState<{
+    userId: number;
+    username: string;
+    name: string;
+    email: string;
+    site: string;
+    typeID: number;
+    departmentID: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('k_system_admin_user');
+    if (userData) {
+      try {
+        setCurrentUser(JSON.parse(userData));
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+  }, []);
 
   const features = [
     { 
@@ -165,12 +187,22 @@ export default function HomePage() {
               >
                 <Settings className="w-5 h-5 text-gray-600" />
               </Link>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                   <span className="text-white font-semibold text-sm">
-                    {locale === 'ko' ? '관리' : 'AD'}
+                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : (locale === 'ko' ? '관리' : 'AD')}
                   </span>
                 </div>
+                {currentUser && (
+                  <div className="text-left">
+                    <div className="text-sm font-semibold text-gray-800">
+                      {currentUser.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {currentUser.username}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

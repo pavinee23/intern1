@@ -334,7 +334,7 @@ function AdminPageContent(): React.ReactElement {
 
   function handleLogout() {
     try { localStorage.removeItem('k_system_admin_token') } catch (_) {}
-    router.replace('/admin/AdminKsavelogin')
+    router.replace('/admin/adminsystem')
   }
 
   // Debounce the search input so filtering doesn't happen on every keystroke

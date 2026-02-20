@@ -189,9 +189,14 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
       const deptID = data.departmentID || '';
       const userId = data.userId;
 
-      // Only Executive and Admin (and typeID 4/7, userId 1/7) can access any department/branch
+      console.log('👤 User login data:', { userId, username: data.username, typeID: userTypeID, departmentID: deptID });
+
+      // Super Users can access any department/branch:
+      // - Executive, Admin, CRM, Branch Manager departments
+      // - typeID 4 (Admin) or 7 (Branch Manager)
+      // - userId 1 or 7 (special admin users)
       const isSuperUser = userTypeID === 4 || userTypeID === 7 || userId === 1 || userId === 7
-        || deptID === 'Executive' || deptID === 'Admin';
+        || deptID === 'Executive' || deptID === 'Admin' || deptID === 'CRM' || deptID === 'Branch Manager';
 
       // Check if this user belongs to the department they are trying to log into
       if (!isSuperUser) {
@@ -206,7 +211,15 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
         }
       }
 
-      const redirectPath = '/department' in slugMap ? slugMap[params.department] : deptMap[deptID] || '/Korea/Admin-Login';
+      const redirectPath = params.department in slugMap ? slugMap[params.department] : deptMap[deptID] || '/korea-main';
+
+      console.log('🔄 Login redirect info:', {
+        department: params.department,
+        departmentID: deptID,
+        typeID: userTypeID,
+        isSuperUser,
+        redirectPath
+      });
 
       // Store user data and token
       localStorage.setItem('k_system_admin_user', JSON.stringify({
@@ -220,7 +233,13 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
       }));
       localStorage.setItem('k_system_admin_token', data.token || '');
 
-      router.push(redirectPath);
+      console.log('✅ Login successful! Redirecting to:', redirectPath);
+      console.log('💾 Stored in localStorage:', { user: data.username, token: data.token ? 'YES' : 'NO' });
+
+      // Small delay to ensure localStorage is saved
+      setTimeout(() => {
+        router.push(redirectPath);
+      }, 100);
     } catch (err: any) {
       setError(err.message || 'Connection error occurred');
     } finally {
