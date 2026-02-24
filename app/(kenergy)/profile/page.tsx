@@ -1,162 +1,226 @@
 'use client';
 
-import { User, Mail, Phone, MapPin, Calendar, Edit, Camera } from 'lucide-react';
-import { useLocale } from '@/context/LocaleContext';
-import { translations } from '@/translations';
+import { useState } from 'react';
+import { User, Mail, Phone, MapPin, Calendar, Edit, Camera, Building2, Globe, Shield, Save, X } from 'lucide-react';
+import { useLocale } from '@/lib/LocaleContext';
+
+const companyInfo = {
+  name: 'K Energy Save Co., Ltd.',
+  group: 'Group of Zera',
+  email: 'info@kenergysave.com',
+  phone: '+82 (0)2-1234-5678',
+  website: 'www.kenergysave.com',
+  address: 'Seoul, Republic of Korea',
+  founded: 'January 2020',
+  description: 'Smart Energy Management & IoT Solutions',
+};
+
+const adminUser = {
+  name: 'System Administrator',
+  email: 'admin@kenergysave.com',
+  phone: '+82 (0)10-9876-5432',
+  since: 'January 2020',
+};
 
 export default function ProfilePage() {
-  const { locale } = useLocale();
-  const t = translations[locale];
-  
+  const { t } = useLocale();
+  const [isEditing, setIsEditing] = useState(false);
+  const [adminName, setAdminName] = useState(adminUser.name);
+  const [adminEmail, setAdminEmail] = useState(adminUser.email);
+  const [adminPhone, setAdminPhone] = useState(adminUser.phone);
+
+  const notificationItems = [
+    { key: 'emailNotifications', descKey: 'emailNotificationsDesc', checked: true },
+    { key: 'smsNotifications', descKey: 'smsNotificationsDesc', checked: false },
+    { key: 'systemAlerts', descKey: 'systemAlertsDesc', checked: true },
+  ];
+
   return (
-    <div className="p-4 md:p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{t.myProfile}</h1>
-        <p className="text-gray-600">{t.profileDescription}</p>
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="mb-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+          {t('myProfile') || 'My Profile'}
+        </h1>
+        <p className="text-gray-500 text-sm">
+          {t('profileDescription') || 'Manage your account and company information'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Card */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="text-center">
               <div className="relative inline-block mb-4">
-                <div className="w-32 h-32 bg-gradient-to-br from-primary to-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                  <User className="w-16 h-16 text-white" />
+                <div className="w-28 h-28 bg-gradient-to-br from-orange-500 to-orange-700 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                  <User className="w-14 h-14 text-white" />
                 </div>
-                <button className="absolute bottom-0 right-0 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-gray-200 hover:bg-gray-50">
-                  <Camera className="w-5 h-5 text-gray-600" />
+                <button className="absolute bottom-0 right-0 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center border-2 border-gray-200 hover:bg-gray-50 transition-colors">
+                  <Camera className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">John Doe</h2>
-              <p className="text-gray-600 mb-4">Premium Member</p>
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+              <h2 className="text-xl font-bold text-gray-900 mb-0.5">{adminName}</h2>
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold mb-3">
+                <Shield className="w-3 h-3" />
+                {t('superAdmin') || 'Super Admin'}
+              </span>
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
                 <Calendar className="w-4 h-4" />
-                Member since Feb 2024
+                <span>{t('memberSince') || 'Member since'} {adminUser.since}</span>
               </div>
             </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Profile Completed</span>
-                  <span className="text-sm font-medium text-primary">85%</span>
+            <div className="mt-5 pt-5 border-t border-gray-100">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{t('profileComplete') || 'Profile Complete'}</span>
+                  <span className="font-semibold text-orange-600">100%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: '85%' }}></div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full w-full"></div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl shadow-sm p-6 text-white">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="font-bold text-lg leading-tight">{companyInfo.name}</div>
+                <div className="text-orange-200 text-sm">{companyInfo.group}</div>
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-orange-100">
+                <Globe className="w-4 h-4 flex-shrink-0" />
+                <span>{companyInfo.website}</span>
+              </div>
+              <div className="flex items-center gap-2 text-orange-100">
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                <span>{companyInfo.address}</span>
+              </div>
+              <div className="flex items-center gap-2 text-orange-100">
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span>{companyInfo.email}</span>
+              </div>
+              <div className="flex items-center gap-2 text-orange-100">
+                <Phone className="w-4 h-4 flex-shrink-0" />
+                <span>{companyInfo.phone}</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <span className="font-medium text-white text-xs">{companyInfo.description}</span>
+              <div className="text-xs text-orange-200 mt-1">Est. {companyInfo.founded}</div>
             </div>
           </div>
         </div>
 
-        {/* Profile Details */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
-              <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                <Edit className="w-4 h-4" />
-                Edit Profile
-              </button>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t('personalInformation') || 'Personal Information'}
+              </h3>
+              {!isEditing ? (
+                <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium">
+                  <Edit className="w-4 h-4" />
+                  {t('editProfile') || 'Edit Profile'}
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium">
+                    <Save className="w-4 h-4" />
+                    {t('saveChanges') || 'Save'}
+                  </button>
+                  <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors text-sm font-medium">
+                    <X className="w-4 h-4" />
+                    {t('cancelEdit') || 'Cancel'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Full Name */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('fullName') || 'Full Name'}</label>
+                {isEditing ? (
+                  <input type="text" value={adminName} onChange={e => setAdminName(e.target.value)} className="w-full p-3 bg-orange-50 border-2 border-orange-200 rounded-lg text-gray-900 focus:outline-none focus:border-orange-400" />
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <User className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-900">{adminName}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('role') || 'Role'}</label>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <User className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-900">John Doe</span>
+                  <Shield className="w-5 h-5 text-orange-400 flex-shrink-0" />
+                  <span className="text-gray-900 font-medium">{t('superAdmin') || 'Super Admin'}</span>
                 </div>
               </div>
 
-              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('emailAddress') || 'Email Address'}</label>
+                {isEditing ? (
+                  <input type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} className="w-full p-3 bg-orange-50 border-2 border-orange-200 rounded-lg text-gray-900 focus:outline-none focus:border-orange-400" />
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Mail className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-900">{adminEmail}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('phoneNumber') || 'Phone Number'}</label>
+                {isEditing ? (
+                  <input type="tel" value={adminPhone} onChange={e => setAdminPhone(e.target.value)} className="w-full p-3 bg-orange-50 border-2 border-orange-200 rounded-lg text-gray-900 focus:outline-none focus:border-orange-400" />
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-900">{adminPhone}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('department') || 'Department'}</label>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-900">john.doe@example.com</span>
+                  <Building2 className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-900">{t('itOperations') || 'IT & Operations'}</span>
                 </div>
               </div>
 
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Phone className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-900">+1 (555) 123-4567</span>
-                </div>
-              </div>
-
-              {/* Date of Birth */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date of Birth
-                </label>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-900">January 15, 1990</span>
-                </div>
-              </div>
-
-              {/* Address - Full Width */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address
-                </label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('companyAddress') || 'Company Address'}</label>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <span className="text-gray-900">123 Main Street, Apartment 4B<br />New York, NY 10001, USA</span>
+                  <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-900">K Energy Save Co., Ltd.<br />Seoul, Republic of Korea</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Account Settings */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Account Settings</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                <div>
-                  <div className="font-medium text-gray-900">Email Notifications</div>
-                  <div className="text-sm text-gray-600">Receive order updates via email</div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-5">
+              {t('notificationSettings') || 'Notification Settings'}
+            </h3>
+            <div className="space-y-3">
+              {notificationItems.map((item) => (
+                <div key={item.key} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">{t(item.key) || item.key}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{t(item.descKey) || ''}</div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" defaultChecked={item.checked} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                <div>
-                  <div className="font-medium text-gray-900">SMS Notifications</div>
-                  <div className="text-sm text-gray-600">Get shipping updates via SMS</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                <div>
-                  <div className="font-medium text-gray-900">Marketing Emails</div>
-                  <div className="text-sm text-gray-600">Receive promotional offers and deals</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
+              ))}
             </div>
           </div>
         </div>
