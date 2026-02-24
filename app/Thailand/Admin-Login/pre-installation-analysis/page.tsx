@@ -718,6 +718,100 @@ export default function ThailandPreInstallationAnalysis() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+
+              {/* Current Metrics Table */}
+              <div className="mt-4 bg-white rounded-lg p-4 border border-indigo-200 shadow-sm">
+                <div className="bg-indigo-100 rounded-t-lg px-4 py-2 -mx-4 -mt-4 mb-4">
+                  <h5 className="font-bold text-indigo-800">
+                    {lang === 'th' ? 'ตารางค่ากระแสไฟฟ้า' : 'Current Metrics Table'}
+                  </h5>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="text-left p-3 font-bold text-gray-700 bg-gray-100">
+                          {lang === 'th' ? 'รายการ' : 'Item'}
+                        </th>
+                        <th className="text-right p-3 font-bold text-orange-600 bg-gray-100">
+                          {lang === 'th' ? 'เฟส A (L1)' : 'Phase A (L1)'}
+                        </th>
+                        <th className="text-right p-3 font-bold text-blue-600 bg-gray-100">
+                          {lang === 'th' ? 'เฟส B (L2)' : 'Phase B (L2)'}
+                        </th>
+                        <th className="text-right p-3 font-bold text-purple-600 bg-gray-100">
+                          {lang === 'th' ? 'เฟส C (L3)' : 'Phase C (L3)'}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const peakA = Math.max(...currentData.map(d => d.phaseA));
+                        const peakB = Math.max(...currentData.map(d => d.phaseB));
+                        const peakC = Math.max(...currentData.map(d => d.phaseC));
+                        const nightRows = currentData.filter(d => d.time.includes('00:00') || d.time.includes('04:00'));
+                        const nightA = (nightRows.reduce((s, d) => s + d.phaseA, 0) / nightRows.length);
+                        const nightB = (nightRows.reduce((s, d) => s + d.phaseB, 0) / nightRows.length);
+                        const nightC = (nightRows.reduce((s, d) => s + d.phaseC, 0) / nightRows.length);
+                        const dayRows = currentData.filter(d => d.time.includes('08:00') || d.time.includes('12:00') || d.time.includes('16:00'));
+                        const dayA = (dayRows.reduce((s, d) => s + d.phaseA, 0) / dayRows.length);
+                        const dayB = (dayRows.reduce((s, d) => s + d.phaseB, 0) / dayRows.length);
+                        const dayC = (dayRows.reduce((s, d) => s + d.phaseC, 0) / dayRows.length);
+                        const avgA = (currentData.reduce((s, d) => s + d.phaseA, 0) / currentData.length);
+                        const avgB = (currentData.reduce((s, d) => s + d.phaseB, 0) / currentData.length);
+                        const avgC = (currentData.reduce((s, d) => s + d.phaseC, 0) / currentData.length);
+                        const peakImbalance = (((Math.max(peakA, peakB, peakC) - Math.min(peakA, peakB, peakC)) / Math.max(peakA, peakB, peakC)) * 100);
+                        const rows = [
+                          {
+                            label: lang === 'th' ? '⚡ ค่ากระแสสูงสุด (Peak)' : '⚡ Peak Current',
+                            a: peakA, b: peakB, c: peakC,
+                          },
+                          {
+                            label: lang === 'th' ? '☀️ ค่าเฉลี่ยช่วงกลางวัน (08:00–16:00)' : '☀️ Avg Daytime (08:00–16:00)',
+                            a: dayA, b: dayB, c: dayC,
+                          },
+                          {
+                            label: lang === 'th' ? '🌙 ค่าพื้นฐานกลางคืน (00:00–04:00)' : '🌙 Nighttime Base (00:00–04:00)',
+                            a: nightA, b: nightB, c: nightC,
+                          },
+                          {
+                            label: lang === 'th' ? '📊 ค่าเฉลี่ยรวม' : '📊 Overall Average',
+                            a: avgA, b: avgB, c: avgC,
+                          },
+                        ];
+                        return rows.map((row, idx) => (
+                          <tr key={idx} className="border-b border-gray-200 hover:bg-indigo-50">
+                            <td className="p-3 text-gray-800">{row.label}</td>
+                            <td className="p-3 text-right font-medium text-orange-700">{row.a.toFixed(1)} A</td>
+                            <td className="p-3 text-right font-medium text-blue-700">{row.b.toFixed(1)} A</td>
+                            <td className="p-3 text-right font-medium text-purple-700">{row.c.toFixed(1)} A</td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Phase Imbalance */}
+                <div className="mt-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                  <p className="text-xs text-gray-600">
+                    <strong>{lang === 'th' ? 'ความไม่สมดุลของเฟส (Peak):' : 'Phase Imbalance (Peak):'}</strong>
+                    {' '}
+                    {(() => {
+                      const peakA = Math.max(...currentData.map(d => d.phaseA));
+                      const peakB = Math.max(...currentData.map(d => d.phaseB));
+                      const peakC = Math.max(...currentData.map(d => d.phaseC));
+                      const imb = (((Math.max(peakA, peakB, peakC) - Math.min(peakA, peakB, peakC)) / Math.max(peakA, peakB, peakC)) * 100).toFixed(1);
+                      const isGood = parseFloat(imb) < 10;
+                      return (
+                        <span className={`ml-1 font-semibold ${isGood ? 'text-green-700' : 'text-yellow-700'}`}>
+                          {imb}% {isGood ? '✓' : '⚠'} ({lang === 'th' ? `ค่าที่ดี: < 10%` : 'Good: < 10%'})
+                        </span>
+                      );
+                    })()}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Result & Recommendation */}
