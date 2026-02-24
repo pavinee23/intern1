@@ -835,6 +835,23 @@ export const translations = {
     profileComplete: '프로필 완성도',
     superAdmin: '최고 관리자',
     itOperations: 'IT 및 운영',
+
+    // Kenergy Dashboard Sidebar
+    navigation: '탐색',
+    configurations: '설정',
+    userSupports: '사용자 지원',
+    developer: '개발자',
+    dashboard: '대시보드',
+    overview: '개요',
+    monitor: '모니터',
+    location: '위치',
+    devicesSetting: '기기 설정',
+    dashboardSetting: '대시보드 설정',
+    productsInfo: '제품 정보',
+    supportTickets: '지원 티켓',
+    userFeedback: '사용자 피드백',
+    helpDocs: '도움말 문서',
+    userProfile: '사용자 프로필',
   },
   en: {
     // Header
@@ -1672,6 +1689,23 @@ export const translations = {
     profileComplete: 'Profile Complete',
     superAdmin: 'Super Admin',
     itOperations: 'IT & Operations',
+
+    // Kenergy Dashboard Sidebar
+    navigation: 'Navigation',
+    configurations: 'Configurations',
+    userSupports: 'User Supports',
+    developer: 'Developer',
+    dashboard: 'Dashboard',
+    overview: 'Overview',
+    monitor: 'Monitor',
+    location: 'Location',
+    devicesSetting: 'Device Settings',
+    dashboardSetting: 'Dashboard Settings',
+    productsInfo: 'Products Info',
+    supportTickets: 'Support Tickets',
+    userFeedback: 'User Feedback',
+    helpDocs: 'Help Docs',
+    userProfile: 'User Profile',
   },
   cn: {
     // Language names
@@ -1766,6 +1800,20 @@ export const translations = {
     profileComplete: '资料完整度',
     superAdmin: '超级管理员',
     itOperations: 'IT & 运营',
+
+    // Kenergy Dashboard Sidebar
+    navigation: '导航',
+    configurations: '配置',
+    userSupports: '用户支持',
+    developer: '开发',
+    location: '位置',
+    devicesSetting: '设备设置',
+    dashboardSetting: '仪表板设置',
+    productsInfo: '产品信息',
+    supportTickets: '支持工单',
+    userFeedback: '用户反馈',
+    helpDocs: '帮助文档',
+    userProfile: '用户资料',
   },
   vn: {
     // Language names
@@ -1860,6 +1908,20 @@ export const translations = {
     profileComplete: 'Hoàn Thiện Hồ Sơ',
     superAdmin: 'Quản Trị Viên Cao Cấp',
     itOperations: 'IT & Vận Hành',
+
+    // Kenergy Dashboard Sidebar
+    navigation: 'Điều Hướng',
+    configurations: 'Cấu Hình',
+    userSupports: 'Hỗ Trợ Người Dùng',
+    developer: 'Nhà Phát Triển',
+    location: 'Vị Trí',
+    devicesSetting: 'Cài Đặt Thiết Bị',
+    dashboardSetting: 'Cài Đặt Bảng Điều Khiển',
+    productsInfo: 'Thông Tin Sản Phẩm',
+    supportTickets: 'Phiếu Hỗ Trợ',
+    userFeedback: 'Phản Hồi Người Dùng',
+    helpDocs: 'Tài Liệu Hỗ Trợ',
+    userProfile: 'Hồ Sơ Người Dùng',
   },
   th: {
     // Language names
@@ -1951,6 +2013,25 @@ export const translations = {
     profileComplete: 'โปรไฟล์สมบูรณ์',
     superAdmin: 'ผู้ดูแลระบบสูงสุด',
     itOperations: 'IT & การดำเนินงาน',
+
+    // Countries (extra)
+    vietnam: 'เวียดนาม',
+    chinese: '中文',
+    vietnamese: 'ภาษาเวียดนาม',
+
+    // Kenergy Dashboard Sidebar
+    navigation: 'การนำทาง',
+    configurations: 'การตั้งค่า',
+    userSupports: 'การสนับสนุนผู้ใช้',
+    developer: 'นักพัฒนา',
+    location: 'ตำแหน่ง',
+    devicesSetting: 'ตั้งค่าอุปกรณ์',
+    dashboardSetting: 'ตั้งค่าแดชบอร์ด',
+    productsInfo: 'ข้อมูลผลิตภัณฑ์',
+    supportTickets: 'ตั๋วสนับสนุน',
+    userFeedback: 'ความคิดเห็นผู้ใช้',
+    helpDocs: 'เอกสารช่วยเหลือ',
+    userProfile: 'โปรไฟล์ผู้ใช้',
   },
 };
 

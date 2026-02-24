@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 type Site = "thailand" | "korea" | "vietnam";
 
@@ -12,7 +12,20 @@ interface SiteContextType {
 const SiteContext = createContext<SiteContextType | undefined>(undefined);
 
 export function SiteProvider({ children }: { children: ReactNode }) {
-  const [selectedSite, setSelectedSite] = useState<Site>("thailand");
+  const [selectedSite, setSelectedSiteState] = useState<Site>("thailand");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("selectedSite") as Site;
+    const valid: Site[] = ["thailand", "korea", "vietnam"];
+    if (saved && valid.includes(saved)) {
+      setSelectedSiteState(saved);
+    }
+  }, []);
+
+  const setSelectedSite = (site: Site) => {
+    setSelectedSiteState(site);
+    localStorage.setItem("selectedSite", site);
+  };
 
   return (
     <SiteContext.Provider value={{ selectedSite, setSelectedSite }}>
