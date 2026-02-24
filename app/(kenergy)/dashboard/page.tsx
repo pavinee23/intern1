@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/LocaleContext'
 import { useSite } from '@/lib/SiteContext'
 import DeviceCard from '@/components/DeviceCard'
+import CountryFlag from '@/components/CountryFlag'
 import {
   Activity,
   Zap,
@@ -14,7 +15,9 @@ import {
   Eye,
   BarChart3,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  MapPin
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -40,11 +43,48 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { t } = useLocale()
-  const { selectedSite } = useSite()
+  const { t, locale, setLocale } = useLocale()
+  const { selectedSite, setSelectedSite } = useSite()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false)
+  const [showSiteMenu, setShowSiteMenu] = useState(false)
+  const languageMenuRef = useRef<HTMLDivElement>(null)
+  const siteMenuRef = useRef<HTMLDivElement>(null)
+
+  // Languages config
+  const languages = [
+    { code: 'th' as const, name: 'ไทย', nameEn: 'Thai', flag: 'TH' as const },
+    { code: 'cn' as const, name: '中文', nameEn: 'Chinese', flag: 'CN' as const },
+    { code: 'ko' as const, name: '한국어', nameEn: 'Korean', flag: 'KR' as const },
+    { code: 'en' as const, name: 'English', nameEn: 'English', flag: 'GB' as const },
+    { code: 'vn' as const, name: 'Tiếng Việt', nameEn: 'Vietnamese', flag: 'VN' as const },
+  ]
+
+  // Sites config
+  const sites: { code: 'thailand' | 'korea' | 'vietnam'; name: string; nameEn: string; flag: 'TH' | 'KR' | 'VN' }[] = [
+    { code: 'thailand', name: 'ไทย', nameEn: 'Thailand', flag: 'TH' },
+    { code: 'korea', name: '한국', nameEn: 'Korea', flag: 'KR' },
+    { code: 'vietnam', name: 'Việt Nam', nameEn: 'Vietnam', flag: 'VN' },
+  ]
+
+  const currentLanguage = languages.find(lang => lang.code === locale) || languages[3]
+  const currentSite = sites.find(site => site.code === selectedSite) || sites[0]
+
+  // Click outside handlers
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (languageMenuRef.current && !languageMenuRef.current.contains(event.target as Node)) {
+        setShowLanguageMenu(false)
+      }
+      if (siteMenuRef.current && !siteMenuRef.current.contains(event.target as Node)) {
+        setShowSiteMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -118,8 +158,8 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header with Language and Site Selectors */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             {t('dashboard') || 'Dashboard'}
@@ -128,13 +168,109 @@ export default function DashboardPage() {
             {t('welcomeMessage') || 'Welcome to your energy management dashboard'}
           </p>
         </div>
-        <button
-          onClick={fetchDashboardData}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* Language Selector */}
+          <div className="relative" ref={languageMenuRef}>
+            <button
+              onClick={() => {
+                setShowLanguageMenu(!showLanguageMenu)
+                setShowSiteMenu(false)
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-orange-300 rounded-lg transition-all shadow-sm"
+            >
+              <Globe className="w-5 h-5 text-orange-600" />
+              <CountryFlag country={currentLanguage.flag} size="sm" />
+              <span className="text-sm font-medium text-gray-700">
+                {currentLanguage.name}
+              </span>
+              <svg className={`w-4 h-4 text-gray-500 transition-transform ${showLanguageMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showLanguageMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border-2 border-gray-200 py-2 z-50">
+                {languages.map((language) => (
+                  <button
+                    key={language.code}
+                    onClick={() => {
+                      setLocale(language.code)
+                      setShowLanguageMenu(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-orange-50 transition-colors ${
+                      locale === language.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700'
+                    }`}
+                  >
+                    <CountryFlag country={language.flag} size="sm" />
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">{language.name}</div>
+                      <div className="text-xs text-gray-500">{language.nameEn}</div>
+                    </div>
+                    {locale === language.code && (
+                      <span className="text-orange-600 text-lg">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Site/Branch Selector */}
+          <div className="relative" ref={siteMenuRef}>
+            <button
+              onClick={() => {
+                setShowSiteMenu(!showSiteMenu)
+                setShowLanguageMenu(false)
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 rounded-lg transition-all shadow-sm"
+            >
+              <MapPin className="w-5 h-5 text-blue-600" />
+              <CountryFlag country={currentSite.flag} size="sm" />
+              <span className="text-sm font-medium text-gray-700">
+                {currentSite.name}
+              </span>
+              <svg className={`w-4 h-4 text-gray-500 transition-transform ${showSiteMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showSiteMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border-2 border-gray-200 py-2 z-50">
+                {sites.map((site) => (
+                  <button
+                    key={site.code}
+                    onClick={() => {
+                      setSelectedSite(site.code)
+                      setShowSiteMenu(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-blue-50 transition-colors ${
+                      selectedSite === site.code ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700'
+                    }`}
+                  >
+                    <CountryFlag country={site.flag} size="sm" />
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">{site.name}</div>
+                      <div className="text-xs text-gray-500">{site.nameEn}</div>
+                    </div>
+                    {selectedSite === site.code && (
+                      <span className="text-blue-600 text-lg">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={fetchDashboardData}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid - 4 Columns */}

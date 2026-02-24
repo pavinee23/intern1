@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations } from '@/lib/translations';
 
-type Locale = 'ko' | 'en';
+type Locale = 'ko' | 'en' | 'th' | 'cn' | 'vn';
 
 interface LocaleContextType {
   locale: Locale;
@@ -19,7 +19,8 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Load saved locale from localStorage
     const savedLocale = localStorage.getItem('locale') as Locale;
-    if (savedLocale && (savedLocale === 'ko' || savedLocale === 'en')) {
+    const validLocales: Locale[] = ['ko', 'en', 'th', 'cn', 'vn'];
+    if (savedLocale && validLocales.includes(savedLocale)) {
       setLocaleState(savedLocale);
     }
   }, []);
@@ -45,7 +46,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 export function useLocale() {
   const context = useContext(LocaleContext);
   return context ?? {
-    locale: 'ko' as Locale,
+    locale: 'en' as Locale,
     setLocale: () => {},
     t: (key: string) => key,
   };

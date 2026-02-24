@@ -1623,6 +1623,144 @@ export const translations = {
     pendingPatents: 'Pending Patents',
     budgetUtilization: 'Budget Utilization',
   },
+  cn: {
+    // Language names
+    korean: '한국어',
+    english: 'English',
+    thai: 'ภาษาไทย',
+    chinese: '中文',
+    vietnamese: 'Tiếng Việt',
+
+    // Countries
+    thailand: '泰国',
+    korea: '韩国',
+    republicOfKorea: '大韩民国',
+    vietnam: '越南',
+
+    // Common
+    dashboard: '仪表板',
+    overview: '概览',
+    monitor: '监控',
+    refresh: '刷新',
+
+    // Dashboard
+    welcomeMessage: '欢迎使用能源管理仪表板',
+    totalDevices: '设备总数',
+    onlineDevices: '在线设备',
+    offlineDevices: '离线设备',
+    energySaved: '本月节省能源',
+    quickActions: '快捷操作',
+    viewAllDevices: '查看所有设备',
+    reports: '能源报告',
+    recentDevices: '最新设备',
+    noDevices: '未找到设备',
+    viewAll: '查看全部',
+
+    // Overview
+    devicesOverview: '设备概览',
+    filterByRole: '按角色筛选',
+    allDevices: '所有设备',
+    devices: '设备',
+    addDevice: '添加设备',
+    noDevicesFound: '未找到设备',
+    voltage: '电压',
+    lastConnected: '最后连接',
+    ago: '前',
+
+    // Monitor
+    devicesMonitor: '设备监控',
+    realTimeMonitoring: '实时监控',
+
+    // Energy Dashboard
+    energyAnalytics: '能源分析',
+    trackEnergySavings: '跟踪节能效果及环境影响',
+    totalEnergySaved: '总节省能源',
+    costSavings: '节省费用',
+    co2Reduced: '减少CO₂',
+    energyReduction: '能源减少',
+    compared: '与优化前对比',
+    beforeAfterComparison: '优化前后对比',
+    beforeOptimization: '优化前',
+    afterOptimization: '优化后',
+    dailyEnergyTrend: '每日节能趋势',
+    noDataAvailable: '所选时间段无数据',
+    date: '日期',
+    activeDevices: '活跃设备',
+    avgPower: '平均功率 (kW)',
+    total: '合计',
+    viewMore: '查看更多详情',
+    deviceOverview: '设备概览',
+    compareAnalysis: '对比分析',
+  },
+  vn: {
+    // Language names
+    korean: '한국어',
+    english: 'English',
+    thai: 'Tiếng Thái',
+    chinese: 'Tiếng Trung',
+    vietnamese: 'Tiếng Việt',
+
+    // Countries
+    thailand: 'Thái Lan',
+    korea: 'Hàn Quốc',
+    republicOfKorea: 'Cộng hòa Hàn Quốc',
+    vietnam: 'Việt Nam',
+
+    // Common
+    dashboard: 'Bảng điều khiển',
+    overview: 'Tổng quan',
+    monitor: 'Giám sát',
+    refresh: 'Làm mới',
+
+    // Dashboard
+    welcomeMessage: 'Chào mừng đến với Bảng điều khiển quản lý năng lượng',
+    totalDevices: 'Tổng số thiết bị',
+    onlineDevices: 'Thiết bị trực tuyến',
+    offlineDevices: 'Thiết bị ngoại tuyến',
+    energySaved: 'Năng lượng tiết kiệm tháng này',
+    quickActions: 'Thao tác nhanh',
+    viewAllDevices: 'Xem tất cả thiết bị',
+    reports: 'Báo cáo năng lượng',
+    recentDevices: 'Thiết bị gần đây',
+    noDevices: 'Không tìm thấy thiết bị',
+    viewAll: 'Xem tất cả',
+
+    // Overview
+    devicesOverview: 'Tổng quan thiết bị',
+    filterByRole: 'Lọc theo vai trò',
+    allDevices: 'Tất cả thiết bị',
+    devices: 'Thiết bị',
+    addDevice: 'Thêm thiết bị',
+    noDevicesFound: 'Không tìm thấy thiết bị',
+    voltage: 'Điện áp',
+    lastConnected: 'Kết nối lần cuối',
+    ago: 'trước',
+
+    // Monitor
+    devicesMonitor: 'Giám sát thiết bị',
+    realTimeMonitoring: 'Giám sát thời gian thực',
+
+    // Energy Dashboard
+    energyAnalytics: 'Phân tích năng lượng',
+    trackEnergySavings: 'Theo dõi tiết kiệm năng lượng và tác động môi trường',
+    totalEnergySaved: 'Tổng năng lượng tiết kiệm',
+    costSavings: 'Tiết kiệm chi phí',
+    co2Reduced: 'Giảm CO₂',
+    energyReduction: 'Giảm năng lượng',
+    compared: 'So với trước khi tối ưu',
+    beforeAfterComparison: 'So sánh trước và sau tối ưu',
+    beforeOptimization: 'Trước tối ưu',
+    afterOptimization: 'Sau tối ưu',
+    dailyEnergyTrend: 'Xu hướng tiết kiệm năng lượng hàng ngày',
+    noDataAvailable: 'Không có dữ liệu cho khoảng thời gian đã chọn',
+    date: 'Ngày',
+    activeDevices: 'Thiết bị hoạt động',
+    avgPower: 'Công suất trung bình (kW)',
+    total: 'Tổng',
+    viewMore: 'Xem thêm chi tiết',
+    deviceOverview: 'Tổng quan thiết bị',
+    compareAnalysis: 'Phân tích so sánh',
+  },
   th: {
     // Language names
     korean: '한국어',

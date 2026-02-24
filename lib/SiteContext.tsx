@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 
-type Site = "thailand" | "korea";
+type Site = "thailand" | "korea" | "vietnam";
 
 interface SiteContextType {
   selectedSite: Site;
@@ -23,5 +23,5 @@ export function SiteProvider({ children }: { children: ReactNode }) {
 
 export function useSite() {
   const context = useContext(SiteContext);
-  return context ?? { selectedSite: 'thailand' as Site, setSelectedSite: () => {} };
+  return context ?? { selectedSite: 'thailand' as Site, setSelectedSite: (_: Site) => {} };
 }
