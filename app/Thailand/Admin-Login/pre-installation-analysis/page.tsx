@@ -67,6 +67,63 @@ export default function ThailandPreInstallationAnalysis() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Manual current entry database
+  interface CurrentRecord {
+    id: number;
+    date: string;
+    time: string;
+    L1: string;
+    L2: string;
+    L3: string;
+    N: string;
+    voltage: string;
+    pf: string;
+    note: string;
+  }
+  const [currentRecords, setCurrentRecords] = useState<CurrentRecord[]>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('pre_install_current_records') : null;
+    if (saved) return JSON.parse(saved);
+    // Default 7 days of blank rows
+    return Array.from({ length: 7 }, (_, i) => ({
+      id: i + 1,
+      date: '',
+      time: '00:00',
+      L1: '',
+      L2: '',
+      L3: '',
+      N: '',
+      voltage: '380',
+      pf: '0.85',
+      note: '',
+    }));
+  });
+
+  const saveCurrentRecords = (records: CurrentRecord[]) => {
+    setCurrentRecords(records);
+    localStorage.setItem('pre_install_current_records', JSON.stringify(records));
+  };
+
+  const addCurrentRow = () => {
+    const newRow: CurrentRecord = {
+      id: Date.now(),
+      date: '',
+      time: '00:00',
+      L1: '', L2: '', L3: '', N: '',
+      voltage: '380',
+      pf: '0.85',
+      note: '',
+    };
+    saveCurrentRecords([...currentRecords, newRow]);
+  };
+
+  const updateCurrentRow = (id: number, field: keyof CurrentRecord, value: string) => {
+    saveCurrentRecords(currentRecords.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const deleteCurrentRow = (id: number) => {
+    saveCurrentRecords(currentRecords.filter(r => r.id !== id));
+  };
   const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
   const [selectedBranch, setSelectedBranch] = useState('thailand');
 
@@ -484,10 +541,149 @@ export default function ThailandPreInstallationAnalysis() {
                 </div>
               </div>
             )}
+
+            {/* Manual Current Entry Database */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                  <Activity className="w-5 h-5 mr-2 text-indigo-600" />
+                  {lang === 'th' ? 'ฐานข้อมูลบันทึกค่ากระแสไฟฟ้าก่อนติดตั้ง 7 วัน' : '7-Day Pre-Installation Current Log'}
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={addCurrentRow}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm transition"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {lang === 'th' ? 'เพิ่มแถว' : 'Add Row'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('pre_install_current_records', JSON.stringify(currentRecords));
+                      alert(lang === 'th' ? 'บันทึกข้อมูลเรียบร้อย' : 'Saved successfully');
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition"
+                  >
+                    <Save className="w-4 h-4" />
+                    {lang === 'th' ? 'บันทึก' : 'Save'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-indigo-50">
+                      <th className="border border-indigo-200 px-2 py-2 text-left text-xs font-bold text-indigo-800 w-8">#</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-left text-xs font-bold text-indigo-800">{lang === 'th' ? 'วันที่' : 'Date'}</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-left text-xs font-bold text-indigo-800">{lang === 'th' ? 'เวลา' : 'Time'}</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-center text-xs font-bold text-orange-700">L1 / เฟส A (A)</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-center text-xs font-bold text-blue-700">L2 / เฟส B (A)</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-center text-xs font-bold text-purple-700">L3 / เฟส C (A)</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-center text-xs font-bold text-gray-600">N (A)</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-center text-xs font-bold text-gray-600">{lang === 'th' ? 'แรงดัน (V)' : 'Voltage (V)'}</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-center text-xs font-bold text-gray-600">PF</th>
+                      <th className="border border-indigo-200 px-2 py-2 text-left text-xs font-bold text-gray-600">{lang === 'th' ? 'หมายเหตุ' : 'Note'}</th>
+                      <th className="border border-indigo-200 px-2 py-2 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentRecords.map((row, idx) => (
+                      <tr key={row.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="border border-gray-200 px-2 py-1 text-center text-xs text-gray-500">{idx + 1}</td>
+                        <td className="border border-gray-200 px-1 py-1">
+                          <input type="date" value={row.date}
+                            onChange={e => updateCurrentRow(row.id, 'date', e.target.value)}
+                            className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-1 focus:ring-indigo-400 rounded"
+                          />
+                        </td>
+                        <td className="border border-gray-200 px-1 py-1">
+                          <input type="time" value={row.time}
+                            onChange={e => updateCurrentRow(row.id, 'time', e.target.value)}
+                            className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-1 focus:ring-indigo-400 rounded"
+                          />
+                        </td>
+                        {(['L1','L2','L3','N'] as const).map(phase => (
+                          <td key={phase} className="border border-gray-200 px-1 py-1">
+                            <input type="number" step="0.1" value={(row as any)[phase]}
+                              onChange={e => updateCurrentRow(row.id, phase as keyof CurrentRecord, e.target.value)}
+                              placeholder="0.0"
+                              className={`w-full px-1 py-0.5 text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-indigo-400 rounded ${
+                                phase === 'L1' ? 'text-orange-700 font-medium' :
+                                phase === 'L2' ? 'text-blue-700 font-medium' :
+                                phase === 'L3' ? 'text-purple-700 font-medium' : 'text-gray-700'
+                              }`}
+                            />
+                          </td>
+                        ))}
+                        <td className="border border-gray-200 px-1 py-1">
+                          <input type="number" step="1" value={row.voltage}
+                            onChange={e => updateCurrentRow(row.id, 'voltage', e.target.value)}
+                            className="w-full px-1 py-0.5 text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-indigo-400 rounded"
+                          />
+                        </td>
+                        <td className="border border-gray-200 px-1 py-1">
+                          <input type="number" step="0.01" min="0" max="1" value={row.pf}
+                            onChange={e => updateCurrentRow(row.id, 'pf', e.target.value)}
+                            className="w-full px-1 py-0.5 text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-indigo-400 rounded"
+                          />
+                        </td>
+                        <td className="border border-gray-200 px-1 py-1">
+                          <input type="text" value={row.note}
+                            onChange={e => updateCurrentRow(row.id, 'note', e.target.value)}
+                            placeholder={lang === 'th' ? 'หมายเหตุ...' : 'Note...'}
+                            className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-1 focus:ring-indigo-400 rounded"
+                          />
+                        </td>
+                        <td className="border border-gray-200 px-1 py-1 text-center">
+                          <button onClick={() => deleteCurrentRow(row.id)}
+                            className="p-0.5 hover:bg-red-100 rounded text-red-400 hover:text-red-600 transition"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {currentRecords.length > 0 && (() => {
+                    const filled = currentRecords.filter(r => r.L1 !== '' || r.L2 !== '' || r.L3 !== '');
+                    if (filled.length === 0) return null;
+                    const avgL1 = (filled.reduce((s, r) => s + parseFloat(r.L1 || '0'), 0) / filled.length).toFixed(1);
+                    const avgL2 = (filled.reduce((s, r) => s + parseFloat(r.L2 || '0'), 0) / filled.length).toFixed(1);
+                    const avgL3 = (filled.reduce((s, r) => s + parseFloat(r.L3 || '0'), 0) / filled.length).toFixed(1);
+                    const maxL1 = Math.max(...filled.map(r => parseFloat(r.L1 || '0'))).toFixed(1);
+                    const maxL2 = Math.max(...filled.map(r => parseFloat(r.L2 || '0'))).toFixed(1);
+                    const maxL3 = Math.max(...filled.map(r => parseFloat(r.L3 || '0'))).toFixed(1);
+                    return (
+                      <tfoot>
+                        <tr className="bg-orange-50 font-semibold">
+                          <td colSpan={3} className="border border-gray-300 px-2 py-1.5 text-xs text-orange-800">{lang === 'th' ? 'ค่าเฉลี่ย' : 'Average'}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-xs text-center text-orange-700 font-bold">{avgL1}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-xs text-center text-blue-700 font-bold">{avgL2}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-xs text-center text-purple-700 font-bold">{avgL3}</td>
+                          <td colSpan={5} className="border border-gray-300"></td>
+                        </tr>
+                        <tr className="bg-red-50 font-semibold">
+                          <td colSpan={3} className="border border-gray-300 px-2 py-1.5 text-xs text-red-800">{lang === 'th' ? 'ค่าสูงสุด (Peak)' : 'Peak'}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-xs text-center text-orange-700 font-bold">{maxL1}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-xs text-center text-blue-700 font-bold">{maxL2}</td>
+                          <td className="border border-gray-300 px-2 py-1.5 text-xs text-center text-purple-700 font-bold">{maxL3}</td>
+                          <td colSpan={5} className="border border-gray-300"></td>
+                        </tr>
+                      </tfoot>
+                    );
+                  })()}
+                </table>
+              </div>
+
+              <p className="text-xs text-gray-400 mt-2">
+                {lang === 'th'
+                  ? `${currentRecords.length} แถว · บันทึกอัตโนมัติใน localStorage · กด "บันทึก" เพื่อยืนยัน`
+                  : `${currentRecords.length} rows · Auto-saved in localStorage · Press "Save" to confirm`}
+              </p>
+            </div>
           </div>
         )}
-
-        {/* Form View */}
         {view === 'form' && (
           <div className="space-y-6">
             {/* Basic Information */}
