@@ -24,8 +24,9 @@ export default function LanguageSwitcher() {
   }, []);
 
   const languages = [
-    { code: 'ko' as const, name: t.korean, flag: 'KR' as const },
-    { code: 'en' as const, name: t.english, flag: 'GB' as const },
+    { code: 'ko' as const, name: t.korean || '한국어', flag: 'KR' as const },
+    { code: 'th' as const, name: t.thai || 'ไทย', flag: 'TH' as const },
+    { code: 'en' as const, name: t.english || 'English', flag: 'GB' as const },
   ];
 
   const currentLanguage = languages.find(lang => lang.code === locale) || languages[0];
@@ -54,13 +55,13 @@ export default function LanguageSwitcher() {
                 setIsOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-                locale === language.code ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'
+                locale === language.code ? 'bg-orange-50 text-orange-600 font-medium' : 'text-gray-700'
               }`}
             >
               <CountryFlag country={language.flag} size="sm" />
               <span>{language.name}</span>
               {locale === language.code && (
-                <span className="ml-auto text-blue-600">✓</span>
+                <span className="ml-auto text-orange-600">✓</span>
               )}
             </button>
           ))}

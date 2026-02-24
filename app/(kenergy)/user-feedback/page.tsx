@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
-import { Star, X } from 'lucide-react';
+import { Star, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function UserFeedbackPage() {
   const { t } = useLocale();
@@ -12,16 +12,60 @@ export default function UserFeedbackPage() {
   const [message, setMessage] = useState('');
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
-  const handleSubmit = () => {
-    // Handle form submission
-    console.log({ category, subject, message, rating });
-    setShowModal(false);
-    // Reset form
-    setCategory('Suggestion');
-    setSubject('');
-    setMessage('');
-    setRating(0);
+  const handleSubmit = async () => {
+    // Validate required fields
+    if (!subject || !message) {
+      setSubmitStatus({ type: 'error', message: 'Please fill in all required fields' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      // Get userId from localStorage (optional for anonymous feedback)
+      const userStr = localStorage.getItem('user');
+      const userId = userStr ? JSON.parse(userStr)?.userId : null;
+
+      const response = await fetch('/api/kenergy/user-feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          category,
+          subject,
+          message,
+          rating
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitStatus({ type: 'success', message: t('feedbackSubmittedSuccessfully') || 'Thank you for your feedback!' });
+        // Reset form after 2 seconds
+        setTimeout(() => {
+          setShowModal(false);
+          setCategory('Suggestion');
+          setSubject('');
+          setMessage('');
+          setRating(0);
+          setSubmitStatus(null);
+        }, 2000);
+      } else {
+        setSubmitStatus({ type: 'error', message: data.error || 'Failed to submit feedback' });
+      }
+    } catch (error: any) {
+      console.error('Feedback submission error:', error);
+      setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -176,20 +220,35 @@ export default function UserFeedbackPage() {
               </div>
             </div>
 
+            {/* Status Message */}
+            {submitStatus && (
+              <div className={`mx-6 mb-4 p-4 rounded-md ${submitStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                <div className="flex items-center gap-2">
+                  {submitStatus.type === 'success' ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5" />
+                  )}
+                  <span className="text-sm font-medium">{submitStatus.message}</span>
+                </div>
+              </div>
+            )}
+
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md font-medium transition-colors"
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md font-medium transition-colors disabled:opacity-50"
               >
                 {t('cancel')}
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={!subject || !message}
+                disabled={!subject || !message || isSubmitting}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                {t('submitFeedback')}
+                {isSubmitting ? (t('submitting') || 'Submitting...') : t('submitFeedback')}
               </button>
             </div>
           </div>

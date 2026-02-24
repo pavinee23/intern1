@@ -1,88 +1,69 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
 import { ChevronDown, Search, Edit2, Trash2, Settings } from 'lucide-react';
 
 interface Device {
-  no: number;
-  name: string;
-  type: string;
-  owner: string;
-  connection: 'ONLINE' | 'OFFLINE';
-  rssi: number;
-  ramData: boolean;
-  lastUpdate: string;
-  timeSinceUpdate: string;
-  registerDate: string;
+  deviceID?: number;
+  deviceName?: string;
+  name?: string;
+  ksaveID?: string;
+  type?: string;
+  owner?: string;
+  U_email?: string;
+  connection?: 'ONLINE' | 'OFFLINE';
+  ipAddress?: string;
+  lastUpdate?: string;
+  timeSinceUpdate?: string;
+  registerDate?: string;
+  created_at?: string;
 }
-
-// Mock device data
-const devicesData: { [key: string]: Device[] } = {
-  thailand: [
-    {
-      no: 1,
-      name: 'MSP-MV5-2606',
-      type: 'Energy 3-Ph',
-      owner: 'info@kenergy-save.com',
-      connection: 'OFFLINE',
-      rssi: 0,
-      ramData: true,
-      lastUpdate: '2026-02-02 10:53:57',
-      timeSinceUpdate: '121:16:40 hrs. ago',
-      registerDate: '2025-08-25 09'
-    },
-    {
-      no: 2,
-      name: 'PTT Kanchanaburi',
-      type: 'Energy 3-Ph',
-      owner: 'info@kenergy-save.com',
-      connection: 'ONLINE',
-      rssi: 85,
-      ramData: true,
-      lastUpdate: '2026-07-12 10:19',
-      timeSinceUpdate: '00:00:18 hrs. ago',
-      registerDate: '2025-08-25 09'
-    },
-    {
-      no: 3,
-      name: 'Suite 39 Entertainment',
-      type: 'Energy 3-Ph',
-      owner: 'info@kenergy-save.com',
-      connection: 'OFFLINE',
-      rssi: 0,
-      ramData: true,
-      lastUpdate: '2026-01-30 18:42:51',
-      timeSinceUpdate: '185:27:46 hrs. ago',
-      registerDate: '2025-08-25 09'
-    }
-  ],
-  korea: [
-    {
-      no: 1,
-      name: 'Seoul Tech Center',
-      type: 'Energy 3-Ph',
-      owner: 'info@zera-energy.com',
-      connection: 'ONLINE',
-      rssi: 92,
-      ramData: true,
-      lastUpdate: '2026-02-14 09:30:00',
-      timeSinceUpdate: '00:00:45 hrs. ago',
-      registerDate: '2025-09-10 14'
-    }
-  ]
-};
 
 export default function DevicesSettingPage() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState('all');
   const [searchCriteria, setSearchCriteria] = useState('');
   const [searchDeviceName, setSearchDeviceName] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
 
-  const currentDevices = devicesData[selectedSite] || [];
+  // Fetch devices from API
+  useEffect(() => {
+    fetchDevices();
+  }, [selectedSite]);
+
+  async function fetchDevices() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/kenergy/devices-setting?site=${selectedSite}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setDevices(data.devices || []);
+      } else {
+        setError(data.error || 'Failed to fetch devices');
+      }
+    } catch (err: any) {
+      console.error('Fetch devices error:', err);
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Filter devices by table search
+  const filteredDevices = devices.filter(device =>
+    (device.deviceName || device.name || '').toLowerCase().includes(searchDeviceName.toLowerCase()) ||
+    (device.ksaveID || '').toLowerCase().includes(searchDeviceName.toLowerCase()) ||
+    (device.owner || device.U_email || '').toLowerCase().includes(searchDeviceName.toLowerCase())
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -165,132 +146,124 @@ export default function DevicesSettingPage() {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('no')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('actions')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('name')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('type')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('owner')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('connection')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('rssi')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('ramData')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('lastUpdate')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('timeSinceUpdate')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('registerDate')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentDevices.map((device) => (
-                  <tr key={device.no} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.no}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button className="p-1 text-red-600 hover:bg-red-50 rounded">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-3 py-1 bg-white border-2 border-blue-500 text-blue-600 rounded-md text-sm font-medium">
-                        {device.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-3 py-1 bg-white border border-red-400 text-red-600 rounded-md text-sm">
-                        {device.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.owner}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-md text-sm font-medium ${
-                        device.connection === 'ONLINE' 
-                          ? 'bg-green-100 text-green-700 border border-green-400' 
-                          : 'bg-red-100 text-red-700 border border-red-400'
-                      }`}>
-                        {device.connection}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button className="p-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
-                        <Settings className="w-4 h-4" />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button className="p-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
-                        <Settings className="w-4 h-4" />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.lastUpdate}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-sm font-medium ${
-                        device.connection === 'ONLINE' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {device.timeSinceUpdate}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.registerDate}
-                    </td>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-gray-600">Loading devices...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-600 mb-4">{error}</p>
+                <button
+                  onClick={fetchDevices}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filteredDevices.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                No devices found
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('no')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('actions')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('name')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('ksaveID') || 'Ksave ID'}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('owner')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('connection')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('ipAddress') || 'IP Address'}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('lastUpdate')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('timeSinceUpdate')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('registerDate')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredDevices.map((device, index) => (
+                    <tr key={device.deviceID} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <button className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit device">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete device">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-3 py-1 bg-white border-2 border-blue-500 text-blue-600 rounded-md text-sm font-medium">
+                          {device.deviceName || device.name || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.ksaveID || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.owner || device.U_email || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-md text-sm font-medium ${
+                          device.connection === 'ONLINE'
+                            ? 'bg-green-100 text-green-700 border border-green-400'
+                            : 'bg-red-100 text-red-700 border border-red-400'
+                        }`}>
+                          {device.connection || 'UNKNOWN'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.ipAddress || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.lastUpdate || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-sm font-medium ${
+                          device.connection === 'ONLINE' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {device.timeSinceUpdate || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.registerDate || device.created_at || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">
-              {t('showing')} 1 {t('to')} {currentDevices.length} {t('of')} {currentDevices.length} {t('entries')}
-            </div>
-            <div className="flex gap-2">
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                «
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                ‹
-              </button>
-              <button className="px-3 py-1 bg-primary text-white rounded text-sm">
-                1
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                ›
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                »
-              </button>
+              {t('showing')} {filteredDevices.length > 0 ? 1 : 0} {t('to')} {filteredDevices.length} {t('of')} {filteredDevices.length} {t('entries')}
             </div>
           </div>
         </div>

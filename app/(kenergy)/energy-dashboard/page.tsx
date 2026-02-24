@@ -1,548 +1,370 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useLocale } from '@/lib/LocaleContext';
-import { translations } from '@/lib/translations';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 import {
-  Users,
-  ArrowLeft,
-  Search,
-  Filter,
-  Plus,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  MapPin,
-  Building2,
-  Star,
+  Zap,
+  TrendingDown,
+  Leaf,
+  DollarSign,
   Calendar,
-  Eye,
-  Shield
+  RefreshCw,
+  BarChart3,
+  Activity
 } from 'lucide-react';
 
-export default function CustomersPage() {
+interface AnalyticsSummary {
+  totalEnergySaved: number;
+  totalCO2Saved: number;
+  costSavings: number;
+  reductionPercent: number;
+  deviceCount: number;
+  avgBefore: number;
+  avgAfter: number;
+}
+
+interface DailyData {
+  date: string;
+  activeDevices: number;
+  energySaved: number;
+  co2Saved: number;
+  avgBefore: number;
+  avgAfter: number;
+  avgPower: number;
+}
+
+export default function EnergyDashboardPage() {
   const router = useRouter();
-  const { locale } = useLocale();
-  const t = translations[locale];
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    address: '',
-    type: 'individual'
-  });
+  const { t } = useLocale();
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [dailyData, setDailyData] = useState<DailyData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>('30'); // days
 
-  const [customers, setCustomers] = useState([
-    {
-      id: 1,
-      name: '삼성중공업',
-      nameEn: 'Samsung Heavy Industries',
-      email: 'contact@shi.samsung.com',
-      phone: '+82-2-2145-8000',
-      company: 'Samsung Heavy Industries',
-      address: '서울시 강남구 테헤란로 256',
-      type: 'corporate',
-      status: 'active',
-      joinDate: '2025-11-15',
-      lastOrder: '2026-02-10',
-      totalOrders: 12,
-      totalSpent: 2400000000,
-      rating: 5
-    },
-    {
-      id: 2,
-      name: 'LG화학',
-      nameEn: 'LG Chem',
-      email: 'info@lgchem.com',
-      phone: '+82-2-3773-1114',
-      company: 'LG Chem Ltd.',
-      address: '서울시 영등포구 여의도동 20',
-      type: 'corporate',
-      status: 'active',
-      joinDate: '2025-12-03',
-      lastOrder: '2026-02-08',
-      totalOrders: 8,
-      totalSpent: 1600000000,
-      rating: 4
-    },
-    {
-      id: 3,
-      name: 'SK건설',
-      nameEn: 'SK E&C',
-      email: 'contact@skec.co.kr',
-      phone: '+82-2-2121-3114',
-      company: 'SK Engineering & Construction',
-      address: '서울시 종로구 종로 26',
-      type: 'corporate',
-      status: 'pending',
-      joinDate: '2026-01-20',
-      lastOrder: '2026-02-05',
-      totalOrders: 3,
-      totalSpent: 750000000,
-      rating: 4
-    },
-    {
-      id: 4,
-      name: '김영수',
-      nameEn: 'Kim Young-soo',
-      email: 'youngsu.kim@email.com',
-      phone: '+82-10-1234-5678',
-      company: '개인 고객',
-      address: '부산시 해운대구 우동 123',
-      type: 'individual',
-      status: 'active',
-      joinDate: '2026-01-10',
-      lastOrder: '2026-01-25',
-      totalOrders: 2,
-      totalSpent: 18000000,
-      rating: 5
-    },
-    {
-      id: 5,
-      name: '현대자동차',
-      nameEn: 'Hyundai Motor',
-      email: 'contact@hyundai.com',
-      phone: '+82-2-3464-1114',
-      company: 'Hyundai Motor Company',
-      address: '서울시 서초구 헌릉로 12',
-      type: 'corporate',
-      status: 'inactive',
-      joinDate: '2025-08-15',
-      lastOrder: '2025-12-20',
-      totalOrders: 5,
-      totalSpent: 950000000,
-      rating: 3
-    }
-  ]);
+  useEffect(() => {
+    fetchAnalytics();
+  }, [period]);
 
-  const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         customer.company.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`/api/kenergy/energy-analytics?period=${period}`);
+      const json = await res.json();
 
-  const handleAddCustomer = () => {
-    const newId = Math.max(...customers.map(c => c.id)) + 1;
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    setCustomers([...customers, {
-      id: newId,
-      name: newCustomer.name,
-      nameEn: newCustomer.name,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      company: newCustomer.company || newCustomer.name,
-      address: newCustomer.address,
-      type: newCustomer.type,
-      status: 'active',
-      joinDate: currentDate,
-      lastOrder: '-',
-      totalOrders: 0,
-      totalSpent: 0,
-      rating: 0
-    }]);
-    
-    setIsAddModalOpen(false);
-    setNewCustomer({
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      address: '',
-      type: 'individual'
-    });
-  };
-
-  const handleDeleteCustomer = (id: number) => {
-    if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
-      setCustomers(customers.filter(c => c.id !== id));
+      if (json.success) {
+        setSummary(json.data.summary);
+        setDailyData(json.data.dailyData || []);
+      } else {
+        setError(json.error || 'Failed to load analytics');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Network error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-600';
-      case 'pending': return 'bg-yellow-100 text-yellow-600';
-      case 'inactive': return 'bg-red-100 text-red-600';
-      default: return 'bg-gray-100 text-gray-600';
-    }
-  };
+  if (loading && !summary) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-10 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+          <div className="h-96 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    );
+  }
 
-  const formatCurrency = (amount: number) => {
-    return '₩' + new Intl.NumberFormat('ko-KR').format(amount);
-  };
-
-  const stats = {
-    total: customers.length,
-    active: customers.filter(c => c.status === 'active').length,
-    pending: customers.filter(c => c.status === 'pending').length,
-    inactive: customers.filter(c => c.status === 'inactive').length
+  const stats = summary || {
+    totalEnergySaved: 0,
+    totalCO2Saved: 0,
+    costSavings: 0,
+    reductionPercent: 0,
+    deviceCount: 0,
+    avgBefore: 0,
+    avgAfter: 0
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {t('energyAnalytics') || 'Energy Analytics'}
+          </h1>
+          <p className="text-gray-600">
+            {t('trackEnergySavings') || 'Track your energy savings and environmental impact'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Period Selector */}
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary"
+          >
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+            <option value="365">Last Year</option>
+          </select>
+
+          <button
+            onClick={fetchAnalytics}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Energy Saved */}
+        <div className="stat-card bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/')}
-                className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {t.back}
-              </button>
-              <div className="border-l-2 border-gray-300 pl-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-800">
-                      {locale === 'ko' ? '고객 관리' : 'Customer Management'}
-                    </h1>
-                    <p className="text-sm text-gray-600">
-                      {locale === 'ko' ? '고객 정보 및 주문 이력 관리' : 'Manage customer information and order history'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-orange-600 mb-1">
+                {t('totalEnergySaved') || 'Total Energy Saved'}
+              </p>
+              <p className="text-3xl font-bold text-orange-900">
+                {stats.totalEnergySaved.toLocaleString()}
+              </p>
+              <p className="text-xs text-orange-600 mt-1">kWh</p>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/admin-support/customers"
-                className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
-              >
-                <Shield className="w-4 h-4" />
-                <span className="text-sm font-medium">{t.adminSupport}</span>
-              </Link>
-              <LanguageSwitcher />
+            <div className="p-3 bg-orange-500 rounded-lg">
+              <Zap className="w-8 h-8 text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* Cost Savings */}
+        <div className="stat-card bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-600 mb-1">
+                {t('costSavings') || 'Cost Savings'}
+              </p>
+              <p className="text-3xl font-bold text-amber-900">
+                {stats.costSavings.toLocaleString()}
+              </p>
+              <p className="text-xs text-amber-600 mt-1">THB</p>
+            </div>
+            <div className="p-3 bg-amber-500 rounded-lg">
+              <DollarSign className="w-8 h-8 text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* CO2 Reduction */}
+        <div className="stat-card bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-emerald-600 mb-1">
+                {t('co2Reduced') || 'CO₂ Reduced'}
+              </p>
+              <p className="text-3xl font-bold text-emerald-900">
+                {stats.totalCO2Saved.toLocaleString()}
+              </p>
+              <p className="text-xs text-emerald-600 mt-1">kg</p>
+            </div>
+            <div className="p-3 bg-emerald-500 rounded-lg">
+              <Leaf className="w-8 h-8 text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* Reduction Percentage */}
+        <div className="stat-card bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-600 mb-1">
+                {t('energyReduction') || 'Energy Reduction'}
+              </p>
+              <p className="text-3xl font-bold text-orange-900">
+                {stats.reductionPercent}%
+              </p>
+              <p className="text-xs text-orange-600 mt-1">
+                {t('compared') || 'vs. before optimization'}
+              </p>
+            </div>
+            <div className="p-3 bg-orange-500 rounded-lg">
+              <TrendingDown className="w-8 h-8 text-white" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '전체 고객' : 'Total Customers'}</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
-              </div>
-              <Users className="w-12 h-12 text-blue-500" />
+      {/* Before vs After Comparison */}
+      <div className="card">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          {t('beforeAfterComparison') || 'Before vs After Optimization'}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-red-50 rounded-lg p-6 border-2 border-red-200">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-red-700">
+                {t('beforeOptimization') || 'Before Optimization'}
+              </h3>
+              <Activity className="w-6 h-6 text-red-500" />
             </div>
+            <p className="text-4xl font-bold text-red-900">
+              {stats.avgBefore.toLocaleString()}
+            </p>
+            <p className="text-sm text-red-600 mt-1">kWh average</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '활성 고객' : 'Active Customers'}</p>
-                <p className="text-3xl font-bold text-green-600">{stats.active}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-green-500" />
-              </div>
+          <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-green-700">
+                {t('afterOptimization') || 'After Optimization'}
+              </h3>
+              <Activity className="w-6 h-6 text-green-500" />
             </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '대기 고객' : 'Pending Customers'}</p>
-                <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-yellow-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '비활성 고객' : 'Inactive Customers'}</p>
-                <p className="text-3xl font-bold text-red-600">{stats.inactive}</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-red-500" />
-              </div>
-            </div>
+            <p className="text-4xl font-bold text-green-900">
+              {stats.avgAfter.toLocaleString()}
+            </p>
+            <p className="text-sm text-green-600 mt-1">kWh average</p>
           </div>
         </div>
+      </div>
 
-        {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={locale === 'ko' ? '고객명, 이메일, 회사명으로 검색...' : 'Search by name, email, or company...'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">{locale === 'ko' ? '모든 상태' : 'All Status'}</option>
-                <option value="active">{locale === 'ko' ? '활성' : 'Active'}</option>
-                <option value="pending">{locale === 'ko' ? '대기' : 'Pending'}</option>
-                <option value="inactive">{locale === 'ko' ? '비활성' : 'Inactive'}</option>
-              </select>
-            </div>
-            
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              {locale === 'ko' ? '고객 추가' : 'Add Customer'}
-            </button>
+      {/* Daily Trend Chart */}
+      <div className="card">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          {t('dailyEnergyTrend') || 'Daily Energy Savings Trend'}
+        </h2>
+
+        {dailyData.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">
+              {t('noDataAvailable') || 'No data available for selected period'}
+            </p>
           </div>
-        </div>
-
-        {/* Customer Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-blue-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '고객 정보' : 'Customer Info'}
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="text-left p-3 text-sm font-semibold text-gray-700">
+                    {t('date') || 'Date'}
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '연락처' : 'Contact'}
+                  <th className="text-center p-3 text-sm font-semibold text-gray-700">
+                    {t('activeDevices') || 'Active Devices'}
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '회사' : 'Company'}
+                  <th className="text-right p-3 text-sm font-semibold text-gray-700">
+                    {t('energySaved') || 'Energy Saved (kWh)'}
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '상태' : 'Status'}
+                  <th className="text-right p-3 text-sm font-semibold text-gray-700">
+                    {t('co2Saved') || 'CO₂ Saved (kg)'}
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '주문 수' : 'Orders'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '총 구매액' : 'Total Spent'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '작업' : 'Actions'}
+                  <th className="text-right p-3 text-sm font-semibold text-gray-700">
+                    {t('avgPower') || 'Avg Power (kW)'}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{customer.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {locale === 'ko' ? '가입일' : 'Joined'}: {customer.joinDate}
-                          </div>
-                        </div>
-                      </div>
+              <tbody>
+                {dailyData.map((day, index) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="p-3 text-sm text-gray-700">
+                      {new Date(day.date).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-900">{customer.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-600">{customer.phone}</span>
-                        </div>
-                      </div>
+                    <td className="p-3 text-sm text-center font-medium text-blue-600">
+                      {day.activeDevices}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">{customer.company}</span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {customer.type === 'corporate' ? (locale === 'ko' ? '법인' : 'Corporate') : (locale === 'ko' ? '개인' : 'Individual')}
-                      </div>
+                    <td className="p-3 text-sm text-right font-semibold text-yellow-600">
+                      {day.energySaved.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
-                        {customer.status === 'active' ? (locale === 'ko' ? '활성' : 'Active') :
-                         customer.status === 'pending' ? (locale === 'ko' ? '대기' : 'Pending') :
-                         (locale === 'ko' ? '비활성' : 'Inactive')}
-                      </span>
+                    <td className="p-3 text-sm text-right font-semibold text-green-600">
+                      {day.co2Saved.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{customer.totalOrders}</div>
-                      <div className="text-xs text-gray-500">
-                        {locale === 'ko' ? '최근 주문' : 'Last order'}: {customer.lastOrder}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(customer.totalSpent)}
-                      </div>
-                      {customer.rating > 0 && (
-                        <div className="flex items-center gap-1 mt-1">
-                          {[...Array(customer.rating)].map((_, i) => (
-                            <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button className="text-blue-600 hover:text-blue-800">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="text-green-600 hover:text-green-800">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                    <td className="p-3 text-sm text-right text-gray-700">
+                      {day.avgPower.toFixed(2)}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="bg-gray-50 border-t-2 border-gray-200">
+                  <td className="p-3 text-sm font-semibold text-gray-800">
+                    {t('total') || 'Total'}
+                  </td>
+                  <td className="p-3 text-sm text-center font-semibold text-blue-700">
+                    {stats.deviceCount}
+                  </td>
+                  <td className="p-3 text-sm text-right font-bold text-yellow-700">
+                    {stats.totalEnergySaved.toLocaleString()}
+                  </td>
+                  <td className="p-3 text-sm text-right font-bold text-green-700">
+                    {stats.totalCO2Saved.toLocaleString()}
+                  </td>
+                  <td className="p-3 text-sm text-right text-gray-700">-</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Add Customer Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              {locale === 'ko' ? '새 고객 추가' : 'Add New Customer'}
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '고객명' : 'Customer Name'} *
-                </label>
-                <input
-                  type="text"
-                  value={newCustomer.name}
-                  onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '고객명을 입력하세요' : 'Enter customer name'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '이메일' : 'Email'} *
-                </label>
-                <input
-                  type="email"
-                  value={newCustomer.email}
-                  onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '이메일을 입력하세요' : 'Enter email address'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '전화번호' : 'Phone'} *
-                </label>
-                <input
-                  type="tel"
-                  value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '전화번호를 입력하세요' : 'Enter phone number'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '고객 유형' : 'Customer Type'}
-                </label>
-                <select
-                  value={newCustomer.type}
-                  onChange={(e) => setNewCustomer({...newCustomer, type: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="individual">{locale === 'ko' ? '개인' : 'Individual'}</option>
-                  <option value="corporate">{locale === 'ko' ? '법인' : 'Corporate'}</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '회사명' : 'Company'}
-                </label>
-                <input
-                  type="text"
-                  value={newCustomer.company}
-                  onChange={(e) => setNewCustomer({...newCustomer, company: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '회사명을 입력하세요' : 'Enter company name'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '주소' : 'Address'}
-                </label>
-                <textarea
-                  value={newCustomer.address}
-                  onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
-                  rows={3}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '주소를 입력하세요' : 'Enter address'}
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-              >
-                {locale === 'ko' ? '취소' : 'Cancel'}
-              </button>
-              <button
-                onClick={handleAddCustomer}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                {locale === 'ko' ? '추가' : 'Add Customer'}
-              </button>
-            </div>
-          </div>
+      {/* Quick Actions */}
+      <div className="card">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          {t('viewMore') || 'View More Details'}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={() => router.push('/monitor')}
+            className="k-btn flex items-center justify-center gap-3 p-4 bg-white hover:bg-orange-50 border-2 border-gray-200 hover:border-orange-300 rounded-lg transition-all"
+          >
+            <Activity className="w-5 h-5 text-orange-600" />
+            <span className="font-medium text-gray-700">
+              {t('realTimeMonitoring') || 'Real-time Monitoring'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => router.push('/overview')}
+            className="k-btn flex items-center justify-center gap-3 p-4 bg-white hover:bg-amber-50 border-2 border-gray-200 hover:border-amber-300 rounded-lg transition-all"
+          >
+            <BarChart3 className="w-5 h-5 text-amber-600" />
+            <span className="font-medium text-gray-700">
+              {t('deviceOverview') || 'Device Overview'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => router.push('/monitor/Compare-Monitoring')}
+            className="k-btn flex items-center justify-center gap-3 p-4 bg-white hover:bg-orange-50 border-2 border-gray-200 hover:border-orange-300 rounded-lg transition-all"
+          >
+            <TrendingDown className="w-5 h-5 text-orange-500" />
+            <span className="font-medium text-gray-700">
+              {t('compareAnalysis') || 'Compare Analysis'}
+            </span>
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

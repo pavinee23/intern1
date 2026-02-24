@@ -1,53 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Maximize2, MapPin } from "lucide-react";
 import { useSite } from "@/lib/SiteContext";
 import { useLocale } from "@/lib/LocaleContext";
 import MapWrapper, { Device } from "@/components/MapWrapper";
 
-// Device data by site
-const deviceData: Record<"thailand" | "korea", Device[]> = {
-  thailand: [
-    {
-      id: 1,
-      name: "Bangkok Office",
-      lat: 13.7563,
-      lng: 100.5018,
-      status: "online" as const,
-    },
-    {
-      id: 2,
-      name: "Chiang Mai Branch",
-      lat: 18.7883,
-      lng: 98.9853,
-      status: "online" as const,
-    },
-  ],
-  korea: [
-    {
-      id: 1,
-      name: "Seoul Headquarters",
-      lat: 37.5665,
-      lng: 126.9780,
-      status: "online" as const,
-    },
-  ],
-};
-
 export default function LocationPage() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [allDevicesCount, setAllDevicesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const devices = deviceData[selectedSite];
+  // Fetch devices from API
+  useEffect(() => {
+    fetchDevices();
+  }, [selectedSite]);
+
+  async function fetchDevices() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/kenergy/device-locations?site=${selectedSite}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setDevices(data.devices || []);
+        setAllDevicesCount(data.totalDevices || 0);
+      } else {
+        setError(data.error || 'Failed to fetch devices');
+      }
+    } catch (err: any) {
+      console.error('Fetch devices error:', err);
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Filter devices by search query
+  const filteredDevices = devices.filter(device =>
+    device.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const devicesWithLocation = devices.length;
-  const devicesWithoutLocation = 1; // Mock data
+  const devicesWithoutLocation = allDevicesCount - devicesWithLocation;
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-gray-600">Loading devices...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={fetchDevices}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
       <div className="mb-4">
-        <h1 className="text-3xl font-bold text-gray-800">Devices Location</h1>
+        <h1 className="text-3xl font-bold text-gray-800">{t('devicesLocation') || 'Devices Location'}</h1>
       </div>
 
       {/* Stats Bar */}
@@ -56,13 +89,13 @@ export default function LocationPage() {
           <div className="flex items-center space-x-2">
             <MapPin className="w-5 h-5 text-primary" />
             <span className="text-sm text-gray-600">
-              {devicesWithLocation} devices with location
+              {devicesWithLocation} {t('devicesWithLocation') || 'devices with location'}
             </span>
           </div>
           <div className="flex items-center space-x-2">
             <MapPin className="w-5 h-5 text-red-500" />
             <span className="text-sm text-gray-600">
-              {devicesWithoutLocation} without location
+              {devicesWithoutLocation} {t('withoutLocation') || 'without location'}
             </span>
           </div>
         </div>
@@ -72,7 +105,7 @@ export default function LocationPage() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search location..."
+              placeholder={t('searchLocation') || 'Search location...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64"
@@ -83,20 +116,20 @@ export default function LocationPage() {
           {/* Fit All Button */}
           <button className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition">
             <Maximize2 className="w-4 h-4" />
-            <span className="text-sm font-medium">Fit All</span>
+            <span className="text-sm font-medium">{t('fitAll') || 'Fit All'}</span>
           </button>
 
           {/* Set Location Button */}
           <button className="flex items-center space-x-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-orange-600 transition">
             <MapPin className="w-4 h-4" />
-            <span className="text-sm font-medium">Set Location</span>
+            <span className="text-sm font-medium">{t('setLocation') || 'Set Location'}</span>
           </button>
         </div>
       </div>
 
       {/* Map Container */}
       <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden">
-        <MapWrapper devices={devices} />
+        <MapWrapper devices={filteredDevices} />
       </div>
     </div>
   );

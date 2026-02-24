@@ -88,6 +88,7 @@ export const translations = {
     thailand: '태국',
     vietnam: '베트남',
     korea: '한국',
+    republicOfKorea: '대한민국',
 
     // System Labels
     bruneiSystem: 'Brunei System',
@@ -899,6 +900,7 @@ export const translations = {
     thailand: 'Thailand',
     vietnam: 'Vietnam',
     korea: 'Korea',
+    republicOfKorea: 'Republic of Korea',
 
     // System Labels
     bruneiSystem: 'Brunei System',
@@ -1620,6 +1622,72 @@ export const translations = {
     completedProjects: 'Completed Projects',
     pendingPatents: 'Pending Patents',
     budgetUtilization: 'Budget Utilization',
+  },
+  th: {
+    // Language names
+    korean: '한국어',
+    english: 'English',
+    thai: 'ไทย',
+
+    // Countries
+    thailand: 'ประเทศไทย',
+    korea: 'เกาหลี',
+    republicOfKorea: 'สาธารณรัฐเกาหลี',
+
+    // Common
+    dashboard: 'แดชบอร์ด',
+    overview: 'ภาพรวม',
+    monitor: 'ติดตาม',
+    refresh: 'รีเฟรช',
+
+    // Dashboard
+    welcomeMessage: 'ยินดีต้อนรับสู่แดชบอร์ดการจัดการพลังงาน',
+    totalDevices: 'อุปกรณ์ทั้งหมด',
+    onlineDevices: 'อุปกรณ์ออนไลน์',
+    offlineDevices: 'อุปกรณ์ออฟไลน์',
+    energySaved: 'พลังงานที่ประหยัดได้ในเดือนนี้',
+    quickActions: 'การดำเนินการด่วน',
+    viewAllDevices: 'ดูอุปกรณ์ทั้งหมด',
+    reports: 'รายงานพลังงาน',
+    recentDevices: 'อุปกรณ์ล่าสุด',
+    noDevices: 'ไม่พบอุปกรณ์',
+    viewAll: 'ดูทั้งหมด',
+
+    // Overview
+    devicesOverview: 'ภาพรวมอุปกรณ์',
+    filterByRole: 'กรองตามบทบาท',
+    allDevices: 'อุปกรณ์ทั้งหมด',
+    devices: 'อุปกรณ์',
+    addDevice: 'เพิ่มอุปกรณ์',
+    noDevicesFound: 'ไม่พบอุปกรณ์',
+    voltage: 'แรงดัน',
+    lastConnected: 'เชื่อมต่อล่าสุด',
+    ago: 'ที่แล้ว',
+
+    // Monitor
+    devicesMonitor: 'ติดตามอุปกรณ์',
+    realTimeMonitoring: 'ติดตามแบบเรียลไทม์',
+
+    // Energy Dashboard
+    energyAnalytics: 'การวิเคราะห์พลังงาน',
+    trackEnergySavings: 'ติดตามการประหยัดพลังงานและผลกระทบต่อสิ่งแวดล้อม',
+    totalEnergySaved: 'พลังงานที่ประหยัดได้ทั้งหมด',
+    costSavings: 'ประหยัดค่าใช้จ่าย',
+    co2Reduced: 'ลด CO₂',
+    energyReduction: 'การลดพลังงาน',
+    compared: 'เทียบกับก่อนการปรับปรุง',
+    beforeAfterComparison: 'เปรียบเทียบก่อนและหลังการปรับปรุง',
+    beforeOptimization: 'ก่อนการปรับปรุง',
+    afterOptimization: 'หลังการปรับปรุง',
+    dailyEnergyTrend: 'แนวโน้มการประหยัดพลังงานรายวัน',
+    noDataAvailable: 'ไม่มีข้อมูลสำหรับช่วงเวลาที่เลือก',
+    date: 'วันที่',
+    activeDevices: 'อุปกรณ์ที่ใช้งาน',
+    avgPower: 'กำลังไฟฟ้าเฉลี่ย (kW)',
+    total: 'รวม',
+    viewMore: 'ดูรายละเอียดเพิ่มเติม',
+    deviceOverview: 'ภาพรวมอุปกรณ์',
+    compareAnalysis: 'วิเคราะห์เปรียบเทียบ',
   },
 };
 

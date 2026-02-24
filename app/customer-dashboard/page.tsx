@@ -49,132 +49,103 @@ export default function CustomersPage() {
     type: 'individual'
   });
 
-  const [customers, setCustomers] = useState([
-    {
-      id: 1,
-      name: '삼성중공업',
-      nameEn: 'Samsung Heavy Industries',
-      email: 'contact@shi.samsung.com',
-      phone: '+82-2-2145-8000',
-      company: 'Samsung Heavy Industries',
-      address: '서울시 강남구 테헤란로 256',
-      type: 'corporate',
-      status: 'active',
-      joinDate: '2025-11-15',
-      lastOrder: '2026-02-10',
-      totalOrders: 12,
-      totalSpent: 2400000000,
-      rating: 5
-    },
-    {
-      id: 2,
-      name: 'LG화학',
-      nameEn: 'LG Chem',
-      email: 'info@lgchem.com',
-      phone: '+82-2-3773-1114',
-      company: 'LG Chem Ltd.',
-      address: '서울시 영등포구 여의도동 20',
-      type: 'corporate',
-      status: 'active',
-      joinDate: '2025-12-03',
-      lastOrder: '2026-02-08',
-      totalOrders: 8,
-      totalSpent: 1600000000,
-      rating: 4
-    },
-    {
-      id: 3,
-      name: 'SK건설',
-      nameEn: 'SK E&C',
-      email: 'contact@skec.co.kr',
-      phone: '+82-2-2121-3114',
-      company: 'SK Engineering & Construction',
-      address: '서울시 종로구 종로 26',
-      type: 'corporate',
-      status: 'pending',
-      joinDate: '2026-01-20',
-      lastOrder: '2026-02-05',
-      totalOrders: 3,
-      totalSpent: 750000000,
-      rating: 4
-    },
-    {
-      id: 4,
-      name: '김영수',
-      nameEn: 'Kim Young-soo',
-      email: 'youngsu.kim@email.com',
-      phone: '+82-10-1234-5678',
-      company: '개인 고객',
-      address: '부산시 해운대구 우동 123',
-      type: 'individual',
-      status: 'active',
-      joinDate: '2026-01-10',
-      lastOrder: '2026-01-25',
-      totalOrders: 2,
-      totalSpent: 18000000,
-      rating: 5
-    },
-    {
-      id: 5,
-      name: '현대자동차',
-      nameEn: 'Hyundai Motor',
-      email: 'contact@hyundai.com',
-      phone: '+82-2-3464-1114',
-      company: 'Hyundai Motor Company',
-      address: '서울시 서초구 헌릉로 12',
-      type: 'corporate',
-      status: 'inactive',
-      joinDate: '2025-08-15',
-      lastOrder: '2025-12-20',
-      totalOrders: 5,
-      totalSpent: 950000000,
-      rating: 3
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [statusFilter]);
+
+  async function fetchCustomers() {
+    setLoading(true);
+    setError(null);
+    try {
+      const url = statusFilter === 'all'
+        ? '/api/korea/customers'
+        : `/api/korea/customers?status=${statusFilter}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (res.ok) {
+        setCustomers(Array.isArray(data) ? data : []);
+      } else {
+        setError(data.error || 'Failed to fetch customers');
+      }
+    } catch (err: any) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }
 
   const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         customer.company.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    if (!searchQuery) return true;
+    return (
+      (customer.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (customer.nameEn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (customer.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (customer.company || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
-  const handleAddCustomer = () => {
-    const newId = Math.max(...customers.map(c => c.id)) + 1;
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    setCustomers([...customers, {
-      id: newId,
-      name: newCustomer.name,
-      nameEn: newCustomer.name,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      company: newCustomer.company || newCustomer.name,
-      address: newCustomer.address,
-      type: newCustomer.type,
-      status: 'active',
-      joinDate: currentDate,
-      lastOrder: '-',
-      totalOrders: 0,
-      totalSpent: 0,
-      rating: 0
-    }]);
-    
-    setIsAddModalOpen(false);
-    setNewCustomer({
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      address: '',
-      type: 'individual'
-    });
+  const handleAddCustomer = async () => {
+    if (!newCustomer.name || !newCustomer.email || !newCustomer.phone) {
+      alert(locale === 'ko' ? '모든 필수 항목을 입력해주세요.' : 'Please fill in all required fields.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/korea/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCustomer.name,
+          nameEn: newCustomer.name,
+          email: newCustomer.email,
+          phone: newCustomer.phone,
+          company: newCustomer.company || newCustomer.name,
+          address: newCustomer.address,
+          type: newCustomer.type,
+          status: 'active',
+          joinDate: new Date().toISOString().split('T')[0]
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsAddModalOpen(false);
+        setNewCustomer({
+          name: '',
+          email: '',
+          phone: '',
+          company: '',
+          address: '',
+          type: 'individual'
+        });
+        fetchCustomers();
+      } else {
+        alert(data.error || 'Failed to add customer');
+      }
+    } catch (err) {
+      alert('Network error. Please try again.');
+    }
   };
 
-  const handleDeleteCustomer = (id: number) => {
+  const handleDeleteCustomer = async (id: number) => {
     if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
-      setCustomers(customers.filter(c => c.id !== id));
+      try {
+        const res = await fetch(`/api/korea/customers?id=${id}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchCustomers();
+        } else {
+          alert(data.error || 'Failed to delete customer');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      }
     }
   };
 
@@ -333,34 +304,54 @@ export default function CustomersPage() {
         {/* Customer Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-blue-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '고객 정보' : 'Customer Info'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '연락처' : 'Contact'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '회사' : 'Company'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '상태' : 'Status'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '주문 수' : 'Orders'}
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '총 구매액' : 'Total Spent'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
-                    {locale === 'ko' ? '작업' : 'Actions'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredCustomers.map((customer) => (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">{locale === 'ko' ? '고객 정보를 불러오는 중...' : 'Loading customers...'}</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-600 mb-4">{error}</p>
+                <button
+                  onClick={fetchCustomers}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  {locale === 'ko' ? '다시 시도' : 'Retry'}
+                </button>
+              </div>
+            ) : filteredCustomers.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                {locale === 'ko' ? '고객이 없습니다' : 'No customers found'}
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-blue-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '고객 정보' : 'Customer Info'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '연락처' : 'Contact'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '회사' : 'Company'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '상태' : 'Status'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '주문 수' : 'Orders'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '총 구매액' : 'Total Spent'}
+                    </th>
+                    <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
+                      {locale === 'ko' ? '작업' : 'Actions'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredCustomers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -437,10 +428,11 @@ export default function CustomersPage() {
                         </button>
                       </div>
                     </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

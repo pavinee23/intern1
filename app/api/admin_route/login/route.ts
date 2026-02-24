@@ -3,6 +3,7 @@ import { query } from '@/lib/mysql'
 
 // ⚠️ Changed from 'edge' to 'nodejs' to support PostgreSQL
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 export const maxDuration = 10
 
 const INFLUX_BASE = process.env.INFLUX_URL || process.env.INFLUX_HOST || 'http://localhost:8086'

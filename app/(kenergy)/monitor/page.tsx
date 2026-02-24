@@ -1,332 +1,369 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSite } from "@/lib/SiteContext";
 import { useLocale } from "@/lib/LocaleContext";
-import { ChevronDown, Info, Download, TrendingUp, X } from "lucide-react";
+import { ChevronDown, Info, Download, TrendingUp, X, RefreshCw, Clock } from "lucide-react";
 import MonitorCard from "@/components/MonitorCard";
 
-// Device data by site
-const devicesBySite = {
-  thailand: [
-    { id: "MSP-BKK-1001", name: "MSP-BKK-1001", location: "Bangkok Office" },
-    { id: "MSP-CMI-2001", name: "MSP-CMI-2001", location: "Chiang Mai Branch" },
-  ],
-  korea: [
-    { id: "MSP-SEL-3001", name: "MSP-SEL-3001", location: "Seoul HQ" },
-  ],
-};
+interface Device {
+  deviceID: string;
+  deviceName: string;
+  location: string;
+}
 
-// Mock device monitoring data
-const monitoringData = {
-  "MSP-BKK-1001": {
-    voltageLL: [0.4, 0.2, 0.5],
-    current: [2.1, 2.0, 2.1],
-    power: [0.5, 0.5, 0.5],
-    totalPower: 1.4,
-    frequency: 50.0,
-    totalPF: 1.0,
-    voltageLN: [233.7, 233.8, 234.0],
-    expEnergy: 0.0,
-    impEnergy: 0.0,
-    lastUpdate: "121:14:05 ago",
-  },
-  "MSP-CMI-2001": {
-    voltageLL: [0.3, 0.2, 0.4],
-    current: [1.8, 1.9, 2.0],
-    power: [0.4, 0.4, 0.5],
-    totalPower: 1.3,
-    frequency: 49.9,
-    totalPF: 0.98,
-    voltageLN: [232.5, 233.0, 233.2],
-    expEnergy: 0.0,
-    impEnergy: 0.0,
-    lastUpdate: "5:30:12 ago",
-  },
-  "MSP-SEL-3001": {
-    voltageLL: [0.5, 0.3, 0.6],
-    current: [2.3, 2.2, 2.4],
-    power: [0.6, 0.6, 0.7],
-    totalPower: 1.9,
-    frequency: 60.0,
-    totalPF: 0.95,
-    voltageLN: [220.1, 220.5, 220.8],
-    expEnergy: 0.5,
-    impEnergy: 1.2,
-    lastUpdate: "2:15:30 ago",
-  },
-};
+interface MonitoringMetrics {
+  voltageLL: number[];
+  current: number[];
+  power: number[];
+  totalPower: number;
+  reactivePower: number;
+  apparentPower: number;
+  frequency: number;
+  powerFactor: number;
+  energy: number;
+  energySaved: number;
+  co2Saved: number;
+  beforeEnergy: number;
+}
 
 export default function MonitorPage() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
+  const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("All Roles");
-  const [startDate, setStartDate] = useState("2026-02-06");
-  const [endDate, setEndDate] = useState("2026-02-07");
+  const [monitoringData, setMonitoringData] = useState<MonitoringMetrics | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [devicesLoading, setDevicesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const devices = devicesBySite[selectedSite];
-  const currentDevice = selectedDevice || devices[0]?.id;
-  const data = monitoringData[currentDevice as keyof typeof monitoringData];
+  // Fetch devices on mount
+  useEffect(() => {
+    fetchDevices();
+  }, []);
+
+  // Fetch monitoring data when device is selected
+  useEffect(() => {
+    if (selectedDevice) {
+      fetchMonitoringData();
+
+      // Auto-refresh every 30 seconds
+      const interval = setInterval(fetchMonitoringData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedDevice]);
+
+  const fetchDevices = async () => {
+    try {
+      setDevicesLoading(true);
+      const res = await fetch('/api/devices');
+      const json = await res.json();
+
+      if (json.success) {
+        setDevices(json.devices || []);
+        // Auto-select first device
+        if (json.devices && json.devices.length > 0 && !selectedDevice) {
+          setSelectedDevice(json.devices[0].deviceID);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch devices:', err);
+    } finally {
+      setDevicesLoading(false);
+    }
+  };
+
+  const fetchMonitoringData = async () => {
+    if (!selectedDevice) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`/api/kenergy/device-monitoring?deviceId=${selectedDevice}`);
+      const json = await res.json();
+
+      if (json.success) {
+        setMonitoringData(json.data.metrics);
+        setLastUpdate(json.data.lastUpdate);
+      } else {
+        setError(json.error || 'Failed to load monitoring data');
+        setMonitoringData(null);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Network error');
+      setMonitoringData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentDevice = devices.find(d => d.deviceID === selectedDevice);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-4">
-        <h1 className="text-3xl font-bold text-gray-800">Devices Monitor</h1>
+    <div className="h-full flex flex-col p-6">
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-800">
+            {t('devicesMonitor') || 'Devices Monitor'}
+          </h1>
+
+          {lastUpdate && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Clock className="w-4 h-4" />
+              <span>Last updated: {new Date(lastUpdate).toLocaleString()}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Controls Bar */}
-      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm gap-4">
+      <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-lg shadow-sm gap-4">
         <div className="flex items-center gap-3">
-          {/* Role Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowRoleDropdown(!setShowRoleDropdown)}
-              className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition"
-            >
-              <span className="text-sm font-medium">{selectedRole}</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-          </div>
-
           {/* Device Selector */}
           <div className="relative">
             <button
               onClick={() => setShowDeviceDropdown(!showDeviceDropdown)}
-              className="flex items-center space-x-2 px-4 py-2 border border-primary rounded-lg bg-primary/5 hover:bg-primary/10 transition min-w-[200px]"
+              className="flex items-center space-x-2 px-4 py-2 border border-primary rounded-lg bg-primary/5 hover:bg-primary/10 transition min-w-[250px]"
+              disabled={devicesLoading}
             >
               <span className="text-sm font-medium text-primary">
-                {devices.find(d => d.id === currentDevice)?.name || "Select Device"}
+                {currentDevice?.deviceName || (devicesLoading ? "Loading devices..." : "Select Device")}
               </span>
               <ChevronDown className="w-4 h-4 text-primary ml-auto" />
-              {selectedDevice && (
-                <X 
-                  className="w-4 h-4 text-gray-400 hover:text-gray-600" 
+              {selectedDevice && !devicesLoading && (
+                <X
+                  className="w-4 h-4 text-gray-400 hover:text-gray-600"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedDevice("");
+                    setMonitoringData(null);
                   }}
                 />
               )}
             </button>
 
-            {showDeviceDropdown && (
-              <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+            {showDeviceDropdown && devices.length > 0 && (
+              <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-h-64 overflow-y-auto">
                 {devices.map((device) => (
                   <button
-                    key={device.id}
+                    key={device.deviceID}
                     onClick={() => {
-                      setSelectedDevice(device.id);
+                      setSelectedDevice(device.deviceID);
                       setShowDeviceDropdown(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition"
+                    className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition ${
+                      selectedDevice === device.deviceID ? 'bg-blue-50' : ''
+                    }`}
                   >
-                    <p className="text-sm font-medium text-gray-800">{device.name}</p>
-                    <p className="text-xs text-gray-500">{device.location}</p>
+                    <p className="text-sm font-medium text-gray-800">{device.deviceName}</p>
+                    <p className="text-xs text-gray-500">{device.location || 'No location'}</p>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-            <span className="text-sm font-medium">Select data</span>
-          </button>
-
-          <button className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-orange-600 transition">
-            <span className="text-sm font-medium">Devices Overview</span>
+          <button
+            onClick={fetchMonitoringData}
+            disabled={!selectedDevice || loading}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="text-sm font-medium">{t('refresh') || 'Refresh'}</span>
           </button>
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && !monitoringData && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading monitoring data...</p>
+          </div>
+        </div>
+      )}
+
+      {/* No Device Selected */}
+      {!selectedDevice && !loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Info className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Please select a device to view monitoring data</p>
+          </div>
+        </div>
+      )}
+
       {/* Monitoring Cards Grid */}
-      {data && (
+      {monitoringData && selectedDevice && (
         <div className="flex-1 overflow-auto">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+            {/* Voltage LL */}
             <MonitorCard
               title="Voltage LL1"
-              value={data.voltageLL[0]}
+              value={monitoringData.voltageLL[0]}
               unit="Volt"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="yellow"
               icon="voltage"
             />
             <MonitorCard
               title="Voltage LL2"
-              value={data.voltageLL[1]}
+              value={monitoringData.voltageLL[1]}
               unit="Volt"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="gray"
               icon="voltage"
             />
             <MonitorCard
               title="Voltage LL3"
-              value={data.voltageLL[2]}
+              value={monitoringData.voltageLL[2]}
               unit="Volt"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="gray"
               icon="voltage"
             />
+
+            {/* Current */}
             <MonitorCard
               title="Current 1"
-              value={data.current[0]}
+              value={monitoringData.current[0]}
               unit="Amp"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="gray"
               icon="current"
             />
             <MonitorCard
               title="Current 2"
-              value={data.current[1]}
+              value={monitoringData.current[1]}
               unit="Amp"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="gray"
               icon="current"
             />
             <MonitorCard
               title="Current 3"
-              value={data.current[2]}
+              value={monitoringData.current[2]}
               unit="Amp"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="gray"
               icon="current"
             />
+
+            {/* Power per Phase */}
             <MonitorCard
-              title="Power1"
-              value={data.power[0]}
+              title="Power 1"
+              value={monitoringData.power[0]}
               unit="kW"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="power"
             />
             <MonitorCard
-              title="Power2"
-              value={data.power[0]}
+              title="Power 2"
+              value={monitoringData.power[1]}
               unit="kW"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="power"
             />
             <MonitorCard
-              title="Power3"
-              value={data.power[1]}
+              title="Power 3"
+              value={monitoringData.power[2]}
               unit="kW"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="power"
             />
+
+            {/* Total Power */}
             <MonitorCard
               title="Total Power"
-              value={data.totalPower}
+              value={monitoringData.totalPower}
               unit="kW"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="total"
             />
+
+            {/* Reactive Power */}
+            <MonitorCard
+              title="Reactive Power"
+              value={monitoringData.reactivePower}
+              unit="kVAr"
+              lastUpdate={lastUpdate}
+              color="white"
+              icon="power"
+            />
+
+            {/* Apparent Power */}
+            <MonitorCard
+              title="Apparent Power"
+              value={monitoringData.apparentPower}
+              unit="kVA"
+              lastUpdate={lastUpdate}
+              color="white"
+              icon="power"
+            />
+
+            {/* Frequency */}
             <MonitorCard
               title="Frequency"
-              value={data.frequency}
+              value={monitoringData.frequency}
               unit="Hz"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="frequency"
             />
+
+            {/* Power Factor */}
             <MonitorCard
-              title="Total PF"
-              value={data.totalPF}
+              title="Power Factor"
+              value={monitoringData.powerFactor}
               unit=""
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="pf"
             />
+
+            {/* Energy */}
             <MonitorCard
-              title="Voltage LN1"
-              value={data.voltageLN[0]}
-              unit="Volt"
-              lastUpdate={data.lastUpdate}
-              color="white"
-              icon="voltage"
-            />
-            <MonitorCard
-              title="Voltage LN2"
-              value={data.voltageLN[1]}
-              unit="Volt"
-              lastUpdate={data.lastUpdate}
-              color="white"
-              icon="voltage"
-            />
-            <MonitorCard
-              title="Voltage LN3"
-              value={data.voltageLN[2]}
-              unit="Volt"
-              lastUpdate={data.lastUpdate}
-              color="white"
-              icon="voltage"
-            />
-            <MonitorCard
-              title="EXP Energy"
-              value={data.expEnergy}
+              title="Energy"
+              value={monitoringData.energy}
               unit="kWh"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="energy"
             />
+
+            {/* Energy Saved */}
             <MonitorCard
-              title="IMP Energy"
-              value={data.impEnergy}
+              title="Energy Saved"
+              value={monitoringData.energySaved}
               unit="kWh"
-              lastUpdate={data.lastUpdate}
+              lastUpdate={lastUpdate}
               color="white"
               icon="energy"
             />
-          </div>
 
-          {/* Date Controls */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button className="px-3 py-2 border rounded-lg hover:bg-gray-50 transition flex items-center space-x-2">
-                <span className="text-sm">Select data</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-
-              <button className="px-3 py-2 border rounded-lg hover:bg-gray-50 transition flex items-center space-x-2">
-                <span className="text-sm">⏱ Minute</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm"
-              />
-
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm"
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Show Limits</span>
-              </label>
-
-              <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">Plot</span>
-              </button>
-
-              <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center space-x-2">
-                <Download className="w-4 h-4" />
-                <span className="text-sm font-medium">Export</span>
-              </button>
-            </div>
+            {/* CO2 Saved */}
+            <MonitorCard
+              title="CO2 Saved"
+              value={monitoringData.co2Saved}
+              unit="kg"
+              lastUpdate={lastUpdate}
+              color="white"
+              icon="energy"
+            />
           </div>
         </div>
       )}

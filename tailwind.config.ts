@@ -9,8 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#1E40AF', // Blue for Korea theme
-        secondary: '#DC2626', // Red for Korea theme
+        primary: '#F97316', // Orange/Amber theme (matching registration form)
+        secondary: '#FB923C', // Light orange accent
         accent: '#FFFFFF',
       },
     },

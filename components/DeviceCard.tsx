@@ -28,9 +28,23 @@ export default function DeviceCard({
 }: DeviceCardProps) {
   const { t } = useLocale();
 
-  const formatVoltage = (value: number | null) => {
-    if (value === null) return '--.--';
-    return value.toFixed(1);
+  const formatVoltage = (value: any) => {
+    if (value === null || value === undefined) return '--.--';
+
+    // Handle arrays - take first element
+    if (Array.isArray(value)) {
+      return formatVoltage(value[0]);
+    }
+
+    // Handle objects
+    if (typeof value === 'object') {
+      return '--.--';
+    }
+
+    // Convert to number
+    const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+    if (isNaN(numValue)) return '--.--';
+    return numValue.toFixed(1);
   };
 
   return (

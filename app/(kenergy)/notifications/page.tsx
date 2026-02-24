@@ -1,92 +1,115 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
-import { ChevronDown, Search, Edit2 } from 'lucide-react';
+import { ChevronDown, Search, Edit2, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface DeviceNotification {
-  no: number;
-  name: string;
-  type: string;
-  owner: string;
-  alarm: boolean;
-  highActive: boolean;
-  lowActive: boolean;
-  message: boolean;
-  email: boolean;
-  output: boolean;
-  lastUpdate: string;
+  no?: number;
+  deviceID?: number;
+  name?: string;
+  type?: string;
+  owner?: string;
+  alarm?: boolean;
+  highActive?: boolean;
+  lowActive?: boolean;
+  message?: boolean;
+  email?: boolean;
+  output?: boolean;
+  lastUpdate?: string;
 }
-
-// Mock device notification data
-const devicesData: { [key: string]: DeviceNotification[] } = {
-  thailand: [
-    {
-      no: 1,
-      name: 'MSP-MV5-2606',
-      type: 'Energy 3-Ph',
-      owner: 'info@kenergy-save.com',
-      alarm: true,
-      highActive: false,
-      lowActive: false,
-      message: false,
-      email: false,
-      output: false,
-      lastUpdate: '2026-02-02 10:53:57'
-    },
-    {
-      no: 2,
-      name: 'PTT Kanchanaburi',
-      type: 'Energy 3-Ph',
-      owner: 'info@kenergy-save.com',
-      alarm: true,
-      highActive: false,
-      lowActive: false,
-      message: false,
-      email: false,
-      output: true,
-      lastUpdate: '2026-02-07 12:09:39'
-    },
-    {
-      no: 3,
-      name: 'Suite 39 Entertainment',
-      type: 'Energy 3-Ph',
-      owner: 'info@kenergy-save.com',
-      alarm: true,
-      highActive: false,
-      lowActive: false,
-      message: false,
-      email: false,
-      output: false,
-      lastUpdate: '2026-01-30 18:42:51'
-    }
-  ],
-  korea: [
-    {
-      no: 1,
-      name: 'Seoul Tech Center',
-      type: 'Energy 3-Ph',
-      owner: 'info@zera-energy.com',
-      alarm: true,
-      highActive: false,
-      lowActive: false,
-      message: false,
-      email: false,
-      output: true,
-      lastUpdate: '2026-02-14 09:30:00'
-    }
-  ]
-};
 
 export default function NotificationsPage() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
+  const [notifications, setNotifications] = useState<DeviceNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchCriteria, setSearchCriteria] = useState('');
   const [searchText, setSearchText] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<DeviceNotification | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
-  const currentDevices = devicesData[selectedSite] || [];
+  // Fetch notification settings from API
+  useEffect(() => {
+    fetchNotifications();
+  }, [selectedSite]);
+
+  async function fetchNotifications() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/kenergy/device-notifications?site=${selectedSite}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setNotifications(data.notifications || []);
+      } else {
+        setError(data.error || 'Failed to fetch notification settings');
+      }
+    } catch (err: any) {
+      console.error('Fetch notifications error:', err);
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSaveSettings() {
+    if (!editingDevice || !editingDevice.deviceID) {
+      setSubmitStatus({ type: 'error', message: 'Invalid device data' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const response = await fetch('/api/kenergy/device-notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: editingDevice.deviceID,
+          alarm_enabled: editingDevice.alarm,
+          high_active_enabled: editingDevice.highActive,
+          low_active_enabled: editingDevice.lowActive,
+          message_enabled: editingDevice.message,
+          email_enabled: editingDevice.email,
+          output_enabled: editingDevice.output
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitStatus({ type: 'success', message: 'Notification settings updated successfully!' });
+        setTimeout(() => {
+          setShowEditModal(false);
+          setEditingDevice(null);
+          setSubmitStatus(null);
+          fetchNotifications(); // Refresh the list
+        }, 1500);
+      } else {
+        setSubmitStatus({ type: 'error', message: data.error || 'Failed to update settings' });
+      }
+    } catch (err: any) {
+      console.error('Update notification settings error:', err);
+      setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Filter notifications by table search
+  const filteredNotifications = notifications.filter(notification =>
+    (notification.name || '').toLowerCase().includes(searchText.toLowerCase()) ||
+    (notification.owner || '').toLowerCase().includes(searchText.toLowerCase())
+  );
 
   const StatusBadge = ({ enabled }: { enabled: boolean }) => (
     <span className={`px-3 py-1 rounded text-xs font-medium ${
@@ -179,123 +202,279 @@ export default function NotificationsPage() {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('no')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('actions')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('name')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('type')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('owner')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('alarm')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('highActive')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('lowActive')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('message')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('email')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('output')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    {t('lastUpdate')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentDevices.map((device) => (
-                  <tr key={device.no} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.no}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-3 py-1 bg-white border-2 border-blue-500 text-blue-600 rounded-md text-sm font-medium">
-                        {device.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-3 py-1 bg-white border border-red-400 text-red-600 rounded-md text-sm">
-                        {device.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.owner}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge enabled={device.alarm} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge enabled={device.highActive} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge enabled={device.lowActive} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge enabled={device.message} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge enabled={device.email} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge enabled={device.output} />
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {device.lastUpdate}
-                    </td>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-gray-600">Loading notification settings...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-600 mb-4">{error}</p>
+                <button
+                  onClick={fetchNotifications}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                No devices found
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('no')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('actions')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('name')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('type')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('owner')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('alarm')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('highActive')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('lowActive')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('message')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('email')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('output')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                      {t('lastUpdate')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredNotifications.map((device, index) => (
+                    <tr key={device.deviceID} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => {
+                            setEditingDevice(device);
+                            setShowEditModal(true);
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                          title="Edit notification settings"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-3 py-1 bg-white border-2 border-blue-500 text-blue-600 rounded-md text-sm font-medium">
+                          {device.name || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-3 py-1 bg-white border border-red-400 text-red-600 rounded-md text-sm">
+                          {device.type || 'Energy 3-Ph'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.owner || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge enabled={device.alarm || false} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge enabled={device.highActive || false} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge enabled={device.lowActive || false} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge enabled={device.message || false} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge enabled={device.email || false} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge enabled={device.output || false} />
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {device.lastUpdate || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">
-              {t('showing')} 1 {t('to')} {currentDevices.length} {t('of')} {currentDevices.length} {t('entries')}
-            </div>
-            <div className="flex gap-2">
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                «
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                ‹
-              </button>
-              <button className="px-3 py-1 bg-primary text-white rounded text-sm">
-                1
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                ›
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
-                »
-              </button>
+              {t('showing')} {filteredNotifications.length > 0 ? 1 : 0} {t('to')} {filteredNotifications.length} {t('of')} {filteredNotifications.length} {t('entries')}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Edit Notification Settings Modal */}
+      {showEditModal && editingDevice && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {t('editNotificationSettings') || 'Edit Notification Settings'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingDevice(null);
+                  setSubmitStatus(null);
+                }}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-sm text-gray-600">
+                  <div><span className="font-medium">Device:</span> {editingDevice.name}</div>
+                  <div><span className="font-medium">Owner:</span> {editingDevice.owner}</div>
+                </div>
+              </div>
+
+              {/* Notification Toggles */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                  <label className="text-sm font-medium text-gray-700">
+                    {t('alarm') || 'Alarm'}
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={editingDevice.alarm || false}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, alarm: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                  <label className="text-sm font-medium text-gray-700">
+                    {t('highActive') || 'High Active'}
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={editingDevice.highActive || false}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, highActive: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                  <label className="text-sm font-medium text-gray-700">
+                    {t('lowActive') || 'Low Active'}
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={editingDevice.lowActive || false}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, lowActive: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                  <label className="text-sm font-medium text-gray-700">
+                    {t('message') || 'Message'}
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={editingDevice.message || false}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, message: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                  <label className="text-sm font-medium text-gray-700">
+                    {t('email') || 'Email'}
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={editingDevice.email || false}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, email: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                  <label className="text-sm font-medium text-gray-700">
+                    {t('output') || 'Output'}
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={editingDevice.output || false}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, output: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Status Message */}
+            {submitStatus && (
+              <div className={`mx-6 mb-4 p-4 rounded-md ${submitStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                <div className="flex items-center gap-2">
+                  {submitStatus.type === 'success' ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5" />
+                  )}
+                  <span className="text-sm font-medium">{submitStatus.message}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingDevice(null);
+                  setSubmitStatus(null);
+                }}
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md font-medium transition-colors disabled:opacity-50"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (t('saving') || 'Saving...') : (t('saveChanges') || 'Save Changes')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

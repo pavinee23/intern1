@@ -1,32 +1,31 @@
 "use client";
 
-import { Search, Bell, RefreshCw, Globe, ChevronDown } from "lucide-react";
+import { Search, Bell, RefreshCw, Globe, ChevronDown, ArrowLeftRight } from "lucide-react";
 import Image from "next/image";
 import { useSite } from "@/lib/SiteContext";
-import { useLocale, localeData } from "@/lib/LocaleContext";
+import { useLocale } from "@/lib/LocaleContext";
 import { useState, useRef, useEffect } from "react";
 import CountryFlag from "./CountryFlag";
 
 export default function Header() {
-  const { selectedSite } = useSite();
-  const { locale, setLocale } = useLocale();
-  const [showLocaleMenu, setShowLocaleMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const { selectedSite, setSelectedSite } = useSite();
+  const { locale, setLocale, t } = useLocale();
+  const [showSiteMenu, setShowSiteMenu] = useState(false);
+  const siteMenuRef = useRef<HTMLDivElement>(null);
 
-  const siteDisplayName = selectedSite === "thailand" ? "Thailand" : "Republic of Korea";
-  
-  // Map locale to country for flag display
+  const siteDisplayName = selectedSite === "thailand" ? (t('thailand') || "Thailand") : (t('republicOfKorea') || "Republic of Korea");
+
+  // Map locale to country for flag display (use ISO codes matching CountryFlag)
   const localeToCountry = {
-    en: "uk" as const,
-    th: "thailand" as const,
-    ko: "korea" as const,
+    en: "GB" as const,
+    ko: "KR" as const,
   };
 
-  // Close menu when clicking outside
+  // Close site menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowLocaleMenu(false);
+      if (siteMenuRef.current && !siteMenuRef.current.contains(event.target as Node)) {
+        setShowSiteMenu(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -48,56 +47,42 @@ export default function Header() {
             />
           </div>
 
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          
-          {/* Current Site Indicator */}
-          <div className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 rounded-lg">
-            <CountryFlag country={selectedSite} size="md" />
-            <span className="text-sm font-semibold text-primary">{siteDisplayName}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          {/* Search */}
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <Search className="w-5 h-5 text-gray-600" />
-          </button>
-
-          {/* Language Selector */}
-          <div className="relative" ref={menuRef}>
+          {/* Site Selector - Dropdown */}
+          <div className="relative" ref={siteMenuRef}>
             <button
-              onClick={() => setShowLocaleMenu(!showLocaleMenu)}
-              className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition"
+              onClick={() => setShowSiteMenu(!showSiteMenu)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md border border-orange-200"
             >
-              <CountryFlag country={localeToCountry[locale]} size="md" />
-              <ChevronDown className="w-4 h-4 text-gray-600" />
+              <CountryFlag country={selectedSite === "thailand" ? "TH" : "KR"} size="md" />
+              <span className="text-sm font-semibold text-orange-700">{siteDisplayName}</span>
+              <ChevronDown className="w-4 h-4 text-orange-600" />
             </button>
 
-            {/* Language Dropdown Menu */}
-            {showLocaleMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                {(Object.keys(localeData) as Array<keyof typeof localeData>).map((key) => (
+            {/* Site Dropdown Menu */}
+            {showSiteMenu && (
+              <div className="absolute left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                {[
+                  { value: 'thailand', name: t('thailand') || 'Thailand', flag: 'TH' },
+                  { value: 'korea', name: t('republicOfKorea') || 'Republic of Korea', flag: 'KR' }
+                ].map((site) => (
                   <button
-                    key={key}
+                    key={site.value}
                     onClick={() => {
-                      setLocale(key);
-                      setShowLocaleMenu(false);
+                      setSelectedSite(site.value as 'thailand' | 'korea');
+                      setShowSiteMenu(false);
                     }}
-                    className={`w-full flex items-center space-x-3 px-4 py-2 hover:bg-gray-50 transition ${
-                      locale === key ? "bg-primary/10" : ""
+                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors ${
+                      selectedSite === site.value ? "bg-orange-100 border-l-4 border-orange-500" : ""
                     }`}
                   >
-                    <CountryFlag country={localeToCountry[key]} size="md" />
+                    <CountryFlag country={site.flag as 'TH' | 'KR'} size="md" />
                     <div className="flex-1 text-left">
-                      <p className="text-sm font-medium text-gray-800">{localeData[key].name}</p>
-                      <p className="text-xs text-gray-500">{localeData[key].code}</p>
+                      <p className={`text-sm font-semibold ${selectedSite === site.value ? 'text-orange-700' : 'text-gray-800'}`}>
+                        {site.name}
+                      </p>
                     </div>
-                    {locale === key && (
-                      <span className="text-primary text-lg">✓</span>
+                    {selectedSite === site.value && (
+                      <span className="text-orange-600 text-xl">✓</span>
                     )}
                   </button>
                 ))}
@@ -105,15 +90,35 @@ export default function Header() {
             )}
           </div>
 
+          {/* Language Switcher - Simple Toggle */}
+          <button
+            onClick={() => setLocale(locale === 'ko' ? 'en' : 'ko')}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-lg transition-all duration-200 shadow-sm hover:shadow border border-gray-200"
+            title={`Switch to ${locale === 'ko' ? 'English' : '한국어'}`}
+          >
+            <Globe className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">
+              {locale === 'ko' ? '한국어' : locale === 'th' ? 'ไทย' : 'English'}
+            </span>
+            <ArrowLeftRight className="w-3.5 h-3.5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <button className="p-2.5 hover:bg-orange-50 rounded-lg transition-all duration-200 hover:shadow-sm group">
+            <Search className="w-5 h-5 text-gray-500 group-hover:text-orange-600 transition-colors" />
+          </button>
+
           {/* Notifications */}
-          <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-            <Bell className="w-5 h-5 text-gray-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          <button className="p-2.5 hover:bg-orange-50 rounded-lg transition-all duration-200 hover:shadow-sm relative group">
+            <Bell className="w-5 h-5 text-gray-500 group-hover:text-orange-600 transition-colors" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse ring-2 ring-white"></span>
           </button>
 
           {/* Refresh */}
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <RefreshCw className="w-5 h-5 text-gray-600" />
+          <button className="p-2.5 hover:bg-orange-50 rounded-lg transition-all duration-200 hover:shadow-sm group">
+            <RefreshCw className="w-5 h-5 text-gray-500 group-hover:text-orange-600 group-hover:rotate-180 transition-all duration-500" />
           </button>
 
           {/* User Profile */}
