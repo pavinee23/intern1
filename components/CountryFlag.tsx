@@ -66,13 +66,13 @@ export default function CountryFlag({ country, size = 'md', className = '' }: Co
 
         {/* Taeguk (태극) centered at (450,300), radius 150 */}
         <g transform="translate(450, 300)">
-          {/* Red top semicircle */}
-          <path d="M -150 0 A 150 150 0 0 1 150 0 Z" fill="#CD2E3A" />
-          {/* Blue bottom semicircle */}
-          <path d="M -150 0 A 150 150 0 0 0 150 0 Z" fill="#003478" />
-          {/* Blue circle in upper (red) half → creates S-curve */}
+          {/* Red (Yang/양) — upper semicircle, sweep=0 = counterclockwise = top */}
+          <path d="M -150 0 A 150 150 0 0 0 150 0 Z" fill="#CD2E3A" />
+          {/* Blue (Yin/음) — lower semicircle, sweep=1 = clockwise = bottom */}
+          <path d="M -150 0 A 150 150 0 0 1 150 0 Z" fill="#003478" />
+          {/* Blue small circle inside red upper half → S-curve bump */}
           <circle cx="0" cy="-75" r="75" fill="#003478" />
-          {/* Red circle in lower (blue) half → creates S-curve */}
+          {/* Red small circle inside blue lower half → S-curve bump */}
           <circle cx="0" cy="75" r="75" fill="#CD2E3A" />
         </g>
 
