@@ -8,10 +8,11 @@ const pool = mysql.createPool({
   user: process.env.MYSQL_USER || 'ksystem',
   password: process.env.MYSQL_PASSWORD || 'Ksave2025Admin',
   waitForConnections: true,
-  connectionLimit: 5,
-  queueLimit: 0,
-  connectTimeout: 10000, // 10 seconds for Vercel compatibility
+  connectionLimit: 3,
+  queueLimit: 10,
+  connectTimeout: 10000,
   enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
   timezone: '+00:00'
 })
 

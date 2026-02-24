@@ -310,6 +310,8 @@ export default function ThailandAdminDashboard() {
   ]
 
   const [activities, setActivities] = useState<Array<any>>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(true)
+  const [activitiesError, setActivitiesError] = useState<string | null>(null)
   const [, forceUpdate] = useState(0)
 
   function timeAgo(ts?: string) {
@@ -358,7 +360,7 @@ export default function ThailandAdminDashboard() {
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
+    const fetchActivities = async (attempt = 0) => {
       try {
         const res = await fetch('/api/activity')
         const j = await res.json()
@@ -370,27 +372,57 @@ export default function ThailandAdminDashboard() {
             ts: a.ts
           }))
           setActivities(items.slice(0, 24))
+          setActivitiesError(null)
+        } else if (j && !j.success && mounted) {
+          const isConnErr = (j.error || '').toLowerCase().includes('connection')
+          if (isConnErr && attempt < 3) {
+            setTimeout(() => { if (mounted) fetchActivities(attempt + 1) }, 3000 * (attempt + 1))
+          } else {
+            setActivitiesError(j.error || 'Load failed')
+          }
         }
       } catch (e) {
         console.error('load activities failed', e)
-      }
-    })()
-
-    // SSE subscription for real-time updates (activities + stats)
-    const es = new EventSource('/api/activity/stream')
-    es.onmessage = (evt) => {
-      try {
-        const d = JSON.parse(evt.data)
-        if (d && d.type) {
-          const act = { type: d.type, descEn: d.title || JSON.stringify(d), descTh: d.title || JSON.stringify(d), ts: d.ts || new Date().toISOString() }
-          setActivities(prev => [act, ...prev].slice(0, 24))
-          // Refresh stats when new activity arrives
-          refreshStats()
+        if (mounted) {
+          if (attempt < 3) {
+            setTimeout(() => { if (mounted) fetchActivities(attempt + 1) }, 3000 * (attempt + 1))
+          } else {
+            setActivitiesError('Connection error')
+          }
         }
-      } catch (err) {
-        // ignore ping/ready messages
+      } finally {
+        if (mounted) setActivitiesLoading(false)
       }
     }
+    fetchActivities()
+
+    // SSE subscription for real-time updates (activities + stats)
+    let esRetryTimer: ReturnType<typeof setTimeout> | null = null
+    const connectActivityStream = () => {
+      const es = new EventSource('/api/activity/stream')
+      es.onmessage = (evt) => {
+        try {
+          const d = JSON.parse(evt.data)
+          if (d && d.type) {
+            const act = { type: d.type, descEn: d.title || JSON.stringify(d), descTh: d.title || JSON.stringify(d), ts: d.ts || new Date().toISOString() }
+            setActivities(prev => [act, ...prev].slice(0, 24))
+            setActivitiesError(null)
+            // Refresh stats when new activity arrives
+            refreshStats()
+          }
+        } catch (err) {
+          // ignore ping/ready messages
+        }
+      }
+      es.onerror = () => {
+        es.close()
+        if (mounted) {
+          esRetryTimer = setTimeout(() => { if (mounted) connectActivityStream() }, 8000)
+        }
+      }
+      return es
+    }
+    let es = connectActivityStream()
 
     // SSE for live stats (updates every few seconds)
     const statsEs = new EventSource('/api/stats/stream')
@@ -430,6 +462,7 @@ export default function ThailandAdminDashboard() {
 
     return () => {
       mounted = false
+      if (esRetryTimer) clearTimeout(esRetryTimer)
       try { es.close() } catch (_) {}
       try { statsEs.close() } catch (_) {}
       clearInterval(timeInterval)
@@ -633,7 +666,31 @@ export default function ThailandAdminDashboard() {
                 </tr>
             </thead>
             <tbody>
-              {activities.map((activity, idx) => (
+              {activitiesLoading ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: 13 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 14, height: 14, border: '2px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', display: 'inline-block' }} className="animate-spin" />
+                      {L('Loading...', 'กำลังโหลด...')}
+                    </span>
+                  </td>
+                </tr>
+              ) : activitiesError ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#ef4444', fontSize: 13 }}>
+                    ⚠ {activitiesError === 'Too many connections' || activitiesError.includes('connections')
+                      ? L('Database busy — retrying shortly', 'ฐานข้อมูลยุ่ง — กรุณารอสักครู่')
+                      : activitiesError}
+                  </td>
+                </tr>
+              ) : activities.length === 0 ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '28px', color: '#94a3b8', fontSize: 13 }}>
+                    {L('No recent activity', 'ยังไม่มีกิจกรรม')}
+                  </td>
+                </tr>
+              ) : (
+              activities.map((activity, idx) => (
                 <tr key={idx}>
                   <td>{lang === 'th' ? activity.descTh || activity.descEn : activity.descEn || activity.descTh}</td>
                   <td>
@@ -661,7 +718,8 @@ export default function ThailandAdminDashboard() {
                   </td>
                   <td style={{ color: '#94a3b8', fontSize: 13 }}>{timeAgo(activity.ts)}</td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

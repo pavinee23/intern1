@@ -65,25 +65,26 @@ export async function GET() {
               for (const r of filtered) {
                 const ev = formatRow(r)
                 const payload = JSON.stringify(ev)
-                controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
+                try { controller.enqueue(encoder.encode(`data: ${payload}\n\n`)) } catch (_) { return }
                 lastTs = r.ts
               }
             }
           } finally {
             conn.release()
           }
-        } catch (e) {
-          console.error('activity stream poll error', e)
+        } catch (e: any) {
+          // Swallow connection errors silently — will retry on next interval
+          if (!String(e).includes('Too many')) console.error('activity stream poll error', e)
         }
       }
 
-      // send a ping every 15s to keep connection alive
+      // send a ping every 30s to keep connection alive
       const pingInterval = setInterval(() => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ ping: Date.now() })}\n\n`))
-      }, 15000)
+        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify({ ping: Date.now() })}\n\n`)) } catch (_) {}
+      }, 30000)
 
-      // poll every 3 seconds
-      const interval = setInterval(poll, 3000)
+      // poll every 10 seconds (reduce DB connection pressure)
+      const interval = setInterval(poll, 10000)
 
       // run initial poll once
       await poll()
