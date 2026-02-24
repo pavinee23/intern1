@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "next build",
-    "start": "next start -p 3001",
+    "build": "next build && cp .env.local .next/standalone/.env.local 2>/dev/null; cp .env.production .next/standalone/.env.production 2>/dev/null; true",
+    "start": "PORT=3001 node .next/standalone/server.js",
     "lint": "next lint"
   },
   "dependencies": {

@@ -24,9 +24,8 @@ export default function LanguageSwitcher() {
   }, []);
 
   const languages = [
-    { code: 'ko' as const, name: t.korean || '한국어', flag: 'KR' as const },
-    { code: 'th' as const, name: t.thai || 'ไทย', flag: 'TH' as const },
     { code: 'en' as const, name: t.english || 'English', flag: 'GB' as const },
+    { code: 'ko' as const, name: t.korean || '한국어', flag: 'KR' as const },
   ];
 
   const currentLanguage = languages.find(lang => lang.code === locale) || languages[0];

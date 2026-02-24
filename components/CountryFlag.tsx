@@ -64,54 +64,54 @@ export default function CountryFlag({ country, size = 'md', className = '' }: Co
         {/* White background */}
         <rect width="900" height="600" fill="#FFFFFF" />
 
-        {/* Red and Blue Taeguk (Yin-Yang) */}
+        {/* Taeguk (태극) centered at (450,300), radius 150 */}
         <g transform="translate(450, 300)">
-          {/* Blue (bottom) semicircle */}
-          <path d="M -90 0 A 90 90 0 0 0 90 0 Z" fill="#003478" />
-
-          {/* Red (top) semicircle */}
-          <path d="M -90 0 A 90 90 0 0 1 90 0 Z" fill="#CD2E3A" />
-
-          {/* Small blue circle on red */}
-          <circle cx="0" cy="-45" r="45" fill="#003478" />
-
-          {/* Small red circle on blue */}
-          <circle cx="0" cy="45" r="45" fill="#CD2E3A" />
+          {/* Red top semicircle */}
+          <path d="M -150 0 A 150 150 0 0 1 150 0 Z" fill="#CD2E3A" />
+          {/* Blue bottom semicircle */}
+          <path d="M -150 0 A 150 150 0 0 0 150 0 Z" fill="#003478" />
+          {/* Blue circle in upper (red) half → creates S-curve */}
+          <circle cx="0" cy="-75" r="75" fill="#003478" />
+          {/* Red circle in lower (blue) half → creates S-curve */}
+          <circle cx="0" cy="75" r="75" fill="#CD2E3A" />
         </g>
 
-        {/* Four trigrams */}
-        {/* Top-left: Geon (☰ - Heaven) */}
-        <g transform="translate(180, 120) rotate(-56.3)">
-          <rect x="0" y="0" width="120" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="35" width="120" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="70" width="120" height="20" rx="10" fill="#000000" />
+        {/* Four trigrams — bars centered at (0,0), then translate to corner position */}
+        {/* Each bar: width=130, height=22, centered on x-axis */}
+        {/* 3 bars at y=-36, y=0, y=36  (gap=14 between bars) */}
+
+        {/* NW: 건 Geon ☰ (3 solid bars) — Heaven */}
+        <g transform="translate(205, 165) rotate(-56.3)">
+          <rect x="-65" y="-47" width="130" height="22" rx="11" fill="#000" />
+          <rect x="-65" y="-11" width="130" height="22" rx="11" fill="#000" />
+          <rect x="-65"  y="25" width="130" height="22" rx="11" fill="#000" />
         </g>
 
-        {/* Top-right: Ri (☲ - Fire) */}
-        <g transform="translate(720, 120) rotate(56.3)">
-          <rect x="0" y="0" width="120" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="35" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="65" y="35" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="70" width="120" height="20" rx="10" fill="#000000" />
+        {/* NE: 감 Gam ☵ (broken/solid/broken) — Water */}
+        <g transform="translate(695, 165) rotate(56.3)">
+          <rect x="-65" y="-47" width="54" height="22" rx="11" fill="#000" />
+          <rect x="11"  y="-47" width="54" height="22" rx="11" fill="#000" />
+          <rect x="-65" y="-11" width="130" height="22" rx="11" fill="#000" />
+          <rect x="-65"  y="25" width="54" height="22" rx="11" fill="#000" />
+          <rect x="11"   y="25" width="54" height="22" rx="11" fill="#000" />
         </g>
 
-        {/* Bottom-left: Gam (☵ - Water) */}
-        <g transform="translate(180, 480) rotate(56.3)">
-          <rect x="0" y="0" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="65" y="0" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="35" width="120" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="70" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="65" y="70" width="55" height="20" rx="10" fill="#000000" />
+        {/* SW: 리 Ri ☲ (solid/broken/solid) — Fire */}
+        <g transform="translate(205, 435) rotate(56.3)">
+          <rect x="-65" y="-47" width="130" height="22" rx="11" fill="#000" />
+          <rect x="-65" y="-11" width="54" height="22" rx="11" fill="#000" />
+          <rect x="11"  y="-11" width="54" height="22" rx="11" fill="#000" />
+          <rect x="-65"  y="25" width="130" height="22" rx="11" fill="#000" />
         </g>
 
-        {/* Bottom-right: Gon (☷ - Earth) */}
-        <g transform="translate(720, 480) rotate(-56.3)">
-          <rect x="0" y="0" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="65" y="0" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="35" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="65" y="35" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="0" y="70" width="55" height="20" rx="10" fill="#000000" />
-          <rect x="65" y="70" width="55" height="20" rx="10" fill="#000000" />
+        {/* SE: 곤 Gon ☷ (3 broken bars) — Earth */}
+        <g transform="translate(695, 435) rotate(-56.3)">
+          <rect x="-65" y="-47" width="54" height="22" rx="11" fill="#000" />
+          <rect x="11"  y="-47" width="54" height="22" rx="11" fill="#000" />
+          <rect x="-65" y="-11" width="54" height="22" rx="11" fill="#000" />
+          <rect x="11"  y="-11" width="54" height="22" rx="11" fill="#000" />
+          <rect x="-65"  y="25" width="54" height="22" rx="11" fill="#000" />
+          <rect x="11"   y="25" width="54" height="22" rx="11" fill="#000" />
         </g>
       </svg>
     );
