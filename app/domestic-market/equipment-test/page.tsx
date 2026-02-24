@@ -116,7 +116,7 @@ export default function DomesticEquipmentTestPage() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-800">{t.equipmentTestReport}</h1>
-                  <p className="text-xs text-gray-500">🇰🇷 {t.domesticMarket}</p>
+                  <p className="text-xs text-gray-500 flex items-center gap-1.5"><img src="https://flagcdn.com/kr.svg" alt="Korea" width={20} height={14} style={{ borderRadius: 2, objectFit: 'cover', display: 'inline-block' }} /> {t.domesticMarket}</p>
                 </div>
               </div>
             </div>

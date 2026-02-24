@@ -566,7 +566,7 @@ export default function ThailandAdminDashboard() {
             { value: stats.pendingBills, label: L('Pending Bills','บิลค้างชำระ'), icon: '💰', iconClass: styles.statIconLime },
             { value: stats.customerTesting, label: L('Customer Testing','ทดสอบลูกค้า'), icon: '🧪', iconClass: styles.statIconFuchsia },
             { value: stats.suppliers, label: L('Suppliers','ซัพพลายเออร์'), icon: '🏭', iconClass: styles.statIconSlate },
-            { value: stats.koreaTracking, label: L('Korea Tracking','สินค้าเกาหลี'), icon: '🇰🇷', iconClass: styles.statIconKorea },
+            { value: stats.koreaTracking, label: L('Korea Tracking','สินค้าเกาหลี'), icon: (<img src="https://flagcdn.com/kr.svg" alt="Korea" width={22} height={16} style={{ borderRadius: 3, objectFit: 'cover', display: 'inline-block' }} />), iconClass: styles.statIconKorea },
           ].map((card, idx) => (
             <div key={idx} className={styles.statCard}>
               <div className={`${styles.statIcon} ${card.iconClass}`}>

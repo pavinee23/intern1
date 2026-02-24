@@ -23,15 +23,17 @@ export default function CountryFlag({ country, size = 'md', className = '' }: Co
     );
   }
 
+  const code = country.toLowerCase();
+
   return (
     <img
-      src={`https://flagcdn.com/w${dimensions.width * 2}/${country.toLowerCase()}.png`}
-      srcSet={`https://flagcdn.com/w${dimensions.width * 4}/${country.toLowerCase()}.png 2x`}
+      src={`https://flagcdn.com/${code}.svg`}
       alt={`${country} flag`}
       width={dimensions.width}
       height={dimensions.height}
       className={`inline-block rounded object-cover ${className}`}
       style={{ width: dimensions.width, height: dimensions.height, objectFit: 'cover' }}
+      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
     />
   );
 }

@@ -191,7 +191,8 @@ export default function KoreaOrderTrackingPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>
-              🇰🇷 {L('Korea HQ Order Tracking', 'ติดตามสินค้าจากสำนักงานใหญ่เกาหลี')}
+              <img src="https://flagcdn.com/kr.svg" alt="Korea" width={36} height={26} style={{ borderRadius: 4, objectFit: 'cover', verticalAlign: 'middle', marginRight: 10, display: 'inline-block' }} />
+              {L('Korea HQ Order Tracking', 'ติดตามสินค้าจากสำนักงานใหญ่เกาหลี')}
             </h2>
             <p style={{ margin: '6px 0 0', fontSize: 14, opacity: 0.9 }}>
               {L('Track orders from Korea headquarters to Thailand branch', 'ตรวจสอบสถานะรายการสั่งสินค้าและกำหนดการสินค้าถึงสาขาประเทศไทย')}
@@ -264,7 +265,9 @@ export default function KoreaOrderTrackingPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8', background: '#f8fafc', borderRadius: 16 }}>
-          <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.4 }}>🇰🇷</div>
+          <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.4 }}>
+            <img src="https://flagcdn.com/kr.svg" alt="Korea" width={64} height={48} style={{ borderRadius: 8, objectFit: 'cover', display: 'inline-block' }} />
+          </div>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{L('No tracking records', 'ไม่พบรายการติดตาม')}</div>
           <div style={{ fontSize: 13 }}>{L('Create your first order tracking', 'สร้างรายการติดตามสินค้าแรก')}</div>
         </div>
@@ -443,7 +446,8 @@ export default function KoreaOrderTrackingPage() {
             <div style={{ padding: '24px 28px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#1e293b' }}>
-                  🇰🇷 {editID ? L('Edit Order Tracking', 'แก้ไขรายการติดตาม') : L('New Order from Korea HQ', 'เพิ่มรายการสั่งสินค้าจากเกาหลี')}
+                  <img src="https://flagcdn.com/kr.svg" alt="Korea" width={28} height={20} style={{ borderRadius: 3, objectFit: 'cover', verticalAlign: 'middle', marginRight: 8, display: 'inline-block' }} />
+                  {editID ? L('Edit Order Tracking', 'แก้ไขรายการติดตาม') : L('New Order from Korea HQ', 'เพิ่มรายการสั่งสินค้าจากเกาหลี')}
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>
                   {L('Track shipment from Korea to Thailand', 'ติดตามการจัดส่งจากเกาหลีมาไทย')}

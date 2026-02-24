@@ -33,7 +33,7 @@ export default function DomesticMarketDashboardPage() {
   const [selectedRegion, setSelectedRegion] = useState('all');
 
   const regions = [
-    { id: 'all', name: locale === 'ko' ? '전체 지역' : 'All Regions', city: 'All', emoji: '🇰🇷' },
+    { id: 'all', name: locale === 'ko' ? '전체 지역' : 'All Regions', city: 'All', emoji: (<img src="https://flagcdn.com/w40/kr.png" srcSet="https://flagcdn.com/w80/kr.png 2x" alt="Korea" width={36} height={26} style={{ borderRadius: 4, objectFit: 'cover', display: 'inline-block' }} />) },
     { id: 'seoul', name: locale === 'ko' ? '서울' : 'Seoul', city: 'Seoul', emoji: '🏙️' },
     { id: 'busan', name: locale === 'ko' ? '부산' : 'Busan', city: 'Busan', emoji: '🌊' },
     { id: 'incheon', name: locale === 'ko' ? '인천' : 'Incheon', city: 'Incheon', emoji: '✈️' },
@@ -254,7 +254,7 @@ export default function DomesticMarketDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🇰🇷</span>
+              <img src="https://flagcdn.com/kr.svg" alt="Korea" width={40} height={28} style={{ borderRadius: 4, objectFit: 'cover', display: 'inline-block' }} />
               <LanguageSwitcher />
             </div>
           </div>
