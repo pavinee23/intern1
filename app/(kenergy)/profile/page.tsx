@@ -1,18 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Edit, Camera, Building2, Globe, Shield, Save, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Edit, Camera, Building2, Shield, Save, X } from 'lucide-react';
 import { useLocale } from '@/lib/LocaleContext';
+import CountryFlag from '@/components/CountryFlag';
 
-const companyInfo = {
+const thailandOffice = {
   name: 'K Energy Save Co., Ltd.',
-  group: 'Group of Zera',
-  email: 'info@kenergysave.com',
-  phone: '+82 (0)2-1234-5678',
-  website: 'www.kenergysave.com',
-  address: 'Seoul, Republic of Korea',
-  founded: 'January 2020',
+  address1: '84 Chaloem Phrakiat Rama 9 Soi 34',
+  address2: 'Nong Bon, Prawet',
+  city: 'Bangkok 10250, Thailand',
+  phone: '+66 2 080 8916',
+  email: 'info@kenergy-save.com',
   description: 'Smart Energy Management & IoT Solutions',
+};
+
+const koreaOffice = {
+  name: 'Zera-Energy',
+  address1: '2F, 16-10, 166beon-gil',
+  address2: 'Elseso-ro, Gunpo-si',
+  city: 'Gyeonggi-do, Korea',
+  phone: '+82 31-427-1380',
+  email: 'info@zera-energy.com',
+  description: 'Korea Headquarters',
 };
 
 const adminUser = {
@@ -81,37 +91,61 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl shadow-sm p-6 text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
+          {/* Thailand Office */}
+          <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl shadow-sm p-5 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <CountryFlag country="TH" size="md" />
               <div>
-                <div className="font-bold text-lg leading-tight">{companyInfo.name}</div>
-                <div className="text-orange-200 text-sm">{companyInfo.group}</div>
+                <div className="font-bold text-base leading-tight">{thailandOffice.name}</div>
+                <div className="text-orange-200 text-xs">Thailand Office</div>
               </div>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-orange-100">
-                <Globe className="w-4 h-4 flex-shrink-0" />
-                <span>{companyInfo.website}</span>
-              </div>
-              <div className="flex items-center gap-2 text-orange-100">
-                <MapPin className="w-4 h-4 flex-shrink-0" />
-                <span>{companyInfo.address}</span>
-              </div>
-              <div className="flex items-center gap-2 text-orange-100">
-                <Mail className="w-4 h-4 flex-shrink-0" />
-                <span>{companyInfo.email}</span>
+              <div className="flex items-start gap-2 text-orange-100">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="leading-snug">
+                  {thailandOffice.address1}<br />
+                  {thailandOffice.address2}<br />
+                  {thailandOffice.city}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-orange-100">
                 <Phone className="w-4 h-4 flex-shrink-0" />
-                <span>{companyInfo.phone}</span>
+                <span>{thailandOffice.phone}</span>
+              </div>
+              <div className="flex items-center gap-2 text-orange-100">
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span className="break-all">{thailandOffice.email}</span>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-white/20">
-              <span className="font-medium text-white text-xs">{companyInfo.description}</span>
-              <div className="text-xs text-orange-200 mt-1">Est. {companyInfo.founded}</div>
+          </div>
+
+          {/* Korea Office */}
+          <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-sm p-5 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <CountryFlag country="KR" size="md" />
+              <div>
+                <div className="font-bold text-base leading-tight">{koreaOffice.name}</div>
+                <div className="text-blue-200 text-xs">Korea Office</div>
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2 text-blue-100">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="leading-snug">
+                  {koreaOffice.address1}<br />
+                  {koreaOffice.address2}<br />
+                  {koreaOffice.city}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-blue-100">
+                <Phone className="w-4 h-4 flex-shrink-0" />
+                <span>{koreaOffice.phone}</span>
+              </div>
+              <div className="flex items-center gap-2 text-blue-100">
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span className="break-all">{koreaOffice.email}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -198,7 +232,12 @@ export default function ProfilePage() {
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('companyAddress') || 'Company Address'}</label>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                   <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-900">K Energy Save Co., Ltd.<br />Seoul, Republic of Korea</span>
+                  <span className="text-gray-900">
+                    K Energy Save Co., Ltd.<br />
+                    84 Chaloem Phrakiat Rama 9 Soi 34<br />
+                    Nong Bon, Prawet, Bangkok 10250<br />
+                    Thailand
+                  </span>
                 </div>
               </div>
             </div>
