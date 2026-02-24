@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, FileText, Zap, Activity, AlertTriangle, CheckCircle, XCircle, BarChart3, TrendingUp, Plus, Search, Eye, Download, Calendar, User, Building, Save } from 'lucide-react';
+import { ArrowLeft, FileText, Zap, Activity, AlertTriangle, CheckCircle, XCircle, BarChart3, TrendingUp, Plus, Search, Eye, Download, Calendar, User, Building, Save, Upload, X, Table2 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import AdminLayout from '../components/AdminLayout';
 
@@ -31,6 +31,12 @@ interface AnalysisData {
   recommendation: string;
   notes: string;
   recommendedProduct?: string;
+  // Engineer approval
+  engineerName: string;
+  engineerLicense: string;
+  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+  approvalDate: string;
+  approverName: string;
 }
 
 // Helper functions
@@ -55,7 +61,12 @@ const getCurrentDateTime = (): string => {
 export default function ThailandPreInstallationAnalysis() {
   const router = useRouter();
   const [lang, setLang] = useState<'en' | 'th'>('th');
-  const [view, setView] = useState<'form' | 'list'>('form');
+  const [view, setView] = useState<'form' | 'upload' | 'list'>('form');
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadedCSVData, setUploadedCSVData] = useState<any[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
   const [selectedBranch, setSelectedBranch] = useState('thailand');
 
@@ -76,7 +87,12 @@ export default function ThailandPreInstallationAnalysis() {
     result: 'Recommended',
     recommendation: 'Large current difference between L3 and L2 phases. UPS system inspection and load redistribution required.',
     notes: 'Harmonics and phase imbalance due to UPS system, review after improvement',
-    recommendedProduct: 'KSAVER 150KVA'
+    recommendedProduct: 'KSAVER 150KVA',
+    engineerName: '',
+    engineerLicense: '',
+    approvalStatus: 'Pending',
+    approvalDate: getCurrentDateTime(),
+    approverName: '',
   });
 
   const branches = [
@@ -174,9 +190,11 @@ export default function ThailandPreInstallationAnalysis() {
     // Reset form
     setFormData({
       id: generateDocumentNumber(),
+      branch: 'Thailand',
       location: '',
       equipment: 'Fluke 438-II Motor Analyzer',
       datetime: getCurrentDateTime(),
+      measurementPeriod: '7 days',
       technician: '',
       voltage: '380',
       frequency: 50.0,
@@ -186,7 +204,12 @@ export default function ThailandPreInstallationAnalysis() {
       balance: 'Good',
       result: 'Recommended',
       recommendation: '',
-      notes: ''
+      notes: '',
+      engineerName: '',
+      engineerLicense: '',
+      approvalStatus: 'Pending',
+      approvalDate: getCurrentDateTime(),
+      approverName: '',
     });
 
     alert(lang === 'th' ? 'บันทึกข้อมูลเรียบร้อยแล้ว' : 'Data saved successfully');
@@ -217,6 +240,13 @@ export default function ThailandPreInstallationAnalysis() {
     list: lang === 'th' ? 'รายการ' : 'List',
     powerGraph: lang === 'th' ? 'กราฟพลังงาน 7 วัน' : '7-Day Power Graph',
     currentGraph: lang === 'th' ? 'กราฟกระแสไฟฟ้า' : 'Current Graph',
+    engineerApproval: lang === 'th' ? 'การอนุมัติและรับรองโดยวิศวกร' : 'Engineer Certification & Approval',
+    engineerName: lang === 'th' ? 'ชื่อวิศวกร / ผู้รับรอง' : 'Engineer / Certifier Name',
+    engineerLicense: lang === 'th' ? 'เลขที่ใบอนุญาตวิศวกร' : 'Engineer License No.',
+    approvalStatus: lang === 'th' ? 'สถานะการอนุมัติ' : 'Approval Status',
+    approverName: lang === 'th' ? 'ชื่อผู้อนุมัติ' : 'Approver Name',
+    approvalDate: lang === 'th' ? 'วันที่อนุมัติ' : 'Approval Date',
+    signaturePlaceholder: lang === 'th' ? 'ลายเซ็นวิศวกร' : 'Engineer Signature',
     back: lang === 'th' ? 'กลับ' : 'Back',
   };
 
@@ -259,13 +289,6 @@ export default function ThailandPreInstallationAnalysis() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={toggleLang}
-                  className="px-4 py-2 rounded-lg font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
-                  title="Switch Language"
-                >
-                  {lang === 'th' ? '🇹🇭 ไทย' : '🇬🇧 English'}
-                </button>
-                <button
                   onClick={() => setView('form')}
                   className={`px-4 py-2 rounded-lg font-medium ${
                     view === 'form'
@@ -275,6 +298,17 @@ export default function ThailandPreInstallationAnalysis() {
                 >
                   <Plus className="w-5 h-5 inline mr-2" />
                   {t.form}
+                </button>
+                <button
+                  onClick={() => setView('upload')}
+                  className={`px-4 py-2 rounded-lg font-medium ${
+                    view === 'upload'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Upload className="w-5 h-5 inline mr-2" />
+                  {lang === 'th' ? 'อัพโหลด' : 'Upload'}
                 </button>
                 <button
                   onClick={() => setView('list')}
@@ -291,6 +325,167 @@ export default function ThailandPreInstallationAnalysis() {
             </div>
           </div>
         </div>
+
+        {/* Upload View */}
+        {view === 'upload' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-2 flex items-center">
+                <Upload className="w-6 h-6 mr-2 text-green-600" />
+                {lang === 'th' ? 'อัพโหลดข้อมูลกระแสไฟฟ้าก่อนติดตั้ง' : 'Upload Pre-Installation Current Data'}
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                {lang === 'th'
+                  ? 'อัพโหลดไฟล์ข้อมูลกระแสไฟฟ้าที่เทสไว้ก่อนการติดตั้งเป็นเวลา 7 วัน (CSV / Excel / PDF)'
+                  : 'Upload 7-day pre-installation current test data files (CSV / Excel / PDF)'}
+              </p>
+
+              {/* Drop Zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  setUploadError(null);
+                  setUploadSuccess(null);
+                  const files = Array.from(e.dataTransfer.files);
+                  const allowed = files.filter(f => f.name.match(/\.(csv|xlsx|xls|pdf)$/i));
+                  if (allowed.length < files.length) setUploadError(lang === 'th' ? 'รองรับเฉพาะไฟล์ CSV, Excel และ PDF เท่านั้น' : 'Only CSV, Excel and PDF files are supported');
+                  if (allowed.length > 0) {
+                    setUploadedFiles(prev => [...prev, ...allowed]);
+                    setUploadSuccess(lang === 'th' ? `อัพโหลด ${allowed.length} ไฟล์เรียบร้อยแล้ว` : `${allowed.length} file(s) uploaded successfully`);
+                  }
+                }}
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${
+                  isDragging ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50 hover:border-green-400 hover:bg-green-50'
+                }`}
+                onClick={() => document.getElementById('file-input')?.click()}
+              >
+                <input
+                  id="file-input"
+                  type="file"
+                  multiple
+                  accept=".csv,.xlsx,.xls,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    setUploadError(null);
+                    setUploadSuccess(null);
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      setUploadedFiles(prev => [...prev, ...files]);
+                      setUploadSuccess(lang === 'th' ? `อัพโหลด ${files.length} ไฟล์เรียบร้อยแล้ว` : `${files.length} file(s) uploaded successfully`);
+                    }
+                  }}
+                />
+                <Upload className="w-14 h-14 text-gray-400 mx-auto mb-4" />
+                <p className="text-lg font-semibold text-gray-700 mb-1">
+                  {lang === 'th' ? 'ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์' : 'Drag & drop files here, or click to select'}
+                </p>
+                <p className="text-sm text-gray-400">{lang === 'th' ? 'รองรับ CSV, Excel (.xlsx), PDF' : 'Supports CSV, Excel (.xlsx), PDF'}</p>
+              </div>
+
+              {/* Alerts */}
+              {uploadError && (
+                <div className="mt-3 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />{uploadError}
+                </div>
+              )}
+              {uploadSuccess && (
+                <div className="mt-3 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />{uploadSuccess}
+                </div>
+              )}
+            </div>
+
+            {/* File List */}
+            {uploadedFiles.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <Table2 className="w-5 h-5 mr-2 text-blue-600" />
+                  {lang === 'th' ? `ไฟล์ที่อัพโหลด (${uploadedFiles.length} ไฟล์)` : `Uploaded Files (${uploadedFiles.length})`}
+                </h3>
+                <div className="space-y-2">
+                  {uploadedFiles.map((file, idx) => {
+                    const ext = file.name.split('.').pop()?.toLowerCase();
+                    const iconColor = ext === 'pdf' ? 'text-red-500' : ext === 'csv' ? 'text-green-600' : 'text-blue-600';
+                    const bgColor = ext === 'pdf' ? 'bg-red-50' : ext === 'csv' ? 'bg-green-50' : 'bg-blue-50';
+                    const borderColor = ext === 'pdf' ? 'border-red-200' : ext === 'csv' ? 'border-green-200' : 'border-blue-200';
+                    return (
+                      <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${bgColor} ${borderColor}`}>
+                        <div className="flex items-center gap-3">
+                          <FileText className={`w-5 h-5 ${iconColor}`} />
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{file.name}</p>
+                            <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB · {ext?.toUpperCase()}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-1 hover:bg-gray-200 rounded-lg transition"
+                        >
+                          <X className="w-4 h-4 text-gray-500" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Instructions */}
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm font-semibold text-blue-800 mb-2">
+                    {lang === 'th' ? '📋 รูปแบบไฟล์ที่แนะนำสำหรับข้อมูล 7 วัน:' : '📋 Recommended format for 7-day data:'}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs text-blue-700 border-collapse w-full">
+                      <thead>
+                        <tr className="bg-blue-100">
+                          <th className="border border-blue-300 px-3 py-1">Timestamp</th>
+                          <th className="border border-blue-300 px-3 py-1">Phase A (L1) A</th>
+                          <th className="border border-blue-300 px-3 py-1">Phase B (L2) A</th>
+                          <th className="border border-blue-300 px-3 py-1">Phase C (L3) A</th>
+                          <th className="border border-blue-300 px-3 py-1">Voltage (V)</th>
+                          <th className="border border-blue-300 px-3 py-1">PF</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-white">
+                          <td className="border border-blue-200 px-3 py-1">2026-02-18 00:00</td>
+                          <td className="border border-blue-200 px-3 py-1">25.3</td>
+                          <td className="border border-blue-200 px-3 py-1">22.1</td>
+                          <td className="border border-blue-200 px-3 py-1">28.7</td>
+                          <td className="border border-blue-200 px-3 py-1">380</td>
+                          <td className="border border-blue-200 px-3 py-1">0.85</td>
+                        </tr>
+                        <tr className="bg-blue-50">
+                          <td className="border border-blue-200 px-3 py-1 text-blue-500" colSpan={6}>... (ข้อมูลทุก 15 นาที / every 15 min)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-3">
+                  <button
+                    onClick={() => { setUploadedFiles([]); setUploadSuccess(null); setUploadError(null); }}
+                    className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    {lang === 'th' ? 'ล้างทั้งหมด' : 'Clear All'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUploadSuccess(lang === 'th' ? `บันทึก ${uploadedFiles.length} ไฟล์ลงในระบบเรียบร้อยแล้ว` : `${uploadedFiles.length} file(s) saved to system`);
+                    }}
+                    className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {lang === 'th' ? 'บันทึกลงระบบ' : 'Save to System'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Form View */}
         {view === 'form' && (
@@ -861,6 +1056,134 @@ export default function ThailandPreInstallationAnalysis() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder={lang === 'th' ? 'หมายเหตุเพิ่มเติม' : 'Additional notes'}
                   />
+                </div>
+
+                {/* Engineer Approval Section */}
+                <div className="border-t-2 border-dashed border-gray-300 pt-5 mt-2">
+                  <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <User className="w-5 h-5 text-blue-600" />
+                    {t.engineerApproval}
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Engineer Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t.engineerName} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.engineerName}
+                        onChange={(e) => handleInputChange('engineerName', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder={lang === 'th' ? 'ชื่อ-นามสกุล วิศวกร' : 'Full name of engineer'}
+                      />
+                    </div>
+
+                    {/* Engineer License */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t.engineerLicense}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.engineerLicense}
+                        onChange={(e) => handleInputChange('engineerLicense', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder={lang === 'th' ? 'เช่น กว. 12345' : 'e.g. ENG-12345'}
+                      />
+                    </div>
+
+                    {/* Approver Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t.approverName}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.approverName}
+                        onChange={(e) => handleInputChange('approverName', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder={lang === 'th' ? 'ชื่อผู้อนุมัติ / หัวหน้าวิศวกร' : 'Approver / Chief Engineer'}
+                      />
+                    </div>
+
+                    {/* Approval Date */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t.approvalDate}
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={formData.approvalDate.replace(' ', 'T')}
+                        onChange={(e) => handleInputChange('approvalDate', e.target.value.replace('T', ' '))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Approval Status */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t.approvalStatus}
+                      </label>
+                      <div className="flex gap-3 flex-wrap">
+                        {(['Pending', 'Approved', 'Rejected'] as const).map((status) => {
+                          const colors = {
+                            Pending:  { ring: 'ring-yellow-400', bg: 'bg-yellow-50 border-yellow-400 text-yellow-800',  icon: '⏳' },
+                            Approved: { ring: 'ring-green-500',  bg: 'bg-green-50 border-green-500 text-green-800',    icon: '✅' },
+                            Rejected: { ring: 'ring-red-500',    bg: 'bg-red-50 border-red-500 text-red-800',          icon: '❌' },
+                          };
+                          const label = {
+                            Pending:  lang === 'th' ? 'รออนุมัติ' : 'Pending',
+                            Approved: lang === 'th' ? 'อนุมัติแล้ว' : 'Approved',
+                            Rejected: lang === 'th' ? 'ไม่อนุมัติ' : 'Rejected',
+                          };
+                          const isSelected = formData.approvalStatus === status;
+                          return (
+                            <button
+                              key={status}
+                              type="button"
+                              onClick={() => handleInputChange('approvalStatus', status)}
+                              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 font-semibold transition-all ${
+                                isSelected ? colors[status].bg + ' ' + colors[status].ring + ' ring-2' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span>{colors[status].icon}</span>
+                              {label[status]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Signature Box */}
+                  <div className="mt-5 grid grid-cols-2 gap-6">
+                    <div className="border-2 border-dashed border-blue-300 rounded-xl p-4 text-center bg-blue-50 min-h-[100px] flex flex-col items-center justify-center">
+                      <User className="w-8 h-8 text-blue-300 mb-2" />
+                      <p className="text-xs text-blue-500 font-medium">{t.signaturePlaceholder}</p>
+                      {formData.engineerName && (
+                        <p className="text-sm font-semibold text-blue-800 mt-2 border-t border-blue-200 pt-2 w-full">
+                          {formData.engineerName}
+                        </p>
+                      )}
+                      {formData.engineerLicense && (
+                        <p className="text-xs text-blue-600">{formData.engineerLicense}</p>
+                      )}
+                    </div>
+                    <div className="border-2 border-dashed border-green-300 rounded-xl p-4 text-center bg-green-50 min-h-[100px] flex flex-col items-center justify-center">
+                      <CheckCircle className="w-8 h-8 text-green-300 mb-2" />
+                      <p className="text-xs text-green-500 font-medium">{lang === 'th' ? 'ลายเซ็นผู้อนุมัติ' : 'Approver Signature'}</p>
+                      {formData.approverName && (
+                        <p className="text-sm font-semibold text-green-800 mt-2 border-t border-green-200 pt-2 w-full">
+                          {formData.approverName}
+                        </p>
+                      )}
+                      {formData.approvalDate && (
+                        <p className="text-xs text-green-600">{formData.approvalDate}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
