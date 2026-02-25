@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
-import { ChevronDown, Search, Edit2, Trash2, Settings } from 'lucide-react';
+import { ChevronDown, Search, Edit2, Trash2, Settings, Server, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 interface Device {
   deviceID?: number;
@@ -65,16 +65,41 @@ export default function DevicesSettingPage() {
     (device.owner || device.U_email || '').toLowerCase().includes(searchDeviceName.toLowerCase())
   );
 
+  const onlineCount = devices.filter(d => d.connection === 'ONLINE').length;
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-        {t('deviceConfiguration')}
-      </h1>
+    <div className="p-5 space-y-5 bg-gray-50 min-h-screen">
+
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-700 via-gray-800 to-slate-900 shadow-xl">
+        <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/5 rounded-full blur-2xl" />
+        <div className="relative z-10 px-8 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+              <Settings className="w-3.5 h-3.5" /> Device Settings
+            </div>
+            <h1 className="text-3xl font-black text-white mb-1">{t('deviceConfiguration') || 'Device Configuration'}</h1>
+            <p className="text-gray-300 text-sm">Manage and configure all registered devices</p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { icon: Server, val: devices.length, label: 'Total' },
+              { icon: Wifi, val: onlineCount, label: 'Online' },
+              { icon: WifiOff, val: devices.length - onlineCount, label: 'Offline' },
+            ].map(kpi => (
+              <div key={kpi.label} className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-3 min-w-[72px] border border-white/10">
+                <kpi.icon className="w-4 h-4 text-white/60 mb-1" />
+                <span className="text-2xl font-black text-white leading-none">{kpi.val}</span>
+                <span className="text-gray-300 text-xs mt-0.5">{kpi.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-center">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex flex-wrap gap-3 items-center">
           {/* All Roles Dropdown */}
           <div className="relative">
             <button className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2 min-w-[140px]">
@@ -110,7 +135,7 @@ export default function DevicesSettingPage() {
       </div>
 
       {/* Device List */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">
             {t('deviceList')}

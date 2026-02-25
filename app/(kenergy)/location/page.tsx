@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Maximize2, MapPin } from "lucide-react";
+import { Search, Maximize2, MapPin, Navigation } from 'lucide-react';
 import { useSite } from "@/lib/SiteContext";
 import { useLocale } from "@/lib/LocaleContext";
 import MapWrapper, { Device } from "@/components/MapWrapper";
@@ -78,57 +78,50 @@ export default function LocationPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-4">
-        <h1 className="text-3xl font-bold text-gray-800">{t('devicesLocation') || 'Devices Location'}</h1>
-      </div>
+    <div className="h-full flex flex-col p-5 gap-4 bg-gray-50">
 
-      {/* Stats Bar */}
-      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            <span className="text-sm text-gray-600">
-              {devicesWithLocation} {t('devicesWithLocation') || 'devices with location'}
-            </span>
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-500 via-pink-600 to-red-600 shadow-xl shrink-0">
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
+        <div className="relative z-10 px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-2">
+              <Navigation className="w-3.5 h-3.5" /> Location
+            </div>
+            <h1 className="text-2xl font-black text-white mb-0.5">{t('devicesLocation') || 'Devices Location'}</h1>
+            <p className="text-rose-100 text-xs">Live map of all registered devices</p>
           </div>
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-5 h-5 text-red-500" />
-            <span className="text-sm text-gray-600">
-              {devicesWithoutLocation} {t('withoutLocation') || 'without location'}
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-5 bg-white/15 backdrop-blur-sm rounded-2xl px-5 py-3 border border-white/20">
+              <div className="text-center">
+                <p className="text-xl font-black text-white leading-none">{devicesWithLocation}</p>
+                <p className="text-rose-100 text-xs mt-0.5">Located</p>
+              </div>
+              <div className="w-px h-8 bg-white/20" />
+              <div className="text-center">
+                <p className="text-xl font-black text-white leading-none">{devicesWithoutLocation}</p>
+                <p className="text-rose-100 text-xs mt-0.5">No location</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative">
+                <input type="text" placeholder={t('searchLocation') || 'Search...'} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-3 py-2 bg-white/20 backdrop-blur-sm border border-white/20 rounded-xl text-xs text-white placeholder-white/60 focus:outline-none focus:bg-white/30 w-44" />
+                <Search className="w-3.5 h-3.5 text-white/60 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+              <button className="flex items-center gap-1.5 px-3 py-2 bg-white text-rose-600 font-bold text-xs rounded-xl hover:bg-rose-50 transition-all shadow-md">
+                <MapPin className="w-3.5 h-3.5" /> {t('setLocation') || 'Set Location'}
+              </button>
+              <button className="p-2 bg-white/20 hover:bg-white/30 rounded-xl border border-white/20 transition-all">
+                <Maximize2 className="w-4 h-4 text-white" />
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          {/* Search */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder={t('searchLocation') || 'Search location...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary w-64"
-            />
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
-
-          {/* Fit All Button */}
-          <button className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition">
-            <Maximize2 className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('fitAll') || 'Fit All'}</span>
-          </button>
-
-          {/* Set Location Button */}
-          <button className="flex items-center space-x-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-orange-600 transition">
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('setLocation') || 'Set Location'}</span>
-          </button>
         </div>
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <MapWrapper devices={filteredDevices} />
       </div>
     </div>

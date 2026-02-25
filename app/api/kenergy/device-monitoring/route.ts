@@ -27,15 +27,14 @@ export async function GET(request: NextRequest) {
         metrics_L1,
         metrics_L2,
         metrics_L3,
-        metrics_P_L1,
-        metrics_P_L2,
-        metrics_P_L3,
         metrics_P,
         metrics_Q,
         metrics_S,
         metrics_F,
         metrics_PF,
         metrics_kWh,
+        metrics_THD,
+        before_THD,
         energy_reduction,
         co2_reduction,
         before_kWh
@@ -72,11 +71,11 @@ export async function GET(request: NextRequest) {
           record.metrics_L2 || 0,
           record.metrics_L3 || 0
         ],
-        // Active Power per phase (kW)
+        // Active Power per phase (kW) — not stored per-phase; distribute total evenly
         power: [
-          record.metrics_P_L1 || 0,
-          record.metrics_P_L2 || 0,
-          record.metrics_P_L3 || 0
+          record.metrics_P ? parseFloat(record.metrics_P) / 3 : 0,
+          record.metrics_P ? parseFloat(record.metrics_P) / 3 : 0,
+          record.metrics_P ? parseFloat(record.metrics_P) / 3 : 0
         ],
         // Total Active Power (kW)
         totalPower: record.metrics_P || 0,
@@ -95,7 +94,10 @@ export async function GET(request: NextRequest) {
         // CO2 reduction (kg)
         co2Saved: record.co2_reduction || 0,
         // Before optimization energy (kWh)
-        beforeEnergy: record.before_kWh || 0
+        beforeEnergy: record.before_kWh || 0,
+        // THD — before and after K-Save
+        thdBefore: record.before_THD != null ? parseFloat(record.before_THD) : null,
+        thdAfter:  record.metrics_THD != null ? parseFloat(record.metrics_THD) : null
       }
     }
 

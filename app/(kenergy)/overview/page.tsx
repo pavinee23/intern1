@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
 import DeviceCard from '@/components/DeviceCard';
-import { ChevronDown, Plus, RefreshCw } from 'lucide-react';
+import { ChevronDown, Plus, RefreshCw, Server, Wifi, WifiOff } from 'lucide-react';
 
 interface Device {
   deviceID: string;
@@ -59,82 +59,71 @@ export default function OverviewPage() {
   // Loading State
   if (loading && devices.length === 0) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="animate-pulse space-y-6">
-          <div className="h-10 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-gray-200 rounded-lg"></div>
-            ))}
-          </div>
+      <div className="p-5 space-y-5 animate-pulse">
+        <div className="h-36 bg-gradient-to-r from-slate-200 to-slate-100 rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-52 bg-slate-100 rounded-2xl" />
+          ))}
         </div>
       </div>
     );
   }
 
+  const onlineCount = devices.filter(d => d.status === 'ON').length;
+  const offlineCount = devices.length - onlineCount;
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">
-            {t('devicesOverview')}
-          </h1>
-          <div className="flex gap-3">
-            <button
-              onClick={fetchDevices}
-              className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-              <span className="text-sm font-medium text-gray-700">
-                {t('refresh') || 'Refresh'}
-              </span>
-            </button>
-            <button
-              onClick={() => router.push('/devices-setting')}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {t('addDevice') || 'Add Device'}
-              </span>
-            </button>
-          </div>
-        </div>
+    <div className="p-5 space-y-5 bg-gray-50 min-h-screen">
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm">{error}</p>
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 shadow-xl">
+        <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-white/5 rounded-full blur-xl" />
+        <div className="relative z-10 px-8 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+              <Server className="w-3.5 h-3.5" /> K Energy Save
+            </div>
+            <h1 className="text-3xl font-black text-white mb-1">{t('devicesOverview') || 'Devices Overview'}</h1>
+            <p className="text-blue-100 text-sm">All registered devices across your sites</p>
           </div>
-        )}
-
-        {/* Filter Section */}
-        <div className="flex items-center gap-4 mb-6">
-          <span className="text-sm font-medium text-gray-600">
-            {t('filterByRole')}:
-          </span>
-          <div className="relative">
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors min-w-[160px] justify-between"
-              onClick={() => {
-                // Filter functionality can be added here
-              }}
-            >
-              <span>{t('allDevices')}</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { icon: Server, val: deviceCount, label: 'Total', color: 'from-white/20 to-white/10' },
+              { icon: Wifi, val: onlineCount, label: 'Online', color: 'from-emerald-400/40 to-emerald-500/20' },
+              { icon: WifiOff, val: offlineCount, label: 'Offline', color: offlineCount > 0 ? 'from-red-400/40 to-red-500/20' : 'from-white/20 to-white/10' },
+            ].map(kpi => (
+              <div key={kpi.label} className={`flex flex-col items-center bg-gradient-to-br ${kpi.color} backdrop-blur-sm rounded-2xl px-5 py-3 min-w-[80px] border border-white/20`}>
+                <kpi.icon className="w-4 h-4 text-white/70 mb-1" />
+                <span className="text-2xl font-black text-white leading-none">{kpi.val}</span>
+                <span className="text-blue-100 text-xs mt-0.5">{kpi.label}</span>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <button onClick={fetchDevices} title="Refresh"
+                className="p-3 bg-white/15 hover:bg-white/25 rounded-xl border border-white/20 transition-all">
+                <RefreshCw className={`w-5 h-5 text-white ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button onClick={() => router.push('/devices-setting')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 font-bold text-sm rounded-xl hover:bg-blue-50 transition-all shadow-md">
+                <Plus className="w-4 h-4" /> {t('addDevice') || 'Add Device'}
+              </button>
+            </div>
           </div>
-          <span className="text-sm text-gray-500">
-            ({deviceCount} {t('devices')})
-          </span>
         </div>
       </div>
 
-      {/* Device Cards Grid */}
+      {/* Error */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Device Cards */}
       {devices.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {devices.map((device) => {
             const isOnline = device.status === 'ON';
             return (
@@ -155,10 +144,11 @@ export default function OverviewPage() {
           })}
         </div>
       ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 text-lg">
-            {t('noDevicesFound') || 'No devices found'}
-          </p>
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Server className="w-7 h-7 text-gray-300" />
+          </div>
+          <p className="text-gray-400 font-medium">{t('noDevicesFound') || 'No devices found'}</p>
         </div>
       )}
     </div>

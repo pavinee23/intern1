@@ -1,23 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/LocaleContext'
 import { useSite } from '@/lib/SiteContext'
 import DeviceCard from '@/components/DeviceCard'
-import CountryFlag from '@/components/CountryFlag'
 import {
-  Activity,
-  Zap,
-  Wifi,
-  WifiOff,
-  TrendingUp,
-  Eye,
-  BarChart3,
-  FileText,
-  RefreshCw,
-  Globe,
-  MapPin
+  Activity, Zap, Wifi, WifiOff, RefreshCw, ArrowRight,
+  TrendingUp, Server, CheckCircle2, XCircle, Leaf,
+  BarChart2, Monitor, Settings, Bell, ChevronRight,
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -43,47 +34,20 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { t, locale, setLocale } = useLocale()
-  const { selectedSite, setSelectedSite } = useSite()
+  const { t } = useLocale()
+  const { selectedSite } = useSite()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showLanguageMenu, setShowLanguageMenu] = useState(false)
-  const [showSiteMenu, setShowSiteMenu] = useState(false)
-  const languageMenuRef = useRef<HTMLDivElement>(null)
-  const siteMenuRef = useRef<HTMLDivElement>(null)
+  const [nowStr, setNowStr] = useState('')
 
-  // Languages config
-  const languages = [
-    { code: 'th' as const, name: 'ไทย', nameEn: 'Thai', flag: 'TH' as const },
-    { code: 'cn' as const, name: '中文', nameEn: 'Chinese', flag: 'CN' as const },
-    { code: 'ko' as const, name: '한국어', nameEn: 'Korean', flag: 'KR' as const },
-    { code: 'en' as const, name: 'English', nameEn: 'English', flag: 'GB' as const },
-    { code: 'vn' as const, name: 'Tiếng Việt', nameEn: 'Vietnamese', flag: 'VN' as const },
-  ]
-
-  // Sites config
-  const sites: { code: 'thailand' | 'korea' | 'vietnam'; name: string; nameEn: string; flag: 'TH' | 'KR' | 'VN' }[] = [
-    { code: 'thailand', name: 'ไทย', nameEn: 'Thailand', flag: 'TH' },
-    { code: 'korea', name: '한국', nameEn: 'Korea', flag: 'KR' },
-    { code: 'vietnam', name: 'Việt Nam', nameEn: 'Vietnam', flag: 'VN' },
-  ]
-
-  const currentLanguage = languages.find(lang => lang.code === locale) || languages[3]
-  const currentSite = sites.find(site => site.code === selectedSite) || sites[0]
-
-  // Click outside handlers
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (languageMenuRef.current && !languageMenuRef.current.contains(event.target as Node)) {
-        setShowLanguageMenu(false)
-      }
-      if (siteMenuRef.current && !siteMenuRef.current.contains(event.target as Node)) {
-        setShowSiteMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    const d = new Date()
+    setNowStr(
+      d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) +
+      ' · ' +
+      d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    )
   }, [])
 
   const fetchDashboardData = async () => {
@@ -91,13 +55,8 @@ export default function DashboardPage() {
       setLoading(true)
       const res = await fetch(`/api/kenergy/dashboard-stats?site=${selectedSite}`)
       const json = await res.json()
-
-      if (json.success) {
-        setData(json.data)
-        setError(null)
-      } else {
-        setError(json.error || 'Failed to load dashboard data')
-      }
+      if (json.success) { setData(json.data); setError(null) }
+      else setError(json.error || 'Failed to load dashboard data')
     } catch (err: any) {
       setError(err.message || 'Network error')
     } finally {
@@ -107,322 +66,297 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData()
-
-    // Auto-refresh every 60 seconds
     const interval = setInterval(fetchDashboardData, 60000)
     return () => clearInterval(interval)
   }, [selectedSite])
 
   if (loading && !data) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-            ))}
-          </div>
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
+      <div className="p-5 space-y-5 animate-pulse">
+        <div className="h-48 bg-gradient-to-r from-slate-200 to-slate-100 rounded-3xl" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-slate-100 rounded-2xl" />)}
         </div>
+        <div className="h-64 bg-slate-100 rounded-2xl" />
       </div>
     )
   }
 
   if (error && !data) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600 font-medium mb-2">Error loading dashboard</p>
-          <p className="text-red-500 text-sm mb-4">{error}</p>
-          <button
-            onClick={fetchDashboardData}
-            className="k-btn k-btn-primary"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center bg-white rounded-3xl shadow-sm border border-red-100 p-10 max-w-sm">
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-400" />
+          </div>
+          <p className="text-gray-800 font-semibold mb-1">Failed to load dashboard</p>
+          <p className="text-gray-400 text-sm mb-5">{error}</p>
+          <button onClick={fetchDashboardData}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors text-sm">
+            <RefreshCw className="w-4 h-4" /> Retry
           </button>
         </div>
       </div>
     )
   }
 
-  const stats = data?.stats || {
-    totalDevices: 0,
-    onlineDevices: 0,
-    offlineDevices: 0,
-    energySaved: 0
-  }
-
+  const stats = data?.stats || { totalDevices: 0, onlineDevices: 0, offlineDevices: 0, energySaved: 0 }
   const recentDevices = data?.recentDevices || []
+  const onlineRate = stats.totalDevices > 0 ? Math.round((stats.onlineDevices / stats.totalDevices) * 100) : 0
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header with Language and Site Selectors */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {t('dashboard') || 'Dashboard'}
-          </h1>
-          <p className="text-gray-600">
-            {t('welcomeMessage') || 'Welcome to your energy management dashboard'}
-          </p>
-        </div>
+    <div className="p-5 space-y-5 bg-gray-50 min-h-screen">
 
-        <div className="flex items-center gap-3">
-          {/* Language Selector */}
-          <div className="relative" ref={languageMenuRef}>
-            <button
-              onClick={() => {
-                setShowLanguageMenu(!showLanguageMenu)
-                setShowSiteMenu(false)
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-orange-300 rounded-lg transition-all shadow-sm"
-            >
-              <Globe className="w-5 h-5 text-orange-600" />
-              <CountryFlag country={currentLanguage.flag} size="sm" />
-              <span className="text-sm font-medium text-gray-700">
-                {currentLanguage.name}
-              </span>
-              <svg className={`w-4 h-4 text-gray-500 transition-transform ${showLanguageMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+      {/* ── Hero ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 shadow-xl">
+        <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-white/5 rounded-full blur-xl" />
 
-            {showLanguageMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border-2 border-gray-200 py-2 z-50">
-                {languages.map((language) => (
-                  <button
-                    key={language.code}
-                    onClick={() => {
-                      setLocale(language.code)
-                      setShowLanguageMenu(false)
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-orange-50 transition-colors ${
-                      locale === language.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700'
-                    }`}
-                  >
-                    <CountryFlag country={language.flag} size="sm" />
-                    <div className="flex-1 text-left">
-                      <div className="font-medium">{language.name}</div>
-                      <div className="text-xs text-gray-500">{language.nameEn}</div>
-                    </div>
-                    {locale === language.code && (
-                      <span className="text-orange-600 text-lg">✓</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+        <div className="relative z-10 px-8 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+              <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
+              K Energy Save System
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-1">
+              {t('dashboard') || 'Dashboard'}
+            </h1>
+            <p className="text-emerald-100 text-sm">{nowStr}</p>
           </div>
 
-          {/* Site/Branch Selector */}
-          <div className="relative" ref={siteMenuRef}>
-            <button
-              onClick={() => {
-                setShowSiteMenu(!showSiteMenu)
-                setShowLanguageMenu(false)
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300 rounded-lg transition-all shadow-sm"
-            >
-              <MapPin className="w-5 h-5 text-blue-600" />
-              <CountryFlag country={currentSite.flag} size="sm" />
-              <span className="text-sm font-medium text-gray-700">
-                {currentSite.name}
-              </span>
-              <svg className={`w-4 h-4 text-gray-500 transition-transform ${showSiteMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {showSiteMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border-2 border-gray-200 py-2 z-50">
-                {sites.map((site) => (
-                  <button
-                    key={site.code}
-                    onClick={() => {
-                      setSelectedSite(site.code)
-                      setShowSiteMenu(false)
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-blue-50 transition-colors ${
-                      selectedSite === site.code ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700'
-                    }`}
-                  >
-                    <CountryFlag country={site.flag} size="sm" />
-                    <div className="flex-1 text-left">
-                      <div className="font-medium">{site.name}</div>
-                      <div className="text-xs text-gray-500">{site.nameEn}</div>
-                    </div>
-                    {selectedSite === site.code && (
-                      <span className="text-blue-600 text-lg">✓</span>
-                    )}
-                  </button>
-                ))}
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { val: stats.totalDevices, label: 'Devices' },
+              { val: `${onlineRate}%`, label: 'Online' },
+              { val: stats.energySaved.toLocaleString(), label: 'kWh Saved' },
+            ].map(kpi => (
+              <div key={kpi.label} className="flex flex-col items-center bg-white/15 backdrop-blur-sm rounded-2xl px-5 py-3 min-w-[88px] border border-white/20">
+                <span className="text-2xl font-bold text-white leading-none">{kpi.val}</span>
+                <span className="text-emerald-200 text-xs mt-1">{kpi.label}</span>
               </div>
-            )}
+            ))}
+            <button onClick={fetchDashboardData} title="Refresh"
+              className="p-3 bg-white/15 hover:bg-white/25 rounded-xl border border-white/20 transition-all">
+              <RefreshCw className={`w-5 h-5 text-white ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-
-          {/* Refresh Button */}
-          <button
-            onClick={fetchDashboardData}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
-      {/* Stats Grid - 4 Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
         {/* Total Devices */}
-        <div className="stat-card bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-orange-600 mb-1">
-                {t('totalDevices') || 'Total Devices'}
-              </p>
-              <p className="text-3xl font-bold text-orange-900">
-                {stats.totalDevices}
-              </p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-5 text-white group hover:shadow-xl transition-all">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-1 -top-6 w-16 h-16 bg-white/5 rounded-full" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+              <Server className="w-5 h-5 text-white" />
             </div>
-            <div className="p-3 bg-orange-500 rounded-lg">
-              <Activity className="w-8 h-8 text-white" />
+            <span className="text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full">
+              {t('total') || 'Total'}
+            </span>
+          </div>
+          <p className="text-4xl font-black text-white leading-none mb-1">{stats.totalDevices}</p>
+          <p className="text-blue-100 text-xs font-medium">{t('totalDevices') || 'Total Devices'}</p>
+        </div>
+
+        {/* Online */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl shadow-lg p-5 text-white group hover:shadow-xl transition-all">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+              <Wifi className="w-5 h-5 text-white" />
             </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
+              Live
+            </span>
+          </div>
+          <p className="text-4xl font-black text-white leading-none mb-1">{stats.onlineDevices}</p>
+          <p className="text-emerald-100 text-xs font-medium mb-3">{t('onlineDevices') || 'Online Devices'}</p>
+          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${onlineRate}%` }} />
+          </div>
+          <p className="text-emerald-100 text-xs mt-1 text-right">{onlineRate}% online</p>
+        </div>
+
+        {/* Offline */}
+        <div className={`relative overflow-hidden rounded-2xl shadow-lg p-5 text-white group hover:shadow-xl transition-all ${
+          stats.offlineDevices > 0
+            ? 'bg-gradient-to-br from-red-500 to-rose-600'
+            : 'bg-gradient-to-br from-slate-400 to-slate-500'
+        }`}>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+              <WifiOff className="w-5 h-5 text-white" />
+            </div>
+            {stats.offlineDevices > 0 && (
+              <span className="text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full animate-pulse">
+                ⚠ Alert
+              </span>
+            )}
+          </div>
+          <p className="text-4xl font-black text-white leading-none mb-1">{stats.offlineDevices}</p>
+          <p className="text-red-100 text-xs font-medium">{t('offlineDevices') || 'Offline Devices'}</p>
+          {stats.offlineDevices > 0 && (
+            <p className="text-white/70 text-xs mt-2">{stats.offlineDevices} device{stats.offlineDevices > 1 ? 's' : ''} need attention</p>
+          )}
+        </div>
+
+        {/* Energy Saved */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl shadow-lg p-5 text-white group hover:shadow-xl transition-all">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full">
+              kWh
+            </span>
+          </div>
+          <p className="text-4xl font-black text-white leading-none mb-1">{stats.energySaved.toLocaleString()}</p>
+          <p className="text-amber-100 text-xs font-medium mb-2">{t('energySaved') || 'Energy Saved'}</p>
+          <div className="flex items-center gap-1.5">
+            <Leaf className="w-3 h-3 text-white/70" />
+            <span className="text-white/70 text-xs">~{(stats.energySaved * 0.5).toLocaleString()} kg CO₂</span>
           </div>
         </div>
 
-        {/* Online Devices */}
-        <div className="stat-card bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600 mb-1">
-                {t('onlineDevices') || 'Online Devices'}
-              </p>
-              <p className="text-3xl font-bold text-green-900">
-                {stats.onlineDevices}
-              </p>
-            </div>
-            <div className="p-3 bg-green-500 rounded-lg">
-              <Wifi className="w-8 h-8 text-white" />
-            </div>
-          </div>
-        </div>
-
-        {/* Offline Devices */}
-        <div className="stat-card bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600 mb-1">
-                {t('offlineDevices') || 'Offline Devices'}
-              </p>
-              <p className="text-3xl font-bold text-red-900">
-                {stats.offlineDevices}
-              </p>
-            </div>
-            <div className="p-3 bg-red-500 rounded-lg">
-              <WifiOff className="w-8 h-8 text-white" />
-            </div>
-          </div>
-        </div>
-
-        {/* Energy Saved This Month */}
-        <div className="stat-card bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-amber-600 mb-1">
-                {t('energySaved') || 'Energy Saved This Month'}
-              </p>
-              <p className="text-3xl font-bold text-amber-900">
-                {stats.energySaved.toLocaleString()}
-              </p>
-              <p className="text-xs text-amber-600 mt-1">kWh</p>
-            </div>
-            <div className="p-3 bg-amber-500 rounded-lg">
-              <Zap className="w-8 h-8 text-white" />
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="card">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-          {t('quickActions') || 'Quick Actions'}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => router.push('/overview')}
-            className="k-btn flex items-center justify-center gap-3 p-4 bg-white hover:bg-orange-50 border-2 border-gray-200 hover:border-orange-300 rounded-lg transition-all"
-          >
-            <Eye className="w-5 h-5 text-orange-600" />
-            <span className="font-medium text-gray-700">
-              {t('viewAllDevices') || 'View All Devices'}
-            </span>
-          </button>
+      {/* ── System Health + Quick Actions ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          <button
-            onClick={() => router.push('/monitor')}
-            className="k-btn flex items-center justify-center gap-3 p-4 bg-white hover:bg-amber-50 border-2 border-gray-200 hover:border-amber-300 rounded-lg transition-all"
-          >
-            <BarChart3 className="w-5 h-5 text-amber-600" />
-            <span className="font-medium text-gray-700">
-              {t('monitor') || 'Monitor'}
-            </span>
-          </button>
-
-          <button
-            onClick={() => router.push('/energy-dashboard')}
-            className="k-btn flex items-center justify-center gap-3 p-4 bg-white hover:bg-orange-50 border-2 border-gray-200 hover:border-orange-300 rounded-lg transition-all"
-          >
-            <TrendingUp className="w-5 h-5 text-orange-500" />
-            <span className="font-medium text-gray-700">
-              {t('reports') || 'Energy Reports'}
-            </span>
-          </button>
+        {/* System Health */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-gray-400" /> System Health
+            </h2>
+            <span className="text-xs text-gray-400">Auto-refresh every 60s</span>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-gray-600 font-medium flex items-center gap-1.5">
+                  <Wifi className="w-3.5 h-3.5 text-emerald-500" /> Online Rate
+                </span>
+                <span className={`font-bold ${onlineRate >= 80 ? 'text-emerald-600' : onlineRate >= 50 ? 'text-amber-600' : 'text-red-500'}`}>
+                  {onlineRate}%
+                </span>
+              </div>
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-1000 ${onlineRate >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : onlineRate >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                  style={{ width: `${onlineRate}%` }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="flex items-center gap-3 bg-emerald-50 rounded-xl p-3">
+                <div className="p-2 bg-emerald-100 rounded-lg"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></div>
+                <div>
+                  <p className="text-xl font-bold text-emerald-700">{stats.onlineDevices}</p>
+                  <p className="text-xs text-emerald-600">Online</p>
+                </div>
+              </div>
+              <div className={`flex items-center gap-3 rounded-xl p-3 ${stats.offlineDevices > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                <div className={`p-2 rounded-lg ${stats.offlineDevices > 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
+                  <XCircle className={`w-4 h-4 ${stats.offlineDevices > 0 ? 'text-red-500' : 'text-gray-400'}`} />
+                </div>
+                <div>
+                  <p className={`text-xl font-bold ${stats.offlineDevices > 0 ? 'text-red-600' : 'text-gray-500'}`}>{stats.offlineDevices}</p>
+                  <p className={`text-xs ${stats.offlineDevices > 0 ? 'text-red-500' : 'text-gray-400'}`}>Offline</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full border border-green-100">
+                <Leaf className="w-3.5 h-3.5" /> CO₂ ~{(stats.energySaved * 0.5).toLocaleString()} kg reduced
+              </div>
+              <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-1.5 rounded-full border border-amber-100">
+                <Zap className="w-3.5 h-3.5" /> {stats.energySaved.toLocaleString()} kWh saved
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Recent Devices */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {t('recentDevices') || 'Recent Devices'}
+        {/* Quick Actions */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-4">
+            <ChevronRight className="w-4 h-4 text-gray-400" /> Quick Actions
           </h2>
-          <button
-            onClick={() => router.push('/overview')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            {t('viewAll') || 'View All'} →
-          </button>
-        </div>
-
-        {recentDevices.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <Activity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">
-              {t('noDevices') || 'No devices found'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentDevices.map((device) => (
-              <DeviceCard
-                key={device.deviceID}
-                deviceName={device.deviceName}
-                isOnline={device.isOnline}
-                voltageReadings={{
-                  ll1: device.voltageLL[0] != null ? Number(device.voltageLL[0]) : null,
-                  ll2: device.voltageLL[1] != null ? Number(device.voltageLL[1]) : null,
-                  ll3: device.voltageLL[2] != null ? Number(device.voltageLL[2]) : null
-                }}
-                lastConnected={device.lastUpdate ? new Date(device.lastUpdate).toLocaleString() : '-'}
-                onEdit={() => router.push(`/devices-setting?device=${device.deviceID}`)}
-              />
+          <div className="space-y-1.5">
+            {[
+              { icon: Monitor,  label: 'Live Monitor', desc: 'Real-time data',   href: '/monitor',    cls: 'text-blue-500 bg-blue-50 hover:bg-blue-100' },
+              { icon: BarChart2,label: 'Analytics',    desc: 'Charts & Reports', href: '/analytics',  cls: 'text-purple-500 bg-purple-50 hover:bg-purple-100' },
+              { icon: Server,   label: 'Devices',      desc: 'All devices',      href: '/overview',   cls: 'text-teal-500 bg-teal-50 hover:bg-teal-100' },
+              { icon: Settings, label: 'Settings',     desc: 'System config',    href: '/settings',   cls: 'text-gray-500 bg-gray-50 hover:bg-gray-100' },
+            ].map(item => (
+              <button key={item.label} onClick={() => router.push(item.href)}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-all group text-left">
+                <div className={`p-2 rounded-lg transition-colors ${item.cls}`}>
+                  <item.icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-700">{item.label}</p>
+                  <p className="text-xs text-gray-400">{item.desc}</p>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all" />
+              </button>
             ))}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── Recent Devices ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-1 h-5 bg-emerald-500 rounded-full" />
+            <h2 className="text-base font-semibold text-gray-800">
+              {t('recentDevices') || 'Recent Devices'}
+            </h2>
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full font-medium">
+              {recentDevices.length}
+            </span>
+          </div>
+          <button onClick={() => router.push('/overview')}
+            className="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-semibold hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all">
+            {t('viewAll') || 'View All'} <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="p-5">
+          {recentDevices.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Server className="w-7 h-7 text-gray-300" />
+              </div>
+              <p className="text-gray-400 text-sm font-medium">{t('noDevices') || 'No devices found'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentDevices.map((device) => (
+                <DeviceCard key={device.deviceID}
+                  deviceName={device.deviceName}
+                  isOnline={device.isOnline}
+                  voltageReadings={{
+                    ll1: device.voltageLL[0] != null ? Number(device.voltageLL[0]) : null,
+                    ll2: device.voltageLL[1] != null ? Number(device.voltageLL[1]) : null,
+                    ll3: device.voltageLL[2] != null ? Number(device.voltageLL[2]) : null,
+                  }}
+                  lastConnected={device.lastUpdate ? new Date(device.lastUpdate).toLocaleString() : '-'}
+                  onEdit={() => router.push(`/devices-setting?device=${device.deviceID}`)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
     </div>
   )
 }
+
+

@@ -18,10 +18,12 @@ function getPool() {
       password: process.env.MYSQL_PASSWORD || process.env.MYSQL_USER_PASSWORD || 'Ksave2025Admin',
       database: process.env.MYSQL_DATABASE || process.env.MYSQL_USER_DATABASE || 'ksystem',
       waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
+      connectionLimit: 3,
+      queueLimit: 10,
       timezone: '+00:00',
-      connectTimeout: 10000 // 10 second timeout for Vercel
+      connectTimeout: 10000, // 10 second timeout for Vercel
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000
     })
   }
   return pool

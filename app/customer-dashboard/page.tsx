@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale } from '@/lib/LocaleContext';
-import { translations } from '@/lib/translations';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import {
   Users,
@@ -26,8 +25,7 @@ import {
 
 export default function CustomersPage() {
   const router = useRouter();
-  const { locale } = useLocale();
-  const t = translations[locale];
+  const { locale, tObj: t } = useLocale();
 
   useEffect(() => {
     const token = localStorage.getItem('k_system_admin_token');

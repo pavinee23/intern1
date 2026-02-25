@@ -852,6 +852,15 @@ export const translations = {
     userFeedback: '사용자 피드백',
     helpDocs: '도움말 문서',
     userProfile: '사용자 프로필',
+
+    // Kenergy Dashboard Stats
+    totalDevices: '전체 기기',
+    onlineDevices: '온라인 기기',
+    offlineDevices: '오프라인 기기',
+    energySaved: '이번 달 절약 에너지',
+    recentDevices: '최근 기기',
+    noDevices: '기기를 찾을 수 없습니다',
+    viewAll: '전체 보기',
   },
   en: {
     // Header
@@ -1706,6 +1715,16 @@ export const translations = {
     userFeedback: 'User Feedback',
     helpDocs: 'Help Docs',
     userProfile: 'User Profile',
+
+    // Kenergy Dashboard Stats
+    welcomeMessage: 'Welcome to your energy management dashboard',
+    totalDevices: 'Total Devices',
+    onlineDevices: 'Online Devices',
+    offlineDevices: 'Offline Devices',
+    energySaved: 'Energy Saved This Month',
+    recentDevices: 'Recent Devices',
+    noDevices: 'No devices found',
+    viewAll: 'View All',
   },
   cn: {
     // Language names
@@ -2037,3 +2056,14 @@ export const translations = {
 
 export type Locale = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ko;
+
+/**
+ * Returns a translation object for the given locale.
+ * Missing keys fall back to English so pages never show blank text
+ * when switching to cn / vn / th which have sparse translation coverage.
+ */
+export function getT(locale: string): typeof translations['en'] {
+  const key = locale as Locale;
+  const localeT = (translations[key] ?? {}) as Partial<typeof translations['en']>;
+  return { ...translations['en'], ...localeT } as typeof translations['en'];
+}
