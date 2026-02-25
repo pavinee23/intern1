@@ -34,7 +34,7 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { selectedSite } = useSite()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,13 +42,21 @@ export default function DashboardPage() {
   const [nowStr, setNowStr] = useState('')
 
   useEffect(() => {
+    const localeMap: Record<string, string> = {
+      th: 'th-TH',
+      ko: 'ko-KR',
+      en: 'en-US',
+      cn: 'zh-CN',
+      vn: 'vi-VN',
+    }
+    const lang = localeMap[locale] ?? 'en-US'
     const d = new Date()
     setNowStr(
-      d.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) +
+      d.toLocaleDateString(lang, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) +
       ' · ' +
-      d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+      d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
     )
-  }, [])
+  }, [locale])
 
   const fetchDashboardData = async () => {
     try {

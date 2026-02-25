@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   description: 'Comprehensive management system for Korea operations',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: {

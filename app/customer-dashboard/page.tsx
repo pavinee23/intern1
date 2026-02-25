@@ -1,546 +1,673 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect, useRef } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import {
-  Users,
-  ArrowLeft,
-  Search,
-  Filter,
-  Plus,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  MapPin,
-  Building2,
-  Star,
-  Calendar,
-  Eye,
-  Shield
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
+import {
+  Zap, TrendingDown, DollarSign, Leaf, Phone, Mail, MessageSquare,
+  CheckCircle, Send, Activity, Cpu, Wifi, WifiOff, RefreshCw,
+  Thermometer, ChevronDown, BarChart2, Users, Star, MapPin, Calendar,
+  Shield,
 } from 'lucide-react';
 
+// ─── Sample data (monthly before/after installation) ───────────────────────
+const monthlyData = [
+  { month: 'ม.ค.',  monthEn: 'Jan', monthKo: '1월', before: 4820, after: 3210, costBefore: 18716, costAfter: 12470 },
+  { month: 'ก.พ.',  monthEn: 'Feb', monthKo: '2월', before: 4530, after: 2980, costBefore: 17595, costAfter: 11578 },
+  { month: 'มี.ค.', monthEn: 'Mar', monthKo: '3월', before: 5110, after: 3380, costBefore: 19837, costAfter: 13127 },
+  { month: 'เม.ย.', monthEn: 'Apr', monthKo: '4월', before: 5630, after: 3720, costBefore: 21875, costAfter: 14450 },
+  { month: 'พ.ค.',  monthEn: 'May', monthKo: '5월', before: 5890, after: 3850, costBefore: 22872, costAfter: 14954 },
+  { month: 'มิ.ย.', monthEn: 'Jun', monthKo: '6월', before: 6120, after: 3990, costBefore: 23766, costAfter: 15498 },
+  { month: 'ก.ค.',  monthEn: 'Jul', monthKo: '7월', before: 6340, after: 4105, costBefore: 24622, costAfter: 15948 },
+  { month: 'ส.ค.',  monthEn: 'Aug', monthKo: '8월', before: 6210, after: 4020, costBefore: 24117, costAfter: 15618 },
+  { month: 'ก.ย.',  monthEn: 'Sep', monthKo: '9월', before: 5870, after: 3810, costBefore: 22802, costAfter: 14805 },
+  { month: 'ต.ค.',  monthEn: 'Oct', monthKo: '10월', before: 5420, after: 3530, costBefore: 21058, costAfter: 13712 },
+  { month: 'พ.ย.',  monthEn: 'Nov', monthKo: '11월', before: 4980, after: 3260, costBefore: 19344, costAfter: 12665 },
+  { month: 'ธ.ค.',  monthEn: 'Dec', monthKo: '12월', before: 4750, after: 3100, costBefore: 18452, costAfter: 12040 },
+];
+
+const totalBefore     = monthlyData.reduce((s, d) => s + d.before, 0);
+const totalAfter      = monthlyData.reduce((s, d) => s + d.after, 0);
+const totalSavedKwh   = totalBefore - totalAfter;
+const totalCostBefore = monthlyData.reduce((s, d) => s + d.costBefore, 0);
+const totalCostAfter  = monthlyData.reduce((s, d) => s + d.costAfter, 0);
+const totalSavedBaht  = totalCostBefore - totalCostAfter;
+const savingPct       = ((totalSavedKwh / totalBefore) * 100).toFixed(1);
+const co2Saved        = (totalSavedKwh * 0.5313).toFixed(0);
+
+function L(locale: string, th: string, ko: string, en: string) {
+  if (locale === 'th') return th;
+  if (locale === 'ko') return ko;
+  return en;
+}
+function fmt(n: number) { return n.toLocaleString(); }
+
+const staffList = [
+  { name: 'Nattapong S.', nameKo: '나타퐁 S.', nameTh: 'ณัฐพงศ์ ส.', role: 'Sales Engineer', roleTh: 'วิศวกรขาย', roleKo: '영업 엔지니어', phone: '+66 81-234-5678', email: 'nattapong@kenergy-save.com', line: '@kenergy_nat', available: true },
+  { name: 'Sirikanya P.', nameKo: '시리칸야 P.', nameTh: 'ศิริกัญญา พ.', role: 'Customer Success', roleTh: 'ฝ่ายดูแลลูกค้า', roleKo: '고객 성공팀', phone: '+66 89-345-6789', email: 'sirikanya@kenergy-save.com', line: '@kenergy_siri', available: true },
+  { name: 'Wanchai T.', nameKo: '완차이 T.', nameTh: 'วันชัย ท.', role: 'Technical Support', roleTh: 'ฝ่ายเทคนิค', roleKo: '기술 지원팀', phone: '+66 92-456-7890', email: 'wanchai@kenergy-save.com', line: '@kenergy_tech', available: false },
+  { name: 'Minjun K.', nameKo: '민준 K.', nameTh: 'มินจุน เค.', role: 'Korea Sales Manager', roleTh: 'ผู้จัดการฝ่ายขาย เกาหลี', roleKo: '한국 영업 매니저', phone: '+82 10-1234-5678', email: 'minjun@kenergy-save.com', line: '@kenergy_kr', available: true },
+];
+
 export default function CustomersPage() {
-  const router = useRouter();
-  const { locale, tObj: t } = useLocale();
+  const { locale } = useLocale();
+  const [activeTab, setActiveTab] = useState<'energy' | 'cost' | 'live' | 'contact'>('energy');
+
+  // ── Live monitoring state ──
+  const [devices, setDevices] = useState<any[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [liveData, setLiveData] = useState<any[]>([]);
+  const [snapshot, setSnapshot] = useState<any>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveMetric, setLiveMetric] = useState<'current' | 'power' | 'voltage'>('current');
+  const [deviceDetails, setDeviceDetails] = useState<any>(null);
+  const liveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('k_system_admin_token');
-    if (!token) {
-      router.replace('/customer-dashboard-login');
-    }
-  }, [router]);
-
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    address: '',
-    type: 'individual'
-  });
-
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    fetch('/api/kenergy/dashboard-stats?site=thailand')
+      .then(r => r.json())
+      .then(j => {
+        if (j.success && j.data?.recentDevices) {
+          setDevices(j.data.recentDevices);
+          if (j.data.recentDevices.length > 0) setSelectedDeviceId(j.data.recentDevices[0].deviceID);
+        }
+      }).catch(() => {});
+  }, []);
 
   useEffect(() => {
-    fetchCustomers();
-  }, [statusFilter]);
+    if (!selectedDeviceId) return;
+    fetchLive();
+    if (liveTimer.current) clearInterval(liveTimer.current);
+    liveTimer.current = setInterval(fetchLiveSnapshot, 30000);
+    return () => { if (liveTimer.current) clearInterval(liveTimer.current); };
+  }, [selectedDeviceId]);
 
-  async function fetchCustomers() {
-    setLoading(true);
-    setError(null);
+  async function fetchLive() {
+    setLiveLoading(true);
     try {
-      const url = statusFilter === 'all'
-        ? '/api/korea/customers'
-        : `/api/korea/customers?status=${statusFilter}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok) {
-        setCustomers(Array.isArray(data) ? data : []);
-      } else {
-        setError(data.error || 'Failed to fetch customers');
+      const today = new Date().toISOString().slice(0, 10);
+      const [histRes, snapRes, devRes] = await Promise.all([
+        fetch(`/api/kenergy/device-history?deviceId=${selectedDeviceId}&period=hour&from=${today}&to=${today}&limit=24`),
+        fetch(`/api/kenergy/device-monitoring?deviceId=${selectedDeviceId}`),
+        fetch(`/api/kenergy/devices-setting?site=all`),
+      ]);
+      const histJson = await histRes.json();
+      const snapJson = await snapRes.json();
+      const devJson  = await devRes.json();
+      if (histJson.success) setLiveData([...histJson.data].reverse());
+      if (snapJson.success) setSnapshot(snapJson.data);
+      if (devJson.success) {
+        const found = devJson.devices?.find((d: any) => d.deviceID === selectedDeviceId);
+        if (found) setDeviceDetails(found);
       }
-    } catch (err: any) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
+    setLiveLoading(false);
   }
 
-  const filteredCustomers = customers.filter(customer => {
-    if (!searchQuery) return true;
-    return (
-      (customer.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (customer.nameEn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (customer.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (customer.company || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
-
-  const handleAddCustomer = async () => {
-    if (!newCustomer.name || !newCustomer.email || !newCustomer.phone) {
-      alert(locale === 'ko' ? '모든 필수 항목을 입력해주세요.' : 'Please fill in all required fields.');
-      return;
-    }
-
+  async function fetchLiveSnapshot() {
+    if (!selectedDeviceId) return;
     try {
-      const res = await fetch('/api/korea/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCustomer.name,
-          nameEn: newCustomer.name,
-          email: newCustomer.email,
-          phone: newCustomer.phone,
-          company: newCustomer.company || newCustomer.name,
-          address: newCustomer.address,
-          type: newCustomer.type,
-          status: 'active',
-          joinDate: new Date().toISOString().split('T')[0]
-        })
-      });
+      const r = await fetch(`/api/kenergy/device-monitoring?deviceId=${selectedDeviceId}`);
+      const j = await r.json();
+      if (j.success) setSnapshot(j.data);
+    } catch {}
+  }
+  const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
+  const [contactForm, setContactForm] = useState({ name: '', phone: '', email: '', message: '' });
+  const [sent, setSent] = useState(false);
 
-      const data = await res.json();
-      if (data.success) {
-        setIsAddModalOpen(false);
-        setNewCustomer({
-          name: '',
-          email: '',
-          phone: '',
-          company: '',
-          address: '',
-          type: 'individual'
-        });
-        fetchCustomers();
-      } else {
-        alert(data.error || 'Failed to add customer');
-      }
-    } catch (err) {
-      alert('Network error. Please try again.');
-    }
-  };
+  const monthLabel = (d: typeof monthlyData[0]) =>
+    locale === 'th' ? d.month : locale === 'ko' ? d.monthKo : d.monthEn;
 
-  const handleDeleteCustomer = async (id: number) => {
-    if (confirm(locale === 'ko' ? '정말 삭제하시겠습니까?' : 'Are you sure you want to delete?')) {
-      try {
-        const res = await fetch(`/api/korea/customers?id=${id}`, {
-          method: 'DELETE'
-        });
-        const data = await res.json();
-        if (data.success) {
-          fetchCustomers();
-        } else {
-          alert(data.error || 'Failed to delete customer');
-        }
-      } catch (err) {
-        alert('Network error. Please try again.');
-      }
-    }
-  };
+  const chartData = monthlyData.map(d => ({
+    name: monthLabel(d),
+    [L(locale,'ก่อนติดตั้ง','설치 전','Before')]: d.before,
+    [L(locale,'หลังติดตั้ง','설치 후','After')]: d.after,
+    [L(locale,'ก่อน (บาท)','이전 비용','Cost Before')]: d.costBefore,
+    [L(locale,'หลัง (บาท)','이후 비용','Cost After')]: d.costAfter,
+  }));
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-600';
-      case 'pending': return 'bg-yellow-100 text-yellow-600';
-      case 'inactive': return 'bg-red-100 text-red-600';
-      default: return 'bg-gray-100 text-gray-600';
-    }
-  };
+  const keyBefore  = L(locale,'ก่อนติดตั้ง','설치 전','Before');
+  const keyAfter   = L(locale,'หลังติดตั้ง','설치 후','After');
+  const keyCostB   = L(locale,'ก่อน (บาท)','이전 비용','Cost Before');
+  const keyCostA   = L(locale,'หลัง (บาท)','이후 비용','Cost After');
 
-  const formatCurrency = (amount: number) => {
-    return '₩' + new Intl.NumberFormat('ko-KR').format(amount);
-  };
-
-  const stats = {
-    total: customers.length,
-    active: customers.filter(c => c.status === 'active').length,
-    pending: customers.filter(c => c.status === 'pending').length,
-    inactive: customers.filter(c => c.status === 'inactive').length
-  };
+  function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    setSent(true);
+    setContactForm({ name: '', phone: '', email: '', message: '' });
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/')}
-                className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {t.back}
-              </button>
-              <div className="border-l-2 border-gray-300 pl-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-800">
-                      {locale === 'ko' ? '고객 관리' : 'Customer Management'}
-                    </h1>
-                    <p className="text-sm text-gray-600">
-                      {locale === 'ko' ? '고객 정보 및 주문 이력 관리' : 'Manage customer information and order history'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-gray-50">
+
+      {/* Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800 shadow-2xl px-4 py-7 md:px-10 md:py-12">
+        {/* Background orbs */}
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-violet-500/30 rounded-full blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.04)_0%,_transparent_70%)]" />
+        {/* Dot grid pattern */}
+        <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize:'28px 28px'}} />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-white/25 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-xl ring-1 ring-white/20 flex-shrink-0">
+              <Zap className="w-6 h-6 md:w-8 md:h-8 text-yellow-300 drop-shadow" />
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/admin-support/customers"
-                className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
-              >
-                <Shield className="w-4 h-4" />
-                <span className="text-sm font-medium">{t.adminSupport}</span>
-              </Link>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full ring-1 ring-white/30">⚡ K Energy Save</span>
+              </div>
+              <h1 className="text-lg md:text-3xl font-bold text-white leading-tight">{L(locale,'รายงานเปรียบเทียบพลังงาน','에너지 비교 보고서','Energy Comparison Report')}</h1>
+              <p className="text-blue-100 text-xs md:text-sm mt-0.5 hidden sm:block">{L(locale,'เปรียบเทียบการใช้ไฟฟ้าและค่าใช้จ่ายก่อน-หลังติดตั้งเครื่อง K Energy Save','K Energy Save 설치 전후 전력 사용량 및 비용 비교','Electricity usage & cost comparison before/after K Energy Save installation')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            <div className="bg-white rounded-xl shadow-md">
               <LanguageSwitcher />
             </div>
           </div>
         </div>
+
+        {/* KPI chips */}
+        <div className="relative grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-5 md:mt-8">
+          {[
+            { icon: Zap,          val: `${fmt(totalSavedKwh)} kWh`, label: L(locale,'ไฟฟ้าที่ประหยัด','절약 전력량','Energy Saved'),    color: 'from-yellow-400 to-amber-400', ring: 'ring-yellow-300/30' },
+            { icon: DollarSign,   val: `฿${fmt(totalSavedBaht)}`,  label: L(locale,'ค่าไฟที่ประหยัด','절약 비용','Cost Saved'),         color: 'from-emerald-400 to-green-400', ring: 'ring-emerald-300/30' },
+            { icon: TrendingDown, val: `${savingPct}%`,             label: L(locale,'% ที่ประหยัด','절약률','Saving Rate'),              color: 'from-sky-400 to-blue-400', ring: 'ring-sky-300/30' },
+            { icon: Leaf,         val: `${fmt(Number(co2Saved))} kg`,label: L(locale,'CO₂ ที่ลดได้','CO₂ 절감량','CO₂ Reduced'),        color: 'from-teal-400 to-cyan-400', ring: 'ring-teal-300/30' },
+          ].map(({ icon: Icon, val, label, color, ring }) => (
+            <div key={label} className="group bg-white/15 backdrop-blur-md rounded-xl md:rounded-2xl p-3 md:p-4 flex items-center gap-2 md:gap-3 border border-white/25 hover:bg-white/25 hover:scale-[1.03] transition-all duration-200 cursor-default shadow-sm">
+              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg ring-2 ${ring} flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                <Icon className="w-4 h-4 md:w-5 md:h-5 text-white drop-shadow" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-white font-bold text-sm md:text-xl leading-tight truncate tabular-nums">{val}</p>
+                <p className="text-blue-100/80 text-xs truncate">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '전체 고객' : 'Total Customers'}</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
-              </div>
-              <Users className="w-12 h-12 text-blue-500" />
-            </div>
-          </div>
+      <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-8 space-y-4 md:space-y-6">
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '활성 고객' : 'Active Customers'}</p>
-                <p className="text-3xl font-bold text-green-600">{stats.active}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-green-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '대기 고객' : 'Pending Customers'}</p>
-                <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-yellow-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{locale === 'ko' ? '비활성 고객' : 'Inactive Customers'}</p>
-                <p className="text-3xl font-bold text-red-600">{stats.inactive}</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-red-500" />
-              </div>
-            </div>
+        {/* Tab switcher — scrollable on mobile */}
+        <div className="overflow-x-auto -mx-3 md:mx-0 px-3 md:px-0">
+          <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 shadow-md border border-gray-100/80 w-max md:w-fit">
+            {([
+              { key: 'energy',  label: L(locale,'กราฟไฟฟ้า','전력 그래프','Energy'),  icon: BarChart2 },
+              { key: 'cost',    label: L(locale,'กราฟค่าไฟ','비용 그래프','Cost'),     icon: DollarSign },
+              { key: 'live',    label: L(locale,'ไฟปัจจุบัน','실시간','Live'),         icon: Activity },
+              { key: 'contact', label: L(locale,'ติดต่อ','연락','Contact'),            icon: Users },
+            ] as const).map(tab => (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                  activeTab === tab.key
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-200'
+                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                }`}>
+                <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={locale === 'ko' ? '고객명, 이메일, 회사명으로 검색...' : 'Search by name, email, or company...'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">{locale === 'ko' ? '모든 상태' : 'All Status'}</option>
-                <option value="active">{locale === 'ko' ? '활성' : 'Active'}</option>
-                <option value="pending">{locale === 'ko' ? '대기' : 'Pending'}</option>
-                <option value="inactive">{locale === 'ko' ? '비활성' : 'Inactive'}</option>
-              </select>
+        {/* ── Energy / Cost Charts ── */}
+        {(activeTab === 'energy' || activeTab === 'cost') && (
+          <>
+            {/* Chart type toggle */}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setChartType('bar')}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold border-2 transition ${
+                  chartType === 'bar' ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200' : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                }`}>
+                <BarChart2 className="w-3.5 h-3.5" />{L(locale,'แผนภูมิแท่ง','막대 차트','Bar')}
+              </button>
+              <button onClick={() => setChartType('line')}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold border-2 transition ${
+                  chartType === 'line' ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200' : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                }`}>
+                <Activity className="w-3.5 h-3.5" />{L(locale,'กราฟเส้น','선 차트','Line')}
+              </button>
             </div>
-            
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              {locale === 'ko' ? '고객 추가' : 'Add Customer'}
-            </button>
-          </div>
-        </div>
 
-        {/* Customer Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">{locale === 'ko' ? '고객 정보를 불러오는 중...' : 'Loading customers...'}</p>
+            {/* Chart */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden">
+              <div className={`h-1.5 w-full ${ activeTab === 'energy' ? 'bg-gradient-to-r from-red-400 via-orange-400 to-green-400' : 'bg-gradient-to-r from-orange-400 via-amber-400 to-blue-400' }`} />
+              <div className="p-3 md:p-6">
+                <h2 className="font-bold text-gray-800 text-base md:text-lg mb-1">
+                  {activeTab === 'energy'
+                    ? L(locale,'การใช้ไฟฟ้ารายเดือน (kWh)','월별 전력 사용량 (kWh)','Monthly Energy Usage (kWh)')
+                    : L(locale,'ค่าใช้จ่ายรายเดือน (บาท)','월별 전기 요금 (THB)','Monthly Cost (THB)')}
+                </h2>
+                <p className="text-gray-500 text-xs md:text-sm mb-4 md:mb-6">
+                  {L(locale,'เปรียบเทียบก่อนและหลังติดตั้งเครื่อง K Energy Save','K Energy Save 설치 전후 비교','Before vs after K Energy Save installation')}
+                </p>
+                <ResponsiveContainer width="100%" height={260}>
+                {chartType === 'bar' ? (
+                  <BarChart data={chartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                    <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                    <Legend />
+                    {activeTab === 'energy' ? <>
+                      <Bar dataKey={keyBefore} fill="#ef4444" radius={[4,4,0,0]} />
+                      <Bar dataKey={keyAfter}  fill="#22c55e" radius={[4,4,0,0]} />
+                    </> : <>
+                      <Bar dataKey={keyCostB} fill="#f97316" radius={[4,4,0,0]} />
+                      <Bar dataKey={keyCostA} fill="#3b82f6" radius={[4,4,0,0]} />
+                    </>}
+                  </BarChart>
+                ) : (
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                    <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                    <Legend />
+                    {activeTab === 'energy' ? <>
+                      <Line type="monotone" dataKey={keyBefore} stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey={keyAfter}  stroke="#22c55e" strokeWidth={2.5} dot={{ r: 4 }} />
+                    </> : <>
+                      <Line type="monotone" dataKey={keyCostB} stroke="#f97316" strokeWidth={2.5} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey={keyCostA} stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4 }} />
+                    </>}
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
               </div>
-            ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-red-600 mb-4">{error}</p>
-                <button
-                  onClick={fetchCustomers}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  {locale === 'ko' ? '다시 시도' : 'Retry'}
-                </button>
+            </div>
+
+            {/* Comparison Table */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden">
+              <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-indigo-500" />
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="font-bold text-gray-800">{L(locale,'ตารางเปรียบเทียบรายเดือน','월별 비교 표','Monthly Comparison Table')}</h2>
               </div>
-            ) : filteredCustomers.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                {locale === 'ko' ? '고객이 없습니다' : 'No customers found'}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gradient-to-r from-gray-50 to-slate-50">
+                    <tr>
+                      {[
+                        L(locale,'เดือน','월','Month'),
+                        L(locale,'ก่อน (kWh)','ิ전 (kWh)','Before (kWh)'),
+                        L(locale,'หลัง (kWh)','이후 (kWh)','After (kWh)'),
+                        L(locale,'ไฟฟ้าที่ประหยัด','전력 절약','Saved kWh'),
+                        L(locale,'ก่อน (฿)','이전 비용 (฿)','Before (฿)'),
+                        L(locale,'หลัง (฿)','이후 비용 (฿)','After (฿)'),
+                        L(locale,'ประหยัดค่าไฟ','비용 절약','Saved ฿'),
+                        L(locale,'% ประหยัด','절약률','Save %'),
+                      ].map(h => (
+                        <th key={h} className="px-4 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {monthlyData.map((d, i) => {
+                      const savedKwh = d.before - d.after;
+                      const savedBaht = d.costBefore - d.costAfter;
+                      const pct = ((savedKwh / d.before) * 100).toFixed(1);
+                      return (
+                        <tr key={i} className={`hover:bg-blue-50/60 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                          <td className="px-4 py-3 font-semibold text-gray-800">{monthLabel(d)}</td>
+                          <td className="px-4 py-3 text-red-600">{fmt(d.before)}</td>
+                          <td className="px-4 py-3 text-green-600">{fmt(d.after)}</td>
+                          <td className="px-4 py-3 font-semibold text-blue-700">{fmt(savedKwh)}</td>
+                          <td className="px-4 py-3 text-red-500">฿{fmt(d.costBefore)}</td>
+                          <td className="px-4 py-3 text-green-600">฿{fmt(d.costAfter)}</td>
+                          <td className="px-4 py-3 font-semibold text-emerald-700">฿{fmt(savedBaht)}</td>
+                          <td className="px-4 py-3">
+                            <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">{pct}%</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold">
+                    <tr>
+                      <td className="px-4 py-3.5">{L(locale,'รวม','합계','Total')}</td>
+                      <td className="px-4 py-3.5 text-red-200">{fmt(totalBefore)}</td>
+                      <td className="px-4 py-3.5 text-green-200">{fmt(totalAfter)}</td>
+                      <td className="px-4 py-3.5 text-white">{fmt(totalSavedKwh)}</td>
+                      <td className="px-4 py-3.5 text-red-200">฿{fmt(totalCostBefore)}</td>
+                      <td className="px-4 py-3.5 text-green-200">฿{fmt(totalCostAfter)}</td>
+                      <td className="px-4 py-3.5 text-white">฿{fmt(totalSavedBaht)}</td>
+                      <td className="px-4 py-3.5">
+                        <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full ring-1 ring-white/30">{savingPct}%</span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
-            ) : (
-              <table className="w-full">
-                <thead className="bg-blue-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '고객 정보' : 'Customer Info'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '연락처' : 'Contact'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '회사' : 'Company'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '상태' : 'Status'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '주문 수' : 'Orders'}
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '총 구매액' : 'Total Spent'}
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
-                      {locale === 'ko' ? '작업' : 'Actions'}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-blue-600" />
+            </div>
+          </>
+        )}
+
+        {/* ── Live Devices ── */}
+        {activeTab === 'live' && (
+          <div className="space-y-5">
+
+            {/* Device Selector + Refresh */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="relative w-full sm:w-auto">
+                <select value={selectedDeviceId} onChange={e => { setSelectedDeviceId(e.target.value); }}
+                  className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none cursor-pointer sm:min-w-[220px]">
+                  {devices.map(d => (
+                    <option key={d.deviceID} value={d.deviceID}>{d.deviceName || d.deviceID}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {(['current','power','voltage'] as const).map(m => (
+                  <button key={m} onClick={() => setLiveMetric(m)}
+                    className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition ${
+                      liveMetric === m ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'
+                    }`}>
+                    {m === 'current' ? L(locale,'กระแสไฟ','전류','Current (A)')
+                     : m === 'power'   ? L(locale,'กำลังไฟ','전력','Power (kW)')
+                     : L(locale,'แรงดัน','전압','Voltage (V)')}
+                  </button>
+                ))}
+              </div>
+              <button onClick={fetchLive} disabled={liveLoading}
+                className="w-full sm:w-auto sm:ml-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 shadow-sm transition">
+                <RefreshCw className={`w-4 h-4 ${liveLoading ? 'animate-spin text-blue-500' : ''}`} />
+                {L(locale,'รีเฟรช','새로고침','Refresh')}
+              </button>
+            </div>
+
+            {/* Snapshot KPI row */}
+            {snapshot && (() => {
+              const d = snapshot;
+              const isOnline = d.status === 'online';
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {[
+                    { icon: isOnline ? Wifi : WifiOff, label: L(locale,'สถานะ','상태','Status'), val: isOnline ? L(locale,'ออนไลน์','온라인','Online') : 'Offline', color: isOnline ? 'text-emerald-600' : 'text-red-500', bg: isOnline ? 'bg-emerald-50' : 'bg-red-50' },
+                    { icon: Zap,         label: L(locale,'กำลังไฟ (kW)','전력 (kW)','Power (kW)'),    val: (d.totalPower ?? 0).toFixed(2),   color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { icon: Activity,    label: L(locale,'L1 (A)','L1 (A)','L1 (A)'),                  val: (d.currentL1   ?? 0).toFixed(2),   color: 'text-blue-600',  bg: 'bg-blue-50' },
+                    { icon: Activity,    label: L(locale,'L2 (A)','L2 (A)','L2 (A)'),                  val: (d.currentL2   ?? 0).toFixed(2),   color: 'text-violet-600',bg: 'bg-violet-50' },
+                    { icon: Activity,    label: L(locale,'L3 (A)','L3 (A)','L3 (A)'),                  val: (d.currentL3   ?? 0).toFixed(2),   color: 'text-pink-600',  bg: 'bg-pink-50' },
+                    { icon: Thermometer, label: L(locale,'Power Factor','역률','Power Factor'),          val: (d.powerFactor ?? 0).toFixed(3),   color: 'text-teal-600',  bg: 'bg-teal-50' },
+                  ].map(({ icon: Icon, label, val, color, bg }) => (
+                    <div key={label} className={`${bg} rounded-2xl p-4 flex items-center gap-3 hover:shadow-md hover:scale-[1.03] transition-all cursor-default border border-white/60`}>
+                      <Icon className={`w-5 h-5 ${color} flex-shrink-0`} />
+                      <div className="min-w-0">
+                        <p className={`font-bold text-lg leading-tight ${color}`}>{val}</p>
+                        <p className="text-xs text-gray-500 truncate">{label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Line Chart */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden">
+              <div className="h-1 w-full bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400" />
+              <div className="p-3 md:p-6">
+                <h2 className="font-bold text-gray-800 text-base md:text-lg mb-1">
+                  {L(locale,'กราฟกระแสไฟรายชั่วโมง (วันนี้)','오늘 시간별 전류 그래프','Hourly Chart — Today')}
+                </h2>
+                <p className="text-gray-400 text-xs mb-3 md:mb-5">
+                  {L(locale,'อัปเดตทุก 30 วินาที','30초마다 업데이트','Updates every 30 seconds')} · {selectedDeviceId}
+                </p>
+              {liveLoading ? (
+                <div className="flex items-center justify-center h-52">
+                  <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
+                </div>
+              ) : liveData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-52 text-gray-400">
+                  <WifiOff className="w-10 h-10 mb-2" />
+                  <p className="text-sm">{L(locale,'ยังไม่มีข้อมูลวันนี้','오늘 데이터 없음','No data for today')}</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={liveData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }}
+                      tickFormatter={v => v ? String(v).slice(11, 16) : ''} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      labelFormatter={v => v ? String(v).slice(11, 16) : ''}
+                      formatter={(v: number, name: string) => [v?.toFixed(2), name]} />
+                    <Legend />
+                    {liveMetric === 'current' && <>
+                      <Line type="monotone" dataKey="currentL1" name="L1 (A)" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="currentL2" name="L2 (A)" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="currentL3" name="L3 (A)" stroke="#ec4899" strokeWidth={2} dot={false} />
+                    </>}
+                    {liveMetric === 'power' && <>
+                      <Line type="monotone" dataKey="totalPower" name={L(locale,'กำลังไฟ (kW)','전력 (kW)','Power (kW)')} stroke="#f59e0b" strokeWidth={2.5} dot={false} />
+                    </>}
+                    {liveMetric === 'voltage' && <>
+                      <Line type="monotone" dataKey="voltageL1" name="V-L1" stroke="#10b981" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="voltageL2" name="V-L2" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="voltageL3" name="V-L3" stroke="#f97316" strokeWidth={2} dot={false} />
+                    </>}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+              </div>
+            </div>
+
+            {/* Device Detail Card */}
+            {snapshot && (() => {
+              const d = snapshot;
+              const dev = devices.find(x => x.deviceID === selectedDeviceId);
+              const dd = deviceDetails;
+              return (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden">
+                  <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-violet-500" />
+                  <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                    <Cpu className="w-5 h-5 text-blue-500" />
+                    <h2 className="font-bold text-gray-800">{L(locale,'รายละเอียดเครื่อง','기기 상세정보','Device Details')}</h2>
+                  </div>
+
+                  {/* Owner / Customer section */}
+                  <div className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50/60 border-b border-gray-100">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center">
+                        <Users className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">{L(locale,'ข้อมูลลูกค้า / เจ้าของเครื่อง','고객 / 기기 소유자 정보','Customer / Owner Information')}</p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'ชื่อเครื่อง / KSAVE ID','장치명 / KSAVE ID','Device Name / KSAVE ID')}</p>
+                        <p className="font-semibold text-gray-800">{dev?.deviceName ?? selectedDeviceId}</p>
+                        <p className="text-xs text-blue-500 font-mono mt-0.5">{dd?.ksaveID ?? dev?.ksaveID ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'ชื่อลูกค้า','고객명','Customer Name')}</p>
+                        <p className="font-semibold text-gray-800">{dd?.customerName || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'เบอร์โทร','전화번호','Phone')}</p>
+                        {dd?.customerPhone
+                          ? <a href={`tel:${dd.customerPhone}`} className="font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                              <Phone className="w-3.5 h-3.5 flex-shrink-0" />{dd.customerPhone}
+                            </a>
+                          : <p className="font-semibold text-gray-800">-</p>}
+                      </div>
+                      <div className="col-span-2 md:col-span-1">
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'ที่อยู่','주소','Address')}</p>
+                        <p className="font-semibold text-gray-800 text-sm leading-snug">{dd?.customerAddress || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'อีเมลเจ้าของ','소유자 이메일','Owner Email')}</p>
+                        <p className="font-semibold text-gray-800 break-all text-sm">{dd?.owner ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'สถานที่/ไซต์','설치 위치/사이트','Location / Site')}</p>
+                        <p className="font-semibold text-gray-800">{dd?.location ?? dev?.location ?? '-'}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{dd?.site ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">{L(locale,'วันที่ลงทะเบียน','등록일','Register Date')}</p>
+                        <p className="font-semibold text-gray-800">{dd?.registerDate ?? '-'}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">IP: {dd?.ipAddress ?? '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Electrical measurements grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 divide-x divide-y divide-gray-100 text-sm">
+                    {[
+                      [L(locale,'สถานะเครื่อง','연결 상태','Connection'), dd?.connection ?? '-', dd?.connection === 'ONLINE' ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'],
+                      [L(locale,'แรงดัน L1 (V)','전압 L1 (V)','Voltage L1 (V)'), (d.voltageL1 ?? 0).toFixed(1), 'text-emerald-700'],
+                      [L(locale,'แรงดัน L2 (V)','전압 L2 (V)','Voltage L2 (V)'), (d.voltageL2 ?? 0).toFixed(1), 'text-emerald-700'],
+                      [L(locale,'แรงดัน L3 (V)','전압 L3 (V)','Voltage L3 (V)'), (d.voltageL3 ?? 0).toFixed(1), 'text-emerald-700'],
+                      [L(locale,'กระแส L1 (A)','전류 L1 (A)','Current L1 (A)'), (d.currentL1 ?? 0).toFixed(2), 'text-blue-700'],
+                      [L(locale,'กระแส L2 (A)','전류 L2 (A)','Current L2 (A)'), (d.currentL2 ?? 0).toFixed(2), 'text-violet-700'],
+                      [L(locale,'กระแส L3 (A)','전류 L3 (A)','Current L3 (A)'), (d.currentL3 ?? 0).toFixed(2), 'text-pink-700'],
+                      [L(locale,'กำลังไฟ (kW)','전력 (kW)','Total Power (kW)'), (d.totalPower ?? 0).toFixed(2), 'text-amber-700'],
+                      [L(locale,'Power Factor','역률','Power Factor'), (d.powerFactor ?? 0).toFixed(3), 'text-gray-800'],
+                      [L(locale,'ความถี่ (Hz)','주파수 (Hz)','Frequency (Hz)'), (d.frequency ?? 0).toFixed(1), 'text-gray-800'],
+                      [L(locale,'THD ก่อน (%)','THD 이전 (%)','THD Before (%)'), (d.thdBefore ?? 0).toFixed(1), 'text-red-600'],
+                      [L(locale,'THD หลัง (%)','THD 이후 (%)','THD After (%)'), (d.thdAfter ?? 0).toFixed(1), 'text-green-600'],
+                      [L(locale,'พลังงานประหยัด (kWh)','절약 에너지 (kWh)','Energy Saved (kWh)'), (d.energySaved ?? 0).toFixed(2), 'text-emerald-700 font-bold'],
+                      [L(locale,'CO₂ ลดได้ (kg)','CO₂ 절감 (kg)','CO₂ Saved (kg)'), (d.co2Saved ?? 0).toFixed(2), 'text-teal-700 font-bold'],
+                    ].map(([label, val, cls]) => (
+                      <div key={label} className="px-5 py-4 hover:bg-gray-50/80 transition-colors">
+                        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+                        <p className={`font-semibold ${cls}`}>{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ── Contact Staff ── */}
+        {activeTab === 'contact' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* Staff Cards */}
+            <div className="lg:col-span-2 space-y-4">
+              <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-500" />
+                {L(locale,'ทีมงาน K Energy Save','K Energy Save 담당자','K Energy Save Team')}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {staffList.map((s, i) => {
+                  const gradients = [
+                    'from-blue-500 to-indigo-600',
+                    'from-violet-500 to-purple-600',
+                    'from-emerald-500 to-teal-600',
+                    'from-orange-500 to-amber-600',
+                  ];
+                  return (
+                  <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradients[i % gradients.length]} flex items-center justify-center text-white font-bold text-lg shadow-md`}>
+                        {(locale === 'th' ? s.nameTh : locale === 'ko' ? s.nameKo : s.name).charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-800 truncate">
+                            {locale === 'th' ? s.nameTh : locale === 'ko' ? s.nameKo : s.name}
+                          </p>
+                          <span className={`flex-shrink-0 w-2 h-2 rounded-full ${s.available ? 'bg-emerald-400' : 'bg-gray-300'}`} />
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{customer.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {locale === 'ko' ? '가입일' : 'Joined'}: {customer.joinDate}
+                        <p className="text-xs text-blue-600 font-medium">
+                          {locale === 'th' ? s.roleTh : locale === 'ko' ? s.roleKo : s.role}
+                        </p>
+                        <div className="mt-3 space-y-1.5">
+                          <a href={`tel:${s.phone}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors">
+                            <Phone className="w-3.5 h-3.5 text-blue-500" />{s.phone}
+                          </a>
+                          <a href={`mailto:${s.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors truncate">
+                            <Mail className="w-3.5 h-3.5 text-blue-500" />{s.email}
+                          </a>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MessageSquare className="w-3.5 h-3.5 text-green-500" />
+                            <span>LINE: {s.line}</span>
                           </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-900">{customer.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-600">{customer.phone}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">{customer.company}</span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {customer.type === 'corporate' ? (locale === 'ko' ? '법인' : 'Corporate') : (locale === 'ko' ? '개인' : 'Individual')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
-                        {customer.status === 'active' ? (locale === 'ko' ? '활성' : 'Active') :
-                         customer.status === 'pending' ? (locale === 'ko' ? '대기' : 'Pending') :
-                         (locale === 'ko' ? '비활성' : 'Inactive')}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                        s.available ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {s.available
+                          ? L(locale,'✅ พร้อมให้บริการ','🟢 상담 가능','🟢 Available')
+                          : L(locale,'⛔ ไม่ว่างในขณะนี้','🔴 현재 부재중','🔴 Unavailable')}
                       </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{customer.totalOrders}</div>
-                      <div className="text-xs text-gray-500">
-                        {locale === 'ko' ? '최근 주문' : 'Last order'}: {customer.lastOrder}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(customer.totalSpent)}
-                      </div>
-                      {customer.rating > 0 && (
-                        <div className="flex items-center gap-1 mt-1">
-                          {[...Array(customer.rating)].map((_, i) => (
-                            <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button className="text-blue-600 hover:text-blue-800">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="text-green-600 hover:text-green-800">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
 
-      {/* Add Customer Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              {locale === 'ko' ? '새 고객 추가' : 'Add New Customer'}
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '고객명' : 'Customer Name'} *
-                </label>
-                <input
-                  type="text"
-                  value={newCustomer.name}
-                  onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '고객명을 입력하세요' : 'Enter customer name'}
-                />
+            {/* Contact Form */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden h-fit">
+              <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-indigo-500" />
+              <div className="p-6">
+                <h2 className="font-bold text-gray-800 text-lg mb-1">{L(locale,'ส่งข้อความหาเรา','메시지 보내기','Send us a message')}</h2>
+                <p className="text-gray-500 text-sm mb-5">{L(locale,'ทีมงานจะติดต่อกลับภายใน 24 ชั่วโมง','24시간 내에 연락드리겠습니다','Our team will reply within 24 hours')}</p>
+              {sent ? (
+                <div className="flex flex-col items-center py-8 gap-3">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <CheckCircle className="w-9 h-9 text-emerald-500" />
+                  </div>
+                  <p className="font-semibold text-gray-800">{L(locale,'ส่งข้อความเรียบร้อยแล้ว!','메시지가 전송되었습니다!','Message sent!')}</p>
+                  <p className="text-sm text-gray-500 text-center">{L(locale,'เราจะติดต่อกลับโดยเร็วที่สุด','최대한 빨리 연락드리겠습니다','We will contact you as soon as possible')}</p>
+                  <button onClick={() => setSent(false)} className="mt-2 text-blue-600 text-sm underline">
+                    {L(locale,'ส่งอีกครั้ง','다시 보내기','Send another')}
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSend} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{L(locale,'ชื่อ','이름','Name')} *</label>
+                    <input required value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder={L(locale,'ชื่อของคุณ','성함을 입력하세요','Your name')} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{L(locale,'เบอร์โทร','전화번호','Phone')} *</label>
+                    <input required value={contactForm.phone} onChange={e => setContactForm({...contactForm, phone: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder={L(locale,'เบอร์โทรของคุณ','전화번호를 입력하세요','Your phone number')} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{L(locale,'อีเมล','이메일','Email')}</label>
+                    <input type="email" value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="email@example.com" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{L(locale,'ข้อความ','메시지','Message')} *</label>
+                    <textarea required rows={4} value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                      placeholder={L(locale,'พิมพ์ข้อความของคุณ...','메시지를 입력하세요...','Type your message...')} />
+                  </div>
+                  <button type="submit" className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-md shadow-blue-200 hover:shadow-lg hover:-translate-y-0.5">
+                    <Send className="w-4 h-4" />
+                    {L(locale,'ส่งข้อความ','메시지 보내기','Send Message')}
+                  </button>
+                </form>
+              )}
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '이메일' : 'Email'} *
-                </label>
-                <input
-                  type="email"
-                  value={newCustomer.email}
-                  onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '이메일을 입력하세요' : 'Enter email address'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '전화번호' : 'Phone'} *
-                </label>
-                <input
-                  type="tel"
-                  value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '전화번호를 입력하세요' : 'Enter phone number'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '고객 유형' : 'Customer Type'}
-                </label>
-                <select
-                  value={newCustomer.type}
-                  onChange={(e) => setNewCustomer({...newCustomer, type: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="individual">{locale === 'ko' ? '개인' : 'Individual'}</option>
-                  <option value="corporate">{locale === 'ko' ? '법인' : 'Corporate'}</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '회사명' : 'Company'}
-                </label>
-                <input
-                  type="text"
-                  value={newCustomer.company}
-                  onChange={(e) => setNewCustomer({...newCustomer, company: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '회사명을 입력하세요' : 'Enter company name'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {locale === 'ko' ? '주소' : 'Address'}
-                </label>
-                <textarea
-                  value={newCustomer.address}
-                  onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
-                  rows={3}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  placeholder={locale === 'ko' ? '주소를 입력하세요' : 'Enter address'}
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-              >
-                {locale === 'ko' ? '취소' : 'Cancel'}
-              </button>
-              <button
-                onClick={handleAddCustomer}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                {locale === 'ko' ? '추가' : 'Add Customer'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
     </div>
   );
 }
+

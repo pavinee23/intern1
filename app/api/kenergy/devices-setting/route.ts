@@ -21,6 +21,9 @@ export async function GET(req: NextRequest) {
         d.deviceName,
         d.ksaveID,
         d.U_email as owner,
+        d.customerName,
+        d.customerPhone,
+        d.customerAddress,
         d.location,
         d.ipAddress,
         d.latitude,
@@ -36,8 +39,8 @@ export async function GET(req: NextRequest) {
       FROM devices d
       LEFT JOIN power_records p ON d.deviceID = p.device_id
       WHERE d.location LIKE ? OR ? = 'all'
-      GROUP BY d.deviceID, d.deviceName, d.ksaveID, d.U_email, d.location,
-               d.ipAddress, d.latitude, d.longitude, d.site, d.created_at
+      GROUP BY d.deviceID, d.deviceName, d.ksaveID, d.U_email, d.customerName, d.customerPhone, d.customerAddress,
+               d.location, d.ipAddress, d.latitude, d.longitude, d.site, d.created_at
       ORDER BY d.deviceName ASC
     `, [
       site === 'thailand' ? '%Thailand%' : (site === 'korea' ? '%Korea%' : '%'),
@@ -77,7 +80,7 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude } = body
+    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerPhone, customerAddress } = body
 
     if (!deviceId) {
       return NextResponse.json({
@@ -113,6 +116,18 @@ export async function PUT(req: NextRequest) {
     if (longitude !== undefined) {
       updates.push('longitude = ?')
       params.push(longitude)
+    }
+    if (customerName !== undefined) {
+      updates.push('customerName = ?')
+      params.push(customerName)
+    }
+    if (customerPhone !== undefined) {
+      updates.push('customerPhone = ?')
+      params.push(customerPhone)
+    }
+    if (customerAddress !== undefined) {
+      updates.push('customerAddress = ?')
+      params.push(customerAddress)
     }
 
     if (updates.length === 0) {

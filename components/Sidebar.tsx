@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, BarChart2, MapPin, Bell, Settings, Monitor, Layout as LayoutIcon, Code, Users, FileText, MessageSquare, HelpCircle, UserCircle } from "lucide-react";
+import { Home, BarChart2, MapPin, Bell, Settings, Monitor, Layout as LayoutIcon, Code, Users, FileText, MessageSquare, HelpCircle, UserCircle, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,7 +32,7 @@ const supportItems = [
 ];
 
 export default function Sidebar() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const pathname = usePathname();
   
   return (
@@ -143,6 +143,19 @@ export default function Sidebar() {
           </ul>
         </div>
       </nav>
+
+      {/* Back to Main */}
+      <div className="p-4 border-t">
+        <Link
+          href="/main-login"
+          className="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition w-full"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="text-sm font-semibold">
+            {locale === "th" ? "กลับหน้าหลัก" : locale === "ko" ? "메인으로 돌아가기" : "Back to Main"}
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }
