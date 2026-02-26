@@ -67,6 +67,9 @@ export default function ResearchDevelopmentDashboardPage() {
   const [replyText, setReplyText] = useState('');
   const [replyAttachments, setReplyAttachments] = useState<FileAttachment[]>([]);
   const [userName, setUserName] = useState('');
+  const [previousUnreadCounts, setPreviousUnreadCounts] = useState<Record<string, number>>({});
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -74,6 +77,13 @@ export default function ResearchDevelopmentDashboardPage() {
     const savedName = localStorage.getItem('chat-user-name');
     if (savedName) {
       setUserName(savedName);
+    }
+
+    // Request notification permission
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
     }
   }, []);
 
@@ -127,11 +137,11 @@ export default function ResearchDevelopmentDashboardPage() {
 
   useEffect(() => {
     loadAllDepartmentChats();
-    
-    // Auto-refresh messages every 30 seconds
+
+    // Auto-refresh messages every 5 seconds for real-time updates
     const interval = setInterval(() => {
       loadAllDepartmentChats();
-    }, 30000);
+    }, 5000);
     
     // Refresh when page becomes visible
     const handleVisibilityChange = () => {
@@ -186,14 +196,58 @@ export default function ResearchDevelopmentDashboardPage() {
       // Departments with unread messages come first
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
-      
+
       // Then sort by last message time
       if (!a.lastMessage && !b.lastMessage) return 0;
       if (!a.lastMessage) return 1;
       if (!b.lastMessage) return -1;
       return new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime();
     });
-    
+
+    // Check for new messages and show notifications
+    chats.forEach(chat => {
+      const prevCount = previousUnreadCounts[chat.department] || 0;
+      const currentCount = chat.unreadCount;
+
+      // New message detected!
+      if (currentCount > prevCount && currentCount > 0) {
+        const newMessagesCount = currentCount - prevCount;
+        const notifText = locale === 'ko'
+          ? `${chat.departmentName}에서 새 메시지 ${newMessagesCount}개`
+          : `${newMessagesCount} new message(s) from ${chat.departmentName}`;
+
+        // Show toast notification
+        setNotificationMessage(notifText);
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 5000);
+
+        // Show browser notification
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          new Notification('K Energy Save - R&D', {
+            body: notifText,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: `msg-${chat.department}`,
+            requireInteraction: false
+          });
+        }
+
+        // Play notification sound
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGWi775ufTAoMUKbj8LZiFQc5kdfy0HssByd3x/DfkD8KFV6z6eqmUxQKRp/g8r1rIQQrgM/y2Io2CBlouu+bn0wKDFCm4/C1YhUHOpHX8tB7LAAL');
+          audio.volume = 0.3;
+          audio.play().catch(() => {});
+        } catch (e) {}
+      }
+    });
+
+    // Update previous counts
+    const newCounts: Record<string, number> = {};
+    chats.forEach(chat => {
+      newCounts[chat.department] = chat.unreadCount;
+    });
+    setPreviousUnreadCounts(newCounts);
+
     setDepartmentChats(chats);
   };
 
@@ -361,6 +415,29 @@ export default function ResearchDevelopmentDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-sky-100">
+      {/* Toast Notification */}
+      {showNotification && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 max-w-md">
+            <div className="bg-white/20 p-2 rounded-full">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm mb-1">
+                {locale === 'ko' ? '새 메시지' : 'New Message'}
+              </p>
+              <p className="text-sm text-white/90">{notificationMessage}</p>
+            </div>
+            <button
+              onClick={() => setShowNotification(false)}
+              className="text-white/70 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-6">

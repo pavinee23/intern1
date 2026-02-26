@@ -137,32 +137,68 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [userName, setUserName] = useState('');
   const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Prevent hydration errors by only rendering after mount
   useEffect(() => {
-    // Load user name from login session first, then fallback to chat-user-name
-    const savedName = localStorage.getItem('chat-user-name');
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Load user name - use department-specific storage to avoid conflicts
+    const deptSpecificKey = `chat-user-name-${params.department}`;
+    const savedDeptName = localStorage.getItem(deptSpecificKey);
     const adminUser = localStorage.getItem('k_system_admin_user');
+
     if (adminUser) {
       try {
         const user = JSON.parse(adminUser);
-        const displayName = user.name || user.username || savedName || '';
-        if (displayName) {
-          setUserName(displayName);
-          localStorage.setItem('chat-user-name', displayName);
+        const userDeptID = user.departmentID || '';
+
+        // Map departmentID to slug
+        const deptIDtoSlug: Record<string, string> = {
+          'HR': 'hr',
+          'Production': 'production',
+          'InternationalMarket': 'international-market',
+          'DomesticMarket': 'domestic-market',
+          'QualityControl': 'quality-control',
+          'AfterSales': 'after-sales',
+          'Maintenance': 'maintenance',
+          'RnD': 'research-development',
+          'CustomerMgmt': 'customers',
+        };
+
+        const userDeptSlug = deptIDtoSlug[userDeptID] || '';
+
+        // Only use session name if user belongs to this department
+        if (userDeptSlug === params.department) {
+          const displayName = user.name || user.username || '';
+          if (displayName) {
+            setUserName(displayName);
+            localStorage.setItem(deptSpecificKey, displayName);
+          } else if (savedDeptName) {
+            setUserName(savedDeptName);
+          } else {
+            setShowNamePrompt(true);
+          }
+        } else if (savedDeptName) {
+          // Different department - use saved department-specific name
+          setUserName(savedDeptName);
         } else {
+          // No saved name - prompt for name
           setShowNamePrompt(true);
         }
       } catch {
-        if (savedName) setUserName(savedName);
+        if (savedDeptName) setUserName(savedDeptName);
         else setShowNamePrompt(true);
       }
-    } else if (savedName) {
-      setUserName(savedName);
+    } else if (savedDeptName) {
+      setUserName(savedDeptName);
     } else {
       setShowNamePrompt(true);
     }
-  }, []);
+  }, [params.department]);
 
   useEffect(() => {
     // Load messages from localStorage for this department
@@ -204,6 +240,42 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
       localStorage.setItem(`admin-chat-${params.department}`, JSON.stringify(messages));
     }
   }, [messages, params.department]);
+
+  useEffect(() => {
+    // Real-time message monitoring - check for new messages from R&D admin every 3 seconds
+    const checkForNewMessages = () => {
+      const savedMessages = localStorage.getItem(`admin-chat-${params.department}`);
+      if (savedMessages) {
+        try {
+          const parsed = JSON.parse(savedMessages);
+          // Only update if there are more messages than we currently have
+          if (parsed.length > messages.length) {
+            setMessages(parsed.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            })));
+          }
+        } catch (e) {
+          console.error('Error loading new messages:', e);
+        }
+      }
+    };
+
+    const interval = setInterval(checkForNewMessages, 3000); // Check every 3 seconds
+
+    // Also check when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForNewMessages();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [params.department, messages.length]);
 
   useEffect(() => {
     scrollToBottom();
@@ -275,30 +347,14 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
     }, 500);
 
     setTimeout(() => {
-      setMessages(prev => 
-        prev.map(msg => 
+      setMessages(prev =>
+        prev.map(msg =>
           msg.id === message.id ? { ...msg, status: 'read' as const } : msg
         )
       );
     }, 1000);
 
-    // Simulate admin reply
-    setTimeout(() => {
-      const replyText = locale === 'ko'
-        ? `${departmentName}에 대한 문의 주셔서 감사합니다. 곧 답변드리겠습니다.`
-        : `Thank you for contacting ${departmentName} support. I will respond shortly.`;
-
-      const reply: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: locale === 'ko' ? '연구개발 부서' : 'Research & Development',
-        role: 'admin',
-        text: replyText,
-        timestamp: new Date(),
-        status: 'read',
-        department: params.department
-      };
-      setMessages(prev => [...prev, reply]);
-    }, 2500);
+    // No auto-reply - wait for real admin response from R&D dashboard
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -307,6 +363,18 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
       handleSendMessage();
     }
   };
+
+  // Prevent hydration errors
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">{locale === 'ko' ? '로딩 중...' : 'Loading...'}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!departmentConfig) {
     return (
@@ -343,7 +411,7 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
               onChange={(e) => setUserName(e.target.value)}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && userName.trim()) {
-                  localStorage.setItem('chat-user-name', userName.trim());
+                  localStorage.setItem(`chat-user-name-${params.department}`, userName.trim());
                   setShowNamePrompt(false);
                 }
               }}
@@ -354,7 +422,7 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
             <button
               onClick={() => {
                 if (userName.trim()) {
-                  localStorage.setItem('chat-user-name', userName.trim());
+                  localStorage.setItem(`chat-user-name-${params.department}`, userName.trim());
                   setShowNamePrompt(false);
                 }
               }}
@@ -626,20 +694,6 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
                   : `Chat with admin for ${departmentName} system issues or questions. Messages are saved specifically for this department.`
                 }
               </p>
-              <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">
-                    {locale === 'ko' ? '채팅 이름' : 'Chat Name'}: <strong>{userName || (locale === 'ko' ? '사용자' : 'User')}</strong>
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowNamePrompt(true)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                >
-                  {locale === 'ko' ? '이름 변경' : 'Change Name'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
