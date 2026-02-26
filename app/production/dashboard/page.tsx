@@ -205,7 +205,7 @@ export default function ProductionDashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/Korea/Admin-Login')}
                 className="text-orange-600 hover:text-orange-800"
               >
                 ← {t.back}

@@ -89,7 +89,7 @@ export default function MaintenanceDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button onClick={() => router.push('/')} className="text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
+              <button onClick={() => router.push('/Korea/Admin-Login')} className="text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />{t.back}
               </button>
               <div className="border-l-2 border-gray-300 pl-4">

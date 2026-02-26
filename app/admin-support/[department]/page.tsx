@@ -242,14 +242,21 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
   }, [messages, params.department]);
 
   useEffect(() => {
-    // Real-time message monitoring - check for new messages from R&D admin every 3 seconds
+    // Real-time message monitoring - check for new messages from R&D admin
     const checkForNewMessages = () => {
       const savedMessages = localStorage.getItem(`admin-chat-${params.department}`);
       if (savedMessages) {
         try {
           const parsed = JSON.parse(savedMessages);
-          // Only update if there are more messages than we currently have
-          if (parsed.length > messages.length) {
+          const currentMsgIds = messages.map(m => m.id).join(',');
+          const newMsgIds = parsed.map((m: any) => m.id).join(',');
+
+          // Update if messages changed (different IDs or different length)
+          if (currentMsgIds !== newMsgIds || parsed.length !== messages.length) {
+            console.log('📨 New messages detected, updating...', {
+              current: messages.length,
+              new: parsed.length
+            });
             setMessages(parsed.map((msg: any) => ({
               ...msg,
               timestamp: new Date(msg.timestamp)
@@ -261,11 +268,22 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
       }
     };
 
-    const interval = setInterval(checkForNewMessages, 3000); // Check every 3 seconds
+    // Check every 2 seconds for faster response
+    const interval = setInterval(checkForNewMessages, 2000);
 
-    // Also check when page becomes visible again
+    // Listen for storage changes from other tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `admin-chat-${params.department}` && e.newValue) {
+        console.log('💾 Storage event detected from another tab');
+        checkForNewMessages();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Check when page becomes visible again
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        console.log('👁️ Page visible, checking for messages...');
         checkForNewMessages();
       }
     };
@@ -273,9 +291,10 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [params.department, messages.length]);
+  }, [params.department, messages]);
 
   useEffect(() => {
     scrollToBottom();

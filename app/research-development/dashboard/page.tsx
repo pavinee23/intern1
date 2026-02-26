@@ -300,12 +300,25 @@ export default function ResearchDevelopmentDashboardPage() {
     };
 
     const updatedMessages = [...selectedDepartment.messages, newMessage];
-    localStorage.setItem(`admin-chat-${selectedDepartment.department}`, JSON.stringify(updatedMessages));
-    
+    const storageKey = `admin-chat-${selectedDepartment.department}`;
+
+    console.log('💬 R&D Admin sending message:', {
+      department: selectedDepartment.department,
+      storageKey,
+      messageCount: updatedMessages.length,
+      newMessage: newMessage.text
+    });
+
+    localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
+
+    // Verify it was saved
+    const saved = localStorage.getItem(storageKey);
+    console.log('✅ Message saved to localStorage:', saved ? 'SUCCESS' : 'FAILED');
+
     setReplyText('');
     setReplyAttachments([]);
     loadAllDepartmentChats();
-    
+
     // Update selected department with new message
     setSelectedDepartment({
       ...selectedDepartment,
@@ -315,21 +328,39 @@ export default function ResearchDevelopmentDashboardPage() {
   };
 
   const markAsRead = (deptKey: string) => {
-    const savedMessages = localStorage.getItem(`admin-chat-${deptKey}`);
+    const storageKey = `admin-chat-${deptKey}`;
+    const savedMessages = localStorage.getItem(storageKey);
+
+    console.log('👀 Marking messages as read for:', deptKey);
+
     if (savedMessages) {
       try {
         const messages: Message[] = JSON.parse(savedMessages);
+        const unreadCount = messages.filter(m => m.role === 'user' && m.status !== 'read').length;
+
         const updatedMessages = messages.map(msg => ({
           ...msg,
           // Only mark user messages as read
           status: msg.role === 'user' ? 'read' as const : msg.status
         }));
-        localStorage.setItem(`admin-chat-${deptKey}`, JSON.stringify(updatedMessages));
+
+        console.log('✅ Marked as read:', { department: deptKey, unreadCount, total: messages.length });
+
+        localStorage.setItem(storageKey, JSON.stringify(updatedMessages));
         loadAllDepartmentChats();
       } catch (e) {
         console.error('Error marking messages as read:', e);
       }
     }
+  };
+
+  const handleCloseModal = () => {
+    // Mark messages as read when closing modal (after user has viewed them)
+    if (selectedDepartment && selectedDepartment.unreadCount > 0) {
+      console.log('📖 User closed modal, marking messages as read');
+      markAsRead(selectedDepartment.department);
+    }
+    setSelectedDepartment(null);
   };
 
   const totalUnread = departmentChats.reduce((sum, dept) => sum + dept.unreadCount, 0);
@@ -443,7 +474,7 @@ export default function ResearchDevelopmentDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button onClick={() => router.push('/')} className="text-cyan-600 hover:text-cyan-800 flex items-center gap-2">
+              <button onClick={() => router.push('/Korea/Admin-Login')} className="text-cyan-600 hover:text-cyan-800 flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />{t.back}
               </button>
               <div className="border-l-2 border-gray-300 pl-4">
@@ -487,8 +518,8 @@ export default function ResearchDevelopmentDashboardPage() {
 
       {/* Chat Modal */}
       {selectedDepartment && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDepartment(null)}>
-          <div 
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={handleCloseModal}>
+          <div
             className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -512,7 +543,7 @@ export default function ResearchDevelopmentDashboardPage() {
                 >
                   {locale === 'ko' ? '전체 대화 보기' : 'View Full Chat'}
                 </Link>
-                <button onClick={() => setSelectedDepartment(null)} className="text-white hover:bg-white/20 rounded p-1">
+                <button onClick={handleCloseModal} className="text-white hover:bg-white/20 rounded p-1">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -846,9 +877,7 @@ export default function ResearchDevelopmentDashboardPage() {
                     key={dept.department}
                     onClick={() => {
                       setSelectedDepartment(dept);
-                      if (dept.messages.length > 0) {
-                        markAsRead(dept.department);
-                      }
+                      // Don't mark as read immediately - wait until modal is closed
                     }}
                     className={`bg-gradient-to-br from-gray-50 to-white border-2 rounded-lg p-4 text-left transition-all group ${
                       dept.messages.length > 0 
