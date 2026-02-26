@@ -158,7 +158,7 @@ export default function RDLoginPage() {
 
         <div style={{ marginTop: 24, textAlign: 'center' }}>
           <button
-            onClick={() => router.push('/admin')}
+            onClick={() => router.push('/Korea/Admin-Login')}
             style={{
               background: 'none',
               border: 'none',

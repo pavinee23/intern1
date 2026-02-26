@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise'
+import bcrypt from 'bcryptjs'
 
 // Create MySQL connection pool for user database (lazy initialization)
 // Support both MYSQL_* and MYSQL_USER_* environment variables
@@ -137,9 +138,9 @@ export async function authenticateUser(
 
     const user = users[0]
 
-    // Check if password matches (plain text comparison for now)
-    // TODO: Use bcrypt for password hashing in production
-    if (user.password !== password) {
+    // Check if password matches (bcrypt)
+    const passwordMatches = await bcrypt.compare(password, user.password)
+    if (!passwordMatches) {
       return null
     }
 

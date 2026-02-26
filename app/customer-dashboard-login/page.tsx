@@ -172,8 +172,8 @@ export default function CustomerDashboardLoginPage() {
         </form>
 
         <div style={{ textAlign: 'center', marginTop: 24 }}>
-          <a href="/sites" style={{ fontSize: 13, color: '#8b5cf6', textDecoration: 'none' }}>
-            ← Back to Main Menu
+          <a href="/Korea/Admin-Login" style={{ fontSize: 13, color: '#8b5cf6', textDecoration: 'none' }} onClick={(e)=>{e.preventDefault(); window.location.href='/Korea/Admin-Login'}}>
+            ← Back to Korea Admin
           </a>
         </div>
       </div>

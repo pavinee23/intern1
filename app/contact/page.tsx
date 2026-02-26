@@ -508,7 +508,7 @@ export default function ContactPage() {
 			`}</style>
 
 			<main style={styles.container}>
-				<button onClick={() => router.push('/')} style={styles.backButton}>
+				<button onClick={() => router.push('/Korea/Admin-Login')} style={styles.backButton}>
 					← Back
 				</button>
 

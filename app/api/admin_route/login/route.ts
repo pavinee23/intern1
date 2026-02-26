@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/mysql'
+import bcrypt from 'bcryptjs'
 
 // ⚠️ Changed from 'edge' to 'nodejs' to support PostgreSQL
 export const runtime = 'nodejs'
@@ -30,8 +31,16 @@ export async function POST(req: Request) {
 
       const user = users[0]
 
-      // Check password
-      if (password !== user.password) {
+      // Check password (supports bcrypt hashes)
+      let passwordMatches = false
+      try {
+        passwordMatches = await bcrypt.compare(password, user.password)
+      } catch (e) {
+        // Fallback to plain text comparison for legacy accounts
+        passwordMatches = password === user.password
+      }
+
+      if (!passwordMatches) {
         return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })
       }
 

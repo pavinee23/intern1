@@ -40,7 +40,7 @@ export default function EnergyComparisonPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <Link href="/" className="text-gray-600 hover:text-gray-900">
+          <Link href="/Korea/Admin-Login" className="text-gray-600 hover:text-gray-900">
             ← Back
           </Link>
         </div>

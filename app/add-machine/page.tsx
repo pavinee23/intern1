@@ -216,7 +216,7 @@ export default function AddMachinePage() {
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Add Machine</h1>
           <p style={{ margin: '8px 0 0 0', color: '#6b7280' }}>Register new device </p>
         </div>
-        <Link href="/admin/AdminKsave" className="k-btn k-btn-ghost">← Back to Admin System</Link>
+        <Link href="/Korea/Admin-Login" className="k-btn k-btn-ghost">← Back to Korea Admin</Link>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>

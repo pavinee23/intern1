@@ -165,7 +165,7 @@ export default function RDSystemPage() {
               Zoom Meeting
             </button>
             <button
-              onClick={() => router.push('/admin')}
+              onClick={() => router.push('/Korea/Admin-Login')}
               style={{
                 padding: '10px 20px',
                 fontSize: 14,

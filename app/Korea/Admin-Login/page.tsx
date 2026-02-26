@@ -231,10 +231,15 @@ export default function KoreaAdminLoginPage() {
         </form>
 
         <div style={{ textAlign: 'center', marginTop: 24 }}>
-          <a href="/admin/main" style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'none' }}
+          <a
+            href="/Korea/Admin-Login"
+            style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'none', cursor: 'pointer' }}
+            onClick={(e) => { e.preventDefault(); try { (window as any).location.href = '/Korea/Admin-Login' } catch {}}
+            }
             onMouseOver={e => (e.currentTarget.style.color = '#4b5563')}
-            onMouseOut={e => (e.currentTarget.style.color = '#94a3b8')}>
-            &larr; Back to Admin System
+            onMouseOut={e => (e.currentTarget.style.color = '#94a3b8')}
+          >
+            &larr; Back to Korea Admin
           </a>
         </div>
       </div>

@@ -237,7 +237,7 @@ export default function DatabasePage() {
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Database Browser</h1>
           <p style={{ margin: '8px 0 0 0', color: '#6b7280' }}>View all tables and data in PostgreSQL database</p>
         </div>
-        <Link href="/sites" className="k-btn k-btn-ghost">← Back to Sites</Link>
+        <Link href="/Korea/Admin-Login" className="k-btn k-btn-ghost">← Back to Korea Admin</Link>
       </header>
 
       <div style={{ display: 'flex', gap: 16 }}>
