@@ -133,30 +133,61 @@ export async function authenticateUser(
     const users = rows as any[]
 
     if (users.length === 0) {
-      return null
+      console.log('[AUTH] No user found for', username);
+      return null;
     }
 
-    const user = users[0]
+    const user = users[0];
+    console.log('[AUTH] User record:', user);
 
-    // Check if password matches (bcrypt)
-    const passwordMatches = await bcrypt.compare(password, user.password)
+    // Check if password matches (bcrypt). If DB contains a plaintext password, allow it and upgrade to bcrypt.
+    const storedPassword = user.password || '';
+    let passwordMatches = false;
+    try {
+      passwordMatches = await bcrypt.compare(password, storedPassword);
+    } catch (err: any) {
+      passwordMatches = false;
+    }
+
     if (!passwordMatches) {
-      return null
+      // Fallback: if stored password appears to be plaintext and matches input, accept and upgrade to bcrypt
+      const looksLikeHash = typeof storedPassword === 'string' && /^\$2[aby]\$/.test(storedPassword);
+      if (!looksLikeHash && storedPassword === password) {
+        passwordMatches = true;
+        try {
+          const newHash = await bcrypt.hash(password, 10);
+          // Update password hash in DB (non-blocking but await to ensure consistency)
+          await connection.execute('UPDATE user_list SET password = ? WHERE userId = ?', [newHash, user.userId]);
+          console.log('[AUTH] Upgraded plaintext password to bcrypt for', username);
+        } catch (err: any) {
+          console.error('[AUTH] Failed to upgrade password hash for', username, (err && (err as any).message) || err);
+        }
+      } else {
+        console.log('[AUTH] Password mismatch for', username);
+        return null;
+      }
     }
 
-    // Super users (typeID 4/7 or userId 1/7) bypass site check
-    const isSuperUser = user.typeID === 4 || user.typeID === 7
+    // Super users (typeID 4/7/18 or userId 1/7 or site contains 'admin') bypass site check
+    const siteValue = (user.site || '').toString().toLowerCase();
+    console.log('[AUTH] siteValue:', siteValue, 'input site:', site);
+    const isSuperUser = user.typeID === 4 || user.typeID === 7 || user.typeID === 18
       || user.userId === 1 || user.userId === 7
+      || siteValue.includes('admin');
+    console.log('[AUTH] isSuperUser:', isSuperUser);
 
     // If site is provided, check if it matches (supports comma-separated sites in DB)
     if (!isSuperUser && site && user.site) {
-      const allowedSites = user.site.split(',').map((s: string) => s.trim().toLowerCase())
+      const allowedSites = user.site.split(',').map((s: string) => s.trim().toLowerCase());
+      console.log('[AUTH] allowedSites:', allowedSites);
       if (!allowedSites.includes(site.trim().toLowerCase())) {
-        return null
+        console.log('[AUTH] Site mismatch for', username, 'allowed:', allowedSites, 'input:', site);
+        return null;
       }
     } else if (!isSuperUser && site && !user.site) {
       // User has no site in database but site is required
-      return null
+      console.log('[AUTH] Site required but missing in DB for', username);
+      return null;
     }
 
     // Return user data (without password)

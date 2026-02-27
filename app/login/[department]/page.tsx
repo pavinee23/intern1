@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, User, ArrowLeft, Briefcase, Users, FileText, BarChart3, Package, MapPin, Bell, Headphones, Wrench, FlaskConical } from 'lucide-react';
+import { Lock, User, ArrowLeft, Briefcase, Users, FileText, BarChart3, Package, MapPin, Bell, Headphones, Wrench, FlaskConical, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -98,6 +98,12 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -188,6 +194,7 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
       const userTypeID = parseInt(data.typeID);
       const deptID = data.departmentID || '';
       const userId = data.userId;
+      const siteValue = (data.site || '').toString().toLowerCase();
 
       console.log('👤 User login data:', { userId, username: data.username, typeID: userTypeID, departmentID: deptID });
 
@@ -195,8 +202,9 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
       // - Executive, Admin, CRM, Branch Manager departments
       // - typeID 4 (Admin) or 7 (Branch Manager)
       // - userId 1 or 7 (special admin users)
-      const isSuperUser = userTypeID === 4 || userTypeID === 7 || userId === 1 || userId === 7
-        || deptID === 'Executive' || deptID === 'Admin' || deptID === 'CRM' || deptID === 'Branch Manager';
+      const isSuperUser = userTypeID === 4 || userTypeID === 7 || userTypeID === 18 || userId === 1 || userId === 7
+        || deptID === 'Executive' || deptID === 'Admin' || deptID === 'CRM' || deptID === 'Branch Manager'
+        || siteValue.includes('admin');
 
       // Check if this user belongs to the department they are trying to log into
       if (!isSuperUser) {
@@ -324,13 +332,25 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
                   </div>
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder={t.passwordPlaceholder}
                     required
                   />
+                  {mounted && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

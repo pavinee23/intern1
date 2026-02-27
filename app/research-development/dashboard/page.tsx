@@ -60,13 +60,14 @@ interface DepartmentMessages {
 export default function ResearchDevelopmentDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
-  const t = translations[locale];
+  const t = translations[locale] as any;
   
   const [departmentChats, setDepartmentChats] = useState<DepartmentMessages[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentMessages | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replyAttachments, setReplyAttachments] = useState<FileAttachment[]>([]);
   const [userName, setUserName] = useState('');
+  const [mounted, setMounted] = useState(false);
   const [previousUnreadCounts, setPreviousUnreadCounts] = useState<Record<string, number>>({});
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
@@ -85,6 +86,10 @@ export default function ResearchDevelopmentDashboardPage() {
         Notification.requestPermission();
       }
     }
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   const departmentConfigs = useMemo(() => ({
@@ -400,7 +405,25 @@ export default function ResearchDevelopmentDashboardPage() {
     },
   ], [locale]);
 
-  const menuCards = [
+  type MenuCard = {
+    icon: any;
+    title: string;
+    description: string;
+    href: string;
+    color: string;
+    count: number | null;
+    external?: boolean;
+  };
+
+  const menuCards: MenuCard[] = [
+    {
+      icon: FileText,
+      title: locale === 'ko' ? 'เพิ่มโครงการ' : 'Create Project',
+      description: locale === 'ko' ? 'สร้างโครงการ R&D ใหม่' : 'Add a new R&D project',
+      href: '/research-development/projects/new',
+      color: 'bg-indigo-500',
+      count: null,
+    },
     {
       icon: Lightbulb,
       title: t.activeProjects,
@@ -441,6 +464,14 @@ export default function ResearchDevelopmentDashboardPage() {
       color: 'bg-cyan-600',
       count: null,
       external: true
+    },
+    {
+      icon: Download,
+      title: locale === 'ko' ? '데이터 내보내기' : 'Export Data',
+      description: locale === 'ko' ? '데이터를 CSV/JSON으로 내보내 AI 학습에 사용' : 'Export DB tables to CSV/JSON for AI training',
+      href: '/research-development/export',
+      color: 'bg-emerald-500',
+      count: null,
     },
   ];
 
@@ -490,27 +521,34 @@ export default function ResearchDevelopmentDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {/* Quick Messages Button - Scroll to Message Center */}
-              <button
-                onClick={() => {
-                  const messageCenter = document.getElementById('message-center');
-                  if (messageCenter) {
-                    messageCenter.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
-                }}
-                className="relative px-4 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors flex items-center gap-2 border-2 border-purple-200"
-              >
-                <MessageCircle className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium text-purple-700">
-                  {locale === 'ko' ? '부서 메시지' : 'Messages'}
-                </span>
-                {totalUnread > 0 && (
-                  <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                    {totalUnread > 9 ? '9+' : totalUnread}
+              {/* Quick Messages Button - render only after client mount to avoid hydration mismatch */}
+              {mounted ? (
+                <button
+                  onClick={() => {
+                    const messageCenter = document.getElementById('message-center');
+                    if (messageCenter) {
+                      messageCenter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                  }}
+                  className="relative px-4 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors flex items-center gap-2 border-2 border-purple-200"
+                >
+                  <MessageCircle className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-700">
+                    {locale === 'ko' ? '부서 메시지' : 'Messages'}
                   </span>
-                )}
-              </button>
-              <LanguageSwitcher />
+                  {totalUnread > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {totalUnread > 9 ? '9+' : totalUnread}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <div className="relative px-4 py-2 rounded-lg bg-purple-50 transition-colors flex items-center gap-2 border-2 border-purple-200">
+                  <MessageCircle className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-700">{locale === 'ko' ? '부서 메시지' : 'Messages'}</span>
+                </div>
+              )}
+              {mounted ? <LanguageSwitcher /> : <div className="w-[140px]" />}
             </div>
           </div>
         </div>
@@ -966,9 +1004,9 @@ export default function ResearchDevelopmentDashboardPage() {
             }
             
             return (
-              <button
+              <Link
                 key={index}
-                onClick={() => router.push(card.href)}
+                href={card.href}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 text-left group"
               >
                 <div className="flex items-start gap-4">
@@ -985,7 +1023,7 @@ export default function ResearchDevelopmentDashboardPage() {
                     <p className="text-sm text-gray-600">{card.description}</p>
                   </div>
                 </div>
-              </button>
+              </Link>
             );
           })}
         </div>
