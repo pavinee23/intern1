@@ -1,5 +1,5 @@
 interface CountryFlagProps {
-  country?: 'KR' | 'GB' | 'TH' | 'BN' | 'VN' | 'CN';
+  country?: 'KR' | 'GB' | 'BN' | 'VN' | 'CN';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }

@@ -80,7 +80,7 @@ Translate uploaded files to target language.
 - Content-Type: `multipart/form-data`
 - Body:
   - `file`: File to translate (PDF, TXT, images)
-  - `targetLanguage`: Target language code (`th`, `zh`, `en`, `ko`, `vi`, `ms`)
+  - `targetLanguage`: Target language code (`zh`, `en`, `ko`, `vi`, `ms`)
 
 **Response:**
 - Translated file in original format
@@ -90,7 +90,7 @@ Translate uploaded files to target language.
 ```typescript
 const formData = new FormData();
 formData.append('file', fileObject);
-formData.append('targetLanguage', 'th');
+formData.append('targetLanguage', 'ko');
 
 const response = await fetch('/api/translate-file', {
   method: 'POST',
@@ -109,7 +109,7 @@ Health check endpoint.
 {
   "status": "ok",
   "message": "Translation API is running",
-  "supportedLanguages": ["th", "zh", "en", "ko", "vi", "ms"],
+  "supportedLanguages": ["zh", "en", "ko", "vi", "ms"],
   "supportedFormats": ["txt", "pdf", "jpg", "jpeg", "png", "gif"]
 }
 ```

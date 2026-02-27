@@ -223,7 +223,7 @@ ${text}
  */
 export async function explainConcept(concept: string): Promise<GeminiResponse> {
   const prompt = `
-อธิบายแนวคิด/เทคโนโลยีนี้อย่างละเอียดเป็นภาษาไทย:
+
 ${concept}
 
 กรุณาอธิบาย:

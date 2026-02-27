@@ -60,7 +60,7 @@ Translate the text naturally while preserving:
 - Business tone and formality
 - Cultural context
 
-Supported languages: Thai, Chinese, English, Korean, Vietnamese, Malay.
+Supported languages: Chinese, English, Korean, Vietnamese, Malay.
 Provide natural, fluent translations that sound native.`,
 
   // Chat assistant for branch offices
@@ -117,7 +117,7 @@ export const AI_CONFIG = {
 export const LANGUAGE_CODES = {
   ko: 'Korean',
   en: 'English',
-  th: 'Thai',
+  // th: 'Thai',
   zh: 'Chinese',
   vi: 'Vietnamese',
   ms: 'Malay',
@@ -180,10 +180,10 @@ export const BRANCH_INFO = {
     language: 'Malay',
     timezone: 'Asia/Brunei',
   },
-  'thailand-chat': {
-    name: 'Thailand Office',
-    country: 'Thailand',
-    language: 'Thai',
+  // 'thailand-chat': {
+  //   name: 'Thailand Office',
+  //   country: 'Thailand',
+  //   language: 'Thai',
     timezone: 'Asia/Bangkok',
   },
   'vietnam-chat': {
