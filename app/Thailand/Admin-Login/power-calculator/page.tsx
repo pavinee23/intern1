@@ -6,6 +6,49 @@ import { useRouter } from 'next/navigation'
 import styles from '../admin-theme.module.css'
 
 export default function PowerCalculatorPage() {
+    // ตรวจสอบและสร้างข้อมูลใหม่ถ้ายังไม่มีในฐานข้อมูล
+    useEffect(() => {
+      async function ensureInitialData() {
+        try {
+          const res = await fetch('/api/power-calculations?limit=1')
+          const j = await res.json()
+          if (j && j.success && Array.isArray(j.rows) && j.rows.length === 0) {
+            // ยังไม่มีข้อมูล สร้างข้อมูลใหม่
+            await fetch('/api/power-calculations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: 'Power Calculation',
+                parameters: { voltage: 230, current: 0, pf: 1, phase: 'single', appliances: [] },
+                result: { real: 0, apparent: 0, reactive: 0 },
+                created_by: 'system',
+                cusID: null
+              })
+            })
+          }
+        } catch (e) {
+          // ignore error
+        }
+      }
+      ensureInitialData()
+    }, [])
+
+  // Auto-generate Power Calcu No on page load
+  useEffect(() => {
+    async function generatePowerCalcuNo() {
+      try {
+        const res = await fetch('/api/power-calcu-seq')
+        const j = await res.json()
+        if (res.ok && j && j.success && j.formatted) {
+          setPowerCalcuNo(j.formatted)
+        }
+      } catch (e) {
+        console.error('Auto-generate power calcu no error', e)
+      }
+    }
+    generatePowerCalcuNo()
+  }, [])
+
   const router = useRouter()
   const [voltage, setVoltage] = useState<number>(230)
   const [current, setCurrent] = useState<number>(0)
@@ -17,7 +60,7 @@ export default function PowerCalculatorPage() {
   const [newUsage, setNewUsage] = useState<{period:string; kwh:number; peak_kw?:number}>({ period: '', kwh: 0 })
   const [results, setResults] = useState({ real: 0, apparent: 0, reactive: 0 })
   const [title, setTitle] = useState<string>('Power Calculation')
-  const [customer, setCustomer] = useState<{ name?: string; phone?: string; address?: string } | null>(null)
+  const [customer, setCustomer] = useState<{ cusID?: number; name?: string; phone?: string; address?: string } | null>(null)
   const [loadingSave, setLoadingSave] = useState(false)
   const [powerCalcuNo, setPowerCalcuNo] = useState<string | null>(null)
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
@@ -290,25 +333,25 @@ export default function PowerCalculatorPage() {
 
   // Compute power analysis summary values
   const powerAnalysis = useMemo(() => {
-    const monthlySavingsKwh = avgMonthlyUsage * (powerSavingRate / 100)
-    const monthlySavingsBaht = monthlySavingsKwh * unitPrice
-    const annualSavingsBaht = monthlySavingsBaht * 12
-    const carbonReduction = monthlySavingsKwh * 12 * emissionFactor
-    const monthlyPayment = paymentMonths > 0 ? productPrice / paymentMonths : 0
-    const roiYears = annualSavingsBaht > 0 ? productPrice / annualSavingsBaht : 0
+    const monthlySavingsKwh = avgMonthlyUsage * (powerSavingRate / 100);
+    const monthlySavingsBaht = monthlySavingsKwh * unitPrice;
+    const annualSavingsBaht = monthlySavingsBaht * 12;
+    const carbonReduction = monthlySavingsKwh * 12 * emissionFactor;
+    const monthlyPayment = paymentMonths > 0 ? productPrice / paymentMonths : 0;
+    const roiYears = annualSavingsBaht > 0 ? productPrice / annualSavingsBaht : 0;
 
     // ROI table data (14 years)
     const roiTableData = Array.from({ length: 14 }).map((_, idx) => {
-      const year = idx + 1
-      const cumulative = (annualSavingsBaht * year) - productPrice
+      const year = idx + 1;
+      const cumulative = (annualSavingsBaht * year) - productPrice;
       return {
         year,
         annualSavings: annualSavingsBaht,
         cumulative,
         investment: productPrice,
         progressPercent: Math.min(100, Math.max(0, ((annualSavingsBaht * year) / (productPrice * 2)) * 100))
-      }
-    })
+      };
+    });
 
     return {
       monthlySavingsKwh,
@@ -318,8 +361,8 @@ export default function PowerCalculatorPage() {
       monthlyPayment,
       roiYears,
       roiTableData
-    }
-  }, [avgMonthlyUsage, powerSavingRate, unitPrice, emissionFactor, productPrice, paymentMonths])
+    };
+  }, [avgMonthlyUsage, powerSavingRate, unitPrice, emissionFactor, productPrice, paymentMonths]);
 
   return (
     <AdminLayout title="Power Calculator" titleTh="เครื่องคิดกำลังไฟฟ้า">
@@ -341,7 +384,7 @@ export default function PowerCalculatorPage() {
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>{L('Power Calcu No','เลขที่บิล')}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input value={powerCalcuNo || ''} onChange={e => setPowerCalcuNo(e.target.value || null)} placeholder={L('Bill No (optional)','เลขที่บิล (ไม่บังคับ)')} className={styles.formInput} style={{ width: 320 }} />
+                <input value={powerCalcuNo || ''} onChange={e => setPowerCalcuNo(e.target.value || null)} placeholder={L('Bill No','เลขที่บิล')} className={styles.formInput} style={{ width: 320 }} required />
                 <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={async () => {
                   try {
                     const res = await fetch('/api/power-calcu-seq')
@@ -433,11 +476,12 @@ export default function PowerCalculatorPage() {
                   const j = await res.json()
                   if (res.ok && j && Array.isArray(j.customers)) {
                     setCustomerResults(j.customers)
-                    setShowCustomerModal(true)
                   } else {
+                    setCustomerResults([])
                     alert(L('No customers found','ไม่พบลูกค้า'))
                   }
                 } catch (err) {
+                  setCustomerResults([])
                   console.error('Customer search error', err)
                   alert(L('Search failed','ค้นหาไม่สำเร็จ'))
                 } finally {
@@ -504,6 +548,40 @@ export default function PowerCalculatorPage() {
             )}
           </div>
 
+          {/* Customer search results */}
+          {customerResults.length > 0 && (
+            <div style={{ marginTop: 18, padding: 12, background: '#fff', borderRadius: 8, border: '1px solid #e6eef6' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontWeight: 700 }}>{L('Search Results','ผลการค้นหา')}</div>
+                <button className={styles.btnOutline} onClick={() => setCustomerResults([])}>{L('Close','ปิด')}</button>
+              </div>
+              {customerResults.length === 0 ? (
+                <div style={{ color: '#666' }}>{L('No customers','ไม่พบลูกค้า')}</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.table} style={{ width: '100%', minWidth: 600, tableLayout: 'fixed' }}>
+                    <colgroup><col style={{ width: '35%' }} /><col style={{ width: '20%' }} /><col style={{ width: '30%' }} /><col style={{ width: '15%' }} /></colgroup>
+                    <thead>
+                      <tr><th>{L('Name','ชื่อ')}</th><th>{L('Phone','โทรศัพท์')}</th><th>{L('Address','ที่อยู่')}</th><th style={{ textAlign: 'center' }}>{L('Action','เลือก')}</th></tr>
+                    </thead>
+                    <tbody>
+                      {customerResults.map((c, i) => (
+                        <tr key={i}>
+                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.fullname || c.name || ''}</td>
+                          <td style={{ fontSize: 13 }}>{c.phone || c.tel || c.customer_phone || ''}</td>
+                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>{c.address || c.site_address || ''}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ fontSize: 12, padding: '4px 8px' }} onClick={() => { const customerName = c.fullname || c.name || ''; setCustomer({ cusID: c.cusID, name: customerName, phone: c.phone || c.tel || c.customer_phone || '', address: c.address || c.site_address || '' }); setCompanyName(customerName); setCustomerResults([]); setCustomerSearchTerm('') }}>{L('Select','เลือก')}</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginTop: '24px', background: 'linear-gradient(135deg, #255899 0%, #1e4a80 100%)', padding: '24px', borderRadius: '12px', color: '#fff' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>{L('Results', 'ผลลัพธ์')}</h3>
 
@@ -564,7 +642,7 @@ export default function PowerCalculatorPage() {
                         <td>{c.phone || c.tel || c.customer_phone || ''}</td>
                         <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.address || c.site_address || ''}</td>
                         <td style={{ textAlign: 'center' }}>
-                          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { const customerName = c.fullname || c.name || ''; setCustomer({ name: customerName, phone: c.phone || c.tel || c.customer_phone || '', address: c.address || c.site_address || '' }); setCompanyName(customerName); setShowCustomerModal(false); setCustomerSearchTerm('') }}>{L('Select','เลือก')}</button>
+                          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { const customerName = c.fullname || c.name || ''; setCustomer({ cusID: c.cusID, name: customerName, phone: c.phone || c.tel || c.customer_phone || '', address: c.address || c.site_address || '' }); setCompanyName(customerName); setShowCustomerModal(false); setCustomerSearchTerm('') }}>{L('Select','เลือก')}</button>
                         </td>
                       </tr>
                     ))}
@@ -606,7 +684,7 @@ export default function PowerCalculatorPage() {
                                 const form = j.form
                                 const cu = form.customer || { fullname: form.customer_name || form.site_name, phone: form.customer_phone, address: form.site_address || form.address }
                                 const customerName = cu.fullname || cu.name || ''
-                                setCustomer({ name: customerName, phone: cu.phone || cu.contact_phone || '', address: cu.address || cu.site_address || '' })
+                                setCustomer({ cusID: cu.cusID, name: customerName, phone: cu.phone || cu.contact_phone || '', address: cu.address || cu.site_address || '' })
                                 setCompanyName(customerName)
                                 setImportedPreInstID(form.formID || form.formID)
                                 setShowPreInstallModal(false)
@@ -1032,6 +1110,11 @@ export default function PowerCalculatorPage() {
 
           <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
               <button type="button" onClick={async () => {
+              // Validate required fields
+              if (!powerCalcuNo || powerCalcuNo.trim() === '') {
+                alert(L('Please enter Power Calcu No', 'กรุณากรอกเลขที่บิล'))
+                return
+              }
               setLoadingSave(true)
               try {
                 let createdBy = 'thailand admin'
@@ -1044,10 +1127,37 @@ export default function PowerCalculatorPage() {
                 } catch (_) {}
                 const payload = {
                   title: title || null,
-                  parameters: { voltage, current, pf, phase, appliances },
+                  parameters: {
+                    voltage,
+                    current,
+                    pf,
+                    phase,
+                    appliances,
+                    usageHistory,
+                    unitPrice,
+                    expectedSavingsPercent,
+                    deviceCost,
+                    amortizeMonths,
+                    contractedCapacity,
+                    peakPower,
+                    avgMonthlyUsage,
+                    faucetMethod,
+                    powerSavingRate,
+                    deviceCapacity,
+                    productPrice,
+                    paymentMonths,
+                    emissionFactor,
+                    companyName,
+                    usageDataMonths,
+                    monthlyKwh,
+                    preInstallResults,
+                    importedPreInstID,
+                    show12MonthModal,
+                    twelveMonths
+                  },
                   result: results,
                   power_calcuNo: powerCalcuNo || null,
-                  customer: customer || null,
+                  cusID: customer?.cusID || null,
                   usage_history: usageHistory,
                   pre_inst_id: importedPreInstID || null,
                   created_by: createdBy

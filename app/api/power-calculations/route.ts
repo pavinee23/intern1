@@ -9,17 +9,21 @@ export async function GET(request: NextRequest) {
     const calcID = searchParams.get('calcID')
     const cusID = searchParams.get('cusID')
 
+    // ตรวจสอบภาษา
+    const lang = searchParams.get('lang') || 'th';
     let query = `
       SELECT
-        calcID,
-        power_calcuNo,
-        title,
-        parameters,
-        result,
-        created_by,
-        created_at,
-        cusID
-      FROM power_calculations
+        p.calcID,
+        p.power_calcuNo,
+        p.title,
+        p.parameters,
+        p.result,
+        p.created_by,
+        p.created_at,
+        p.cusID,
+        COALESCE(c.fullname, '-') as customerName
+      FROM power_calculations p
+      LEFT JOIN cus_detail c ON p.cusID = c.cusID
       WHERE 1=1
     `
 
@@ -39,6 +43,7 @@ export async function GET(request: NextRequest) {
     params.push(limit, offset)
 
     const [rows] = await pool.query(query, params)
+    // ถ้าต้องการรองรับชื่อภาษาอังกฤษ/ไทย สามารถปรับตรงนี้ได้ (เช่น fullname_en, fullname_th)
 
     // Get total count
     let countQuery = `SELECT COUNT(*) as total FROM power_calculations WHERE 1=1`
@@ -81,15 +86,38 @@ export async function POST(request: NextRequest) {
       parameters,
       result,
       created_by,
-      cusID
+      cusID,
+      power_calcuNo,
+      usage_history,
+      pre_inst_id
     } = body
 
-    // Generate power_calcuNo
-    const [maxResult] = await pool.query(
-      'SELECT MAX(calcID) as maxID FROM power_calculations'
+    // Validate required field
+    if (!power_calcuNo) {
+      return NextResponse.json(
+        { success: false, error: 'power_calcuNo is required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if power_calcuNo already exists
+    const [existingResult] = await pool.query(
+      'SELECT calcID FROM power_calculations WHERE power_calcuNo = ?',
+      [power_calcuNo]
     )
-    const nextID = ((maxResult as any)[0].maxID || 0) + 1
-    const powerCalcuNo = `PWR-${String(nextID).padStart(6, '0')}`
+    if ((existingResult as any[]).length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'Power Calcu No already exists. Please refresh to get a new number.' },
+        { status: 400 }
+      )
+    }
+
+    // Store usage_history and pre_inst_id in parameters
+    const enrichedParameters = {
+      ...parameters,
+      usage_history,
+      pre_inst_id
+    }
 
     const query = `
       INSERT INTO power_calculations (
@@ -98,9 +126,9 @@ export async function POST(request: NextRequest) {
     `
 
     const [insertResult] = await pool.query(query, [
-      powerCalcuNo,
+      power_calcuNo,
       title || 'Untitled Calculation',
-      JSON.stringify(parameters || {}),
+      JSON.stringify(enrichedParameters),
       JSON.stringify(result || {}),
       created_by || 'system',
       cusID || null
@@ -109,7 +137,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       calcID: (insertResult as any).insertId,
-      powerCalcuNo
+      powerCalcuNo: power_calcuNo
     })
   } catch (error: any) {
     console.error('Create power calculation error:', error)
