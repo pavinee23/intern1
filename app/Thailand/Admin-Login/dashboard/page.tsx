@@ -514,7 +514,7 @@ export default function ThailandAdminDashboard() {
               {L('Manage your business at a glance', 'ภาพรวมการจัดการธุรกิจของคุณ')}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button onClick={() => router.push('/Thailand/Admin-Login/purchase-order')} style={{
               padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(255,255,255,0.25)',
               background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 700,
@@ -532,6 +532,32 @@ export default function ThailandAdminDashboard() {
             onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
             onMouseOut={e => (e.currentTarget.style.transform = 'translateY(0)')}>
               {L('Contracts', 'สัญญา')}
+            </button>
+            <button onClick={() => router.push('/Thailand/Admin-Login/accounting-login')} style={{
+              padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(255,255,255,0.25)',
+              background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', backdropFilter: 'blur(4px)', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+            onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+              {L('Accounting System', 'ระบบงบดุล')}
+            </button>
+            <button onClick={() => router.push('/Thailand/Admin-Login/marketing-login')} style={{
+              padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(255,255,255,0.25)',
+              background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', backdropFilter: 'blur(4px)', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+            onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+              </svg>
+              {L('Marketing System', 'ระบบการตลาด')}
             </button>
           </div>
         </div>
