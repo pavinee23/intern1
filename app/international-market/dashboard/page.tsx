@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -23,6 +23,7 @@ import {
   Activity,
   Workflow,
   Shield,
+  Users,
 } from 'lucide-react';
 
 export default function InternationalMarketDashboardPage() {
@@ -30,6 +31,20 @@ export default function InternationalMarketDashboardPage() {
   const { locale } = useLocale();
   const t = translations[locale];
   const [selectedBranch, setSelectedBranch] = useState('all');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const userData = localStorage.getItem('k_system_admin_user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+    }
+  }, []);
 
   const branches = [
     { id: 'all', name: locale === 'ko' ? '전체 지점' : 'All Branches', country: 'All', countryCode: null as null },
@@ -216,7 +231,17 @@ export default function InternationalMarketDashboardPage() {
                 </div>
               </div>
             </div>
-            <LanguageSwitcher />
+            <div className="flex items-center gap-3">
+              {mounted && currentUser && (
+                <div className="px-4 py-2 rounded-lg bg-purple-50 border-2 border-purple-200 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-700">
+                    {currentUser.name || currentUser.username}
+                  </span>
+                </div>
+              )}
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </div>

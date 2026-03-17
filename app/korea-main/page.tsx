@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Home, Users, FileText, BarChart3, Settings, Bell, MapPin, Package, Headphones, Wrench, Briefcase, FlaskConical, MessageCircle, Globe, Network } from 'lucide-react';
+import { Home, Users, FileText, BarChart3, Settings, Bell, MapPin, Package, Headphones, Wrench, Briefcase, FlaskConical, MessageCircle, Globe, Network, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
@@ -15,6 +15,7 @@ export default function HomePage() {
   const { locale } = useLocale();
   const t = translations[locale];
 
+  const [mounted, setMounted] = useState(false);
   const [currentUser, setCurrentUser] = useState<{
     userId: number;
     username: string;
@@ -26,6 +27,7 @@ export default function HomePage() {
   } | null>(null);
 
   useEffect(() => {
+    setMounted(true);
     const userData = localStorage.getItem('k_system_admin_user');
     if (userData) {
       try {
@@ -149,6 +151,13 @@ export default function HomePage() {
       href: 'https://flow.team/signin.act',
       color: 'bg-pink-500',
       external: true
+    },
+    { 
+      icon: QrCode, 
+      title: t.qrCodeSystem,
+      description: t.qrCodeSystemDesc,
+      href: '/login/qr-code',
+      color: 'bg-rose-500'
     },
   ];
 
@@ -283,8 +292,8 @@ export default function HomePage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="KR" size="md" />
-                  <span className="text-lg font-bold text-green-600">
-                    ₩{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US', { 
+                  <span suppressHydrationWarning className="text-lg font-bold text-green-600">
+                    ₩{new Intl.NumberFormat((mounted ? locale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(42180000000)}
@@ -292,8 +301,8 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="TH" size="md" />
-                  <span className="text-lg font-bold text-green-600">
-                    ฿{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US', { 
+                  <span suppressHydrationWarning className="text-lg font-bold text-green-600">
+                    ฿{new Intl.NumberFormat((mounted ? locale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(67320000)}
@@ -308,8 +317,8 @@ export default function HomePage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="KR" size="md" />
-                  <span className="text-lg font-bold text-orange-600">
-                    ₩{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US', { 
+                  <span suppressHydrationWarning className="text-lg font-bold text-orange-600">
+                    ₩{new Intl.NumberFormat((mounted ? locale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(116240000000)}
@@ -317,8 +326,8 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="VN" size="md" />
-                  <span className="text-lg font-bold text-orange-600">
-                    ₫{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US', { 
+                  <span suppressHydrationWarning className="text-lg font-bold text-orange-600">
+                    ₫{new Intl.NumberFormat((mounted ? locale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(62230000000)}

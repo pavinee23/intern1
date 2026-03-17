@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function UserLogin() {
 	const router = useRouter()
 	const [username, setUsername] = useState('')
 	const [password, setPassword] = useState('')
+	const [showPassword, setShowPassword] = useState(false)
 	const [site, setSite] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -189,21 +191,32 @@ export default function UserLogin() {
 							<span style={styles.labelIcon}>🔒</span>
 							<span>Password</span>
 						</label>
-						<input
-							required
-							type="password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							onFocus={() => setFocusedInput('password')}
-							onBlur={() => setFocusedInput(null)}
-							placeholder="Enter your password"
-							autoComplete="current-password"
-							style={{
-								...styles.input,
-								borderColor: focusedInput === 'password' ? '#10b981' : '#e5e7eb',
-								boxShadow: focusedInput === 'password' ? '0 0 0 3px rgba(16, 185, 129, 0.1)' : 'none'
-							}}
-						/>
+						<div style={{ position: 'relative' }}>
+							<input
+								required
+								type={showPassword ? 'text' : 'password'}
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								onFocus={() => setFocusedInput('password')}
+								onBlur={() => setFocusedInput(null)}
+								placeholder="Enter your password"
+								autoComplete="current-password"
+								style={{
+									...styles.input,
+									paddingRight: '48px',
+									borderColor: focusedInput === 'password' ? '#10b981' : '#e5e7eb',
+									boxShadow: focusedInput === 'password' ? '0 0 0 3px rgba(16, 185, 129, 0.1)' : 'none'
+								}}
+							/>
+							<button
+								type="button"
+								onClick={() => setShowPassword((s) => !s)}
+								aria-label={showPassword ? 'Hide password' : 'Show password'}
+								style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex', alignItems: 'center' }}
+							>
+								{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+							</button>
+						</div>
 					</div>
 
 					{/* Site Input */}

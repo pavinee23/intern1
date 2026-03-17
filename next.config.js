@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // output: 'standalone', // Disabled - causing CSS 404 issues
   compress: true,
   eslint: {
     ignoreDuringBuilds: true,

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -16,12 +17,27 @@ import {
   Clock,
   Workflow,
   Shield,
+  Users,
 } from 'lucide-react';
 
 export default function QualityControlDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
   const t = translations[locale];
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const userData = localStorage.getItem('k_system_admin_user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+    }
+  }, []);
 
   const stats = {
     totalInspections: 312,
@@ -104,7 +120,17 @@ export default function QualityControlDashboardPage() {
                 </div>
               </div>
             </div>
-            <LanguageSwitcher />
+            <div className="flex items-center gap-3">
+              {mounted && currentUser && (
+                <div className="px-4 py-2 rounded-lg bg-yellow-50 border-2 border-yellow-200 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-700">
+                    {currentUser.name || currentUser.username}
+                  </span>
+                </div>
+              )}
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </div>

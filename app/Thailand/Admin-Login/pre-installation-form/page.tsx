@@ -6,6 +6,9 @@ import AdminLayout from '../components/AdminLayout'
 import styles from '../admin-theme.module.css'
 
 export default function PreInstallationFormPage() {
+    const [customerSearch, setCustomerSearch] = useState('')
+    const [customerOptions, setCustomerOptions] = useState<any[]>([])
+    const [customerLoading, setCustomerLoading] = useState(false)
   const router = useRouter()
   const [locale, setLocale] = useState<'en' | 'th'>('en')
   const [saving, setSaving] = useState(false)
@@ -90,7 +93,12 @@ export default function PreInstallationFormPage() {
           conditions,
           loadInspection,
           specialNotes
-        }
+        },
+        // เพิ่มฟิลด์ที่เกี่ยวข้องกับเลขที่รันและข้อมูลอื่นๆ
+        notes: '',
+        photos: [],
+        status: 'pending',
+        created_by: (typeof window !== 'undefined' && localStorage.getItem('k_system_admin_user')) ? JSON.parse(localStorage.getItem('k_system_admin_user') || '{}').username || 'system' : 'system'
       }
 
       const res = await fetch('/api/pre-installation', {
@@ -175,7 +183,49 @@ export default function PreInstallationFormPage() {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Customer/Company Name', 'ชื่อลูกค้า/บริษัท')}</label>
-                <input className={styles.formInput} value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className={styles.formInput}
+                    value={customerSearch}
+                    onChange={async e => {
+                      setCustomerSearch(e.target.value)
+                      setCustomerName(e.target.value)
+                      if (e.target.value.length > 1) {
+                        setCustomerLoading(true)
+                        try {
+                          const res = await fetch(`/api/customers?q=${encodeURIComponent(e.target.value)}`)
+                          const j = await res.json()
+                          if (j && (j.customers || j.rows)) setCustomerOptions(j.customers || j.rows)
+                          else setCustomerOptions([])
+                        } catch { setCustomerOptions([]) }
+                        setCustomerLoading(false)
+                      } else {
+                        setCustomerOptions([])
+                      }
+                    }}
+                    placeholder={L('Customer/Company Name', 'ชื่อลูกค้า/บริษัท')}
+                    autoComplete="off"
+                  />
+                  {customerLoading && <div style={{ position: 'absolute', right: 8, top: 10, fontSize: 12, color: '#888' }}>...</div>}
+                  {customerOptions.length > 0 && (
+                    <div style={{ position: 'absolute', left: 0, right: 0, top: 38, background: '#fff', border: '1px solid #eee', zIndex: 10, maxHeight: 180, overflowY: 'auto', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                      {customerOptions.map(cus => (
+                        <div key={cus.cusID} style={{ padding: 8, cursor: 'pointer', borderBottom: '1px solid #f3f3f3' }}
+                          onClick={() => {
+                            setCustomerName(cus.fullname)
+                            setCustomerSearch(cus.fullname)
+                            setContactPhone(cus.phone || '')
+                            setSiteAddress(cus.address || '')
+                            setCustomerOptions([])
+                          }}
+                        >
+                          <div style={{ fontWeight: 600 }}>{cus.fullname}</div>
+                          <div style={{ fontSize: 13, color: '#666' }}>{cus.company || ''} {cus.phone ? ' | ' + cus.phone : ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Inspection Date', 'วันที่ตรวจสอบ')}</label>

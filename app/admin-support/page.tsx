@@ -6,6 +6,7 @@ import Link from 'next/link';
 import CompanyLogo from '@/components/CompanyLogo';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLocale } from '@/lib/LocaleContext';
+import { translations } from '@/lib/translations';
 
 const departments = [
   { slug: 'executive',            label: 'Executive',              icon: '🏢', color: '#475569' },
@@ -42,6 +43,7 @@ const deptIDtoSlug: Record<string, string> = {
 export default function AdminSupportPage() {
   const router = useRouter();
   const { locale } = useLocale();
+  const t = translations[locale];
   const [userName, setUserName] = useState('');
   const [deptSlug, setDeptSlug] = useState('');
 
@@ -143,7 +145,7 @@ export default function AdminSupportPage() {
       <div style={{ marginTop: 32, textAlign: 'center' }}>
         <button onClick={() => router.push('/Korea/Admin-Login')}
           style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>
-          ← {locale === 'ko' ? '로그인 페이지로 돌아가기' : 'Back to Login'}
+          ← {t.backToLogin}
         </button>
       </div>
     </div>

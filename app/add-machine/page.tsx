@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function AddMachinePage() {
   const [name, setName] = useState('')
@@ -33,6 +34,8 @@ export default function AddMachinePage() {
   const [editMetricsMeterNo, setEditMetricsMeterNo] = useState('')
   const [editStatus, setEditStatus] = useState('')
   const [updating, setUpdating] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showEditPassword, setShowEditPassword] = useState(false)
 
   // Fetch machines list from PostgreSQL
   async function fetchMachines() {
@@ -253,7 +256,17 @@ export default function AddMachinePage() {
 
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'block', fontSize: 13 }}>Password</label>
-          <input className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password email" />
+          <div style={{ position: 'relative' }}>
+            <input className="k-input" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password email" style={{ paddingRight: 40 }} />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex', alignItems: 'center' }}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
 
         <div style={{ marginBottom: 8 }}>
@@ -375,13 +388,23 @@ export default function AddMachinePage() {
                           />
                         </td>
                         <td style={{ padding: '8px' }}>
-                          <input 
-                            type="password" 
-                            value={editPassword} 
-                            onChange={(e) => setEditPassword(e.target.value)}
-                            style={{ width: '100%', padding: '6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13 }}
-                            placeholder="Password"
-                          />
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              type={showEditPassword ? 'text' : 'password'}
+                              value={editPassword}
+                              onChange={(e) => setEditPassword(e.target.value)}
+                              style={{ width: '100%', padding: '6px 32px 6px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, boxSizing: 'border-box' }}
+                              placeholder="Password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowEditPassword((s) => !s)}
+                              aria-label={showEditPassword ? 'Hide password' : 'Show password'}
+                              style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex', alignItems: 'center' }}
+                            >
+                              {showEditPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </div>
                         </td>
                         <td style={{ padding: '8px' }}>
                           <input 

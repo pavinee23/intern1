@@ -47,9 +47,6 @@
   display: block;
   object-fit: contain;
   border-radius: 12px;
-  background: white;
-  padding: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
@@ -360,7 +357,7 @@
   width: 100%;
   padding: 12px 14px;
   font-size: 14px;
-  border: 1px solid var(--border-muted);
+  border: 2px solid #255899;
   border-radius: 6px;
   background: white;
   color: var(--text-strong);
@@ -368,13 +365,13 @@
 }
 
 .formInput:hover {
-  border-color: rgba(55,65,81,0.24);
+  border-color: #1e64af;
 }
 
 .formInput:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(8, 144, 235, 0.15);
+  border-color: #0890EB;
+  box-shadow: 0 0 0 3px rgba(8, 144, 235, 0.18);
 }
 
 .formInput::placeholder {

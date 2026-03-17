@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, User, ArrowLeft, Briefcase, Users, FileText, BarChart3, Package, MapPin, Bell, Headphones, Wrench, FlaskConical, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, ArrowLeft, Briefcase, Users, FileText, BarChart3, Package, MapPin, Bell, Headphones, Wrench, FlaskConical, Eye, EyeOff, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -88,6 +88,13 @@ const departmentConfigs: Record<string, DepartmentConfig> = {
     icon: FlaskConical,
     color: 'cyan-500',
     bgGradient: 'from-cyan-500 to-cyan-700'
+  },
+  'qr-code': {
+    name: 'QR Code System',
+    nameKey: 'qrCodeSystem',
+    icon: QrCode,
+    color: 'rose-500',
+    bgGradient: 'from-rose-500 to-rose-700'
   }
 };
 
@@ -148,13 +155,14 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
     'ai-assistant':          '/ai-assistant',
     'chat-brunei':           '/chat/brunei',
     'chat-vietnam':          '/chat/vietnam',
+    'qr-code':               '/qr-code/dashboard',
   };
 
   // Maps departmentID from DB → allowed URL slug(s)
   const deptIDtoSlug: Record<string, string[]> = {
     'Executive':           ['executive'],
     'Admin':               ['executive'],
-    'CRM':                 ['executive', 'hr', 'production', 'international-market', 'domestic-market', 'quality-control', 'after-sales', 'maintenance', 'research-development', 'logistics', 'customers', 'translator', 'ai-assistant', 'chat-brunei', 'chat-vietnam'],
+    'CRM':                 ['executive', 'hr', 'production', 'international-market', 'domestic-market', 'quality-control', 'after-sales', 'maintenance', 'research-development', 'logistics', 'customers', 'translator', 'ai-assistant', 'chat-brunei', 'chat-vietnam', 'qr-code'],
     'Branch Manager':      ['executive'],
     'HR':                  ['hr'],
     'Production':          ['production'],
@@ -170,6 +178,7 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
     'AIAssistant':         ['ai-assistant'],
     'BruneiChat':          ['chat-brunei'],
     'VietnamChat':         ['chat-vietnam'],
+    'QRCode':              ['qr-code'],
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -24,6 +24,7 @@ import {
   Truck,
   Workflow,
   Shield,
+  Users,
 } from 'lucide-react';
 
 export default function DomesticMarketDashboardPage() {
@@ -31,6 +32,20 @@ export default function DomesticMarketDashboardPage() {
   const { locale } = useLocale();
   const t = translations[locale];
   const [selectedRegion, setSelectedRegion] = useState('all');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const userData = localStorage.getItem('k_system_admin_user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+    }
+  }, []);
 
   const regions = [
     { id: 'all', name: locale === 'ko' ? '전체 지역' : 'All Regions', city: 'All', emoji: (<img src="https://flagcdn.com/w40/kr.png" srcSet="https://flagcdn.com/w80/kr.png 2x" alt="Korea" width={36} height={26} style={{ borderRadius: 4, objectFit: 'cover', display: 'inline-block' }} />) },
@@ -254,6 +269,14 @@ export default function DomesticMarketDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {mounted && currentUser && (
+                <div className="px-4 py-2 rounded-lg bg-orange-50 border-2 border-orange-200 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-orange-600" />
+                  <span className="text-sm font-medium text-orange-700">
+                    {currentUser.name || currentUser.username}
+                  </span>
+                </div>
+              )}
               <img src="https://flagcdn.com/kr.svg" alt="Korea" width={40} height={28} style={{ borderRadius: 4, objectFit: 'cover', display: 'inline-block' }} />
               <LanguageSwitcher />
             </div>

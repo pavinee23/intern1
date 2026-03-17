@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useLocale } from '@/lib/LocaleContext'
+import { translations } from '@/lib/translations'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 type Column = {
   column_name: string
@@ -10,6 +13,8 @@ type Column = {
 }
 
 export default function DatabasePage() {
+  const { locale } = useLocale()
+  const t = translations[locale]
   const [tables, setTables] = useState<string[]>([])
   const [selectedTable, setSelectedTable] = useState<string>('')
   const [columns, setColumns] = useState<Column[]>([])
@@ -231,13 +236,16 @@ export default function DatabasePage() {
   }
 
   return (
-    <div style={{ padding: 24, minHeight: '100vh', background: '#f9fafb' }}>
+    <div style={{ padding: 24, minHeight: '100vh', background: '#f9fafb', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+        <LanguageSwitcher />
+      </div>
       <header style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Database Browser</h1>
-          <p style={{ margin: '8px 0 0 0', color: '#6b7280' }}>View all tables and data in PostgreSQL database</p>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>{t.databaseBrowser}</h1>
+          <p style={{ margin: '8px 0 0 0', color: '#6b7280' }}>{t.databaseBrowserDesc}</p>
         </div>
-        <Link href="/Korea/Admin-Login" className="k-btn k-btn-ghost">← Back to Korea Admin</Link>
+        <Link href="/Korea/Admin-Login" className="k-btn k-btn-ghost">← {t.backToKoreaAdmin}</Link>
       </header>
 
       <div style={{ display: 'flex', gap: 16 }}>

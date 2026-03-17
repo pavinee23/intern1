@@ -204,14 +204,19 @@ export default function AdminLayout({
             if (j?.ok && j.permissions?.pages) {
               const pages = j.permissions.pages
               const allowed = new Set<string>(Object.keys(pages).filter(k => pages[k]))
-              setAllowedPages(allowed)
+              // ถ้า permission ว่าง ให้แสดงเมนูทั้งหมด
+              if (allowed.size === 0) {
+                setAllowedPages(null)
+              } else {
+                setAllowedPages(allowed)
+              }
             } else {
-              setAllowedPages(new Set())
+              setAllowedPages(null)
             }
           })
-          .catch(() => setAllowedPages(new Set()))
+          .catch(() => setAllowedPages(null))
       }
-    } catch (_) { setAllowedPages(new Set()) }
+    } catch (_) { setAllowedPages(null) }
   }, [])
 
   const handleLogout = () => {
@@ -237,10 +242,8 @@ export default function AdminLayout({
     <div className={styles.adminLayout}>
       {/* Top Header */}
       <header className={styles.topHeader}>
-          <div className={styles.headerLogo}>
-          <div style={{ width: 160, height: 48, borderRadius: 6, overflow: 'hidden', flex: '0 0 160px', marginRight: 12, border: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/k-energy-save-logo.jpg" alt="K Energy Save Co., Ltd." style={{ width: 'auto', height: '80%', objectFit: 'contain', display: 'block', padding: 6 }} />
-          </div>
+        <div className={styles.headerLogo}>
+          <img src="/k-energy-save-logo.jpg" alt="K Energy Save Co., Ltd." style={{ height: 48, width: 'auto', objectFit: 'contain', display: 'block', borderRadius: 6, marginRight: 12 }} />
           <div>
             <div className={styles.headerTitle}>K Energy Save Co., Ltd. (Group of Zera)</div>
             <div className={styles.headerSubtitle}>Management System - Thailand</div>

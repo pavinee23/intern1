@@ -8,10 +8,10 @@ export default function Page() {
       apiPath="/api/power-calculations"
       createPath="/Thailand/Admin-Login/power-calculator"
       columns={[
-        { key: 'calcID', label: 'ID' },
-        { key: 'title', label: 'Title' },
-        { key: 'result', label: 'Result' },
-        { key: 'created_at', label: 'Created' }
+        { key: 'rowNumber', label: 'ลำดับ' },
+        { key: 'calcID', label: 'เลขที่รายการ' },
+        { key: 'created_at', label: 'วันที่' },
+        { key: 'customerName', label: 'ชื่อลูกค้า' }
       ]}
       link={{ columnKey: 'calcID', path: '/Thailand/Admin-Login/power-calculator', paramName: 'calcID' }}
     />

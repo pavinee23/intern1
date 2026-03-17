@@ -3,13 +3,22 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useLocale } from '@/lib/LocaleContext'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function AdminMainPage() {
   const router = useRouter()
+  const { locale } = useLocale()
   const [, setToken] = useState<string | null>(null)
   const [checking, setChecking] = useState(true)
   const [showZoom, setShowZoom] = useState(false)
   const [zoomUrl, setZoomUrl] = useState('')
+
+  // Language helper
+  const L = (en: string, ko: string) => {
+    if (locale === 'ko') return ko;
+    return en;
+  }
 
   useEffect(() => {
     try {
@@ -37,7 +46,9 @@ export default function AdminMainPage() {
   if (checking) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f4f8' }}>
-        <div style={{ padding: 24, background: '#fff', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>Loading admin...</div>
+        <div style={{ padding: 24, background: '#fff', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          {L('Loading admin...', '관리자 로딩 중...')}
+        </div>
       </div>
     )
   }
@@ -45,7 +56,7 @@ export default function AdminMainPage() {
   const systems = [
     {
       title: 'K-SAVE',
-      desc: 'Monitoring & IoT System',
+      desc: L('Monitoring & IoT System', '모니터링 및 IoT 시스템'),
       href: '/',
       color: '#2563eb',
       bg: '#eff6ff',
@@ -57,8 +68,8 @@ export default function AdminMainPage() {
       )
     },
     {
-      title: 'Thailand Admin',
-      desc: 'Thailand Branch Management',
+      title: L('Thailand Admin', '태국 관리자'),
+      desc: L('Thailand Branch Management', '태국 지사 관리'),
       href: '/Thailand/Admin-Login',
       color: '#059669',
       bg: '#ecfdf5',
@@ -70,8 +81,8 @@ export default function AdminMainPage() {
       )
     },
     {
-      title: 'Korea Admin',
-      desc: 'Korea HQ Management',
+      title: L('Korea Admin', '한국 관리자'),
+      desc: L('Korea HQ Management', '한국 본사 관리'),
       href: '/Korea/Admin-Login',
       color: '#b45309',
       bg: '#fffbeb',
@@ -83,9 +94,9 @@ export default function AdminMainPage() {
       )
     },
     {
-      title: 'System 4',
-      desc: 'Reports & Analytics',
-      href: '/admin/main/report',
+      title: L('LEARNING AND TRAINING', '학습 및 교육'),
+      desc: L('Learning & Training System', '학습 및 교육 시스템'),
+      href: '/admin/main/learning-login',
       color: '#6366f1',
       bg: '#eef2ff',
       border: '#e0e7ff',
@@ -94,59 +105,17 @@ export default function AdminMainPage() {
           <rect x="3" y="3" width="18" height="18" rx="2" fill="#e0e7ff"/><path d="M7 14h3v3H7zM11 10h3v7h-3zM15 7h3v10h-3z" fill="#6366f1"/>
         </svg>
       )
-    }
-  ]
-
-  const rdSystems = [
-    {
-      title: 'K-SAVE R&D',
-      desc: 'R&D Testing System',
-      href: '/admin/rd-login',
-      color: '#2563eb',
-      bg: '#eff6ff',
-      border: '#dbeafe',
-      icon: (
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.5">
-          <rect x="2" y="7" width="20" height="10" rx="2" fill="#dbeafe"/><circle cx="8" cy="12" r="1.8" fill="#2563eb"/><circle cx="16" cy="12" r="1.8" fill="#2563eb"/>
-        </svg>
-      )
     },
     {
-      title: 'Thailand Admin R&D',
-      desc: 'Thailand R&D Portal',
-      href: '/admin/tokens',
-      color: '#059669',
-      bg: '#ecfdf5',
-      border: '#d1fae5',
+      title: L('SMART FARM', '스마트 팜'),
+      desc: L('Smart Farm System', '스마트 팜 시스템'),
+      href: '/admin/main/smart-farm-login',
+      color: '#16a34a',
+      bg: '#f0fdf4',
+      border: '#bbf7d0',
       icon: (
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.5">
-          <rect x="3" y="6" width="18" height="12" rx="2" fill="#d1fae5"/><path d="M7 10h10" strokeLinecap="round"/><path d="M7 14h6" strokeLinecap="round"/>
-        </svg>
-      )
-    },
-    {
-      title: 'System 3 R&D',
-      desc: 'System 3 R&D Portal',
-      href: '/admin/add-machine',
-      color: '#b45309',
-      bg: '#fffbeb',
-      border: '#fef3c7',
-      icon: (
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="1.5">
-          <rect x="4" y="4" width="16" height="12" rx="2" fill="#fef3c7"/><path d="M8 16v2" strokeLinecap="round"/><path d="M16 16v2" strokeLinecap="round"/>
-        </svg>
-      )
-    },
-    {
-      title: 'System 4 R&D',
-      desc: 'System 4 R&D Portal',
-      href: '/admin/AdminKsave',
-      color: '#6366f1',
-      bg: '#eef2ff',
-      border: '#e0e7ff',
-      icon: (
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2" fill="#e0e7ff"/><path d="M7 14h3v3H7zM11 10h3v7h-3zM15 7h3v10h-3z" fill="#6366f1"/>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5">
+          <rect x="4" y="8" width="16" height="12" rx="2" fill="#bbf7d0"/><path d="M8 8V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2" strokeLinecap="round"/><circle cx="12" cy="14" r="2" fill="#16a34a"/><path d="M9 14h6M12 12v4" strokeLinecap="round"/>
         </svg>
       )
     }
@@ -174,19 +143,24 @@ export default function AdminMainPage() {
             <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 2 }} />
           </div>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Admin System</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+              {L('Admin System', '관리자 시스템')}
+            </div>
             <div style={{ fontSize: 12, color: '#94a3b8' }}>K Energy Save Co., Ltd. (Group of Zera)</div>
           </div>
         </div>
-        <button onClick={() => router.push('/admin/LoginMain')} style={{
-          padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)',
-          background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', transition: 'all 0.2s'
-        }}
-        onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
-        onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}>
-          Sign out
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <LanguageSwitcher />
+          <button onClick={() => router.push('/admin/LoginMain')} style={{
+            padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)',
+            background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}
+          onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+          onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}>
+            {L('Sign out', '로그아웃')}
+          </button>
+        </div>
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
@@ -201,11 +175,19 @@ export default function AdminMainPage() {
           <div style={{ position: 'absolute', right: 80, bottom: -50, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 6 }}>
-              Admin Control Panel
+              {L('Admin Control Panel', '관리자 제어판')}
             </div>
-            <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>K Energy Save Co., Ltd. (Group of Zera)</h1>
-            <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 600 }}>
-              1114,27 Dunchon-daero 457beon-gil, Jungwon-gu, Seongnam-si, Gyeonggi-do, Republic of Korea
+            <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>
+              Zera co.,ltd {L('(Korea Headquarters)', '(한국 본사)')}
+            </h1>
+            <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 700 }}>
+              🇰🇷 1114,27 Dunchon-daero 457beon-gil, Jungwon-gu, Seongnam-si, Gyeonggi-do, Republic of Korea
+            </p>
+            <h2 style={{ margin: '16px 0 0', fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em', opacity: 0.9 }}>
+              K Energy Save Co., Ltd. {L('(Thailand Branch)', '(태국 지사)')}
+            </h2>
+            <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 700 }}>
+              🇹🇭 84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250, Thailand
             </p>
           </div>
         </div>
@@ -214,8 +196,12 @@ export default function AdminMainPage() {
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <div style={{ width: 4, height: 22, borderRadius: 2, background: 'linear-gradient(180deg, #2563eb, #3b82f6)' }} />
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Systems</h2>
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>Select a system to login</span>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>
+              {L('Systems', '시스템')}
+            </h2>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>
+              {L('Select a system to login', '로그인할 시스템 선택')}
+            </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
             {systems.map((sys, i) => (
@@ -244,8 +230,12 @@ export default function AdminMainPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#2563eb"><path d="M22.8 4.8c-.6-.45-1.35-.3-1.95.15L16.5 8.4V6c0-1.65-1.35-3-3-3H3c-1.65 0-3 1.35-3 3v12c0 1.65 1.35 3 3 3h10.5c1.65 0 3-1.35 3-3v-2.4l4.35 3.45c.3.3.6.45 1.05.45.3 0 .45 0 .75-.15.6-.45 1.05-1.05 1.05-1.8V6.6c0-.75-.3-1.35-.9-1.8z"/></svg>
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#1e293b' }}>Zoom Meeting</div>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>Join or start a meeting</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#1e293b' }}>
+                  {L('Zoom Meeting', 'Zoom 미팅')}
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                  {L('Join or start a meeting', '회의 참가 또는 시작')}
+                </div>
               </div>
             </div>
             <button onClick={handleOpenZoom} style={{
@@ -254,40 +244,17 @@ export default function AdminMainPage() {
             }}
             onMouseOver={e => (e.currentTarget.style.background = '#1d4ed8')}
             onMouseOut={e => (e.currentTarget.style.background = '#2563eb')}>
-              Join Meeting
+              {L('Join Meeting', '회의 참가')}
             </button>
-          </div>
-        </div>
-
-        {/* R&D Portal */}
-        <div style={{ marginBottom: 36 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <div style={{ width: 4, height: 22, borderRadius: 2, background: 'linear-gradient(180deg, #7c3aed, #a78bfa)' }} />
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>R&D Portal</h2>
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>Research & Development systems</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
-            {rdSystems.map((sys, i) => (
-              <Link key={i} href={sys.href} style={cardStyle(sys.color, sys.bg, sys.border)}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${sys.color}18`; e.currentTarget.style.borderColor = sys.color }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = sys.border }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 12, background: sys.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {sys.icon}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 18, color: '#1e293b', marginBottom: 2 }}>{sys.title}</div>
-                    <div style={{ fontSize: 13, color: '#94a3b8' }}>{sys.desc}</div>
-                  </div>
-                </div>
-              </Link>
-            ))}
           </div>
         </div>
 
         {/* Footer */}
         <div style={{ textAlign: 'center', padding: '20px 0', borderTop: '1px solid #e2e8f0', color: '#94a3b8', fontSize: 12 }}>
-          K Energy Save Co., Ltd. (Group of Zera) Admin System
+          {L(
+            'K Energy Save Co., Ltd. (Group of Zera) Admin System',
+            'K Energy Save Co., Ltd. (Group of Zera) 관리 시스템'
+          )}
         </div>
       </div>
 
@@ -298,7 +265,9 @@ export default function AdminMainPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#2D8CFF', color: '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.8 4.8c-.6-.45-1.35-.3-1.95.15L16.5 8.4V6c0-1.65-1.35-3-3-3H3c-1.65 0-3 1.35-3 3v12c0 1.65 1.35 3 3 3h10.5c1.65 0 3-1.35 3-3v-2.4l4.35 3.45c.3.3.6.45 1.05.45.3 0 .45 0 .75-.15.6-.45 1.05-1.05 1.05-1.8V6.6c0-.75-.3-1.35-.9-1.8z"/></svg>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Zoom Meeting</h2>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
+                {L('Zoom Meeting', 'Zoom 미팅')}
+              </h2>
             </div>
             <button onClick={handleCloseZoom} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', fontSize: 24, width: 40, height: 40, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               ✕

@@ -1,25 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { 
-  Package, 
-  Truck, 
-  Factory, 
-  Ship, 
-  Wrench, 
-  AlertTriangle, 
-  Settings, 
-  FlaskConical, 
+import {
+  Package,
+  Truck,
+  Factory,
+  Ship,
+  Wrench,
+  AlertTriangle,
+  Settings,
+  FlaskConical,
   ClipboardCheck,
   BarChart3,
   PieChart,
   Activity,
   Workflow,
-  Shield
+  Shield,
+  Users,
 } from 'lucide-react';
 
 export default function ProductionDashboardPage() {
@@ -27,6 +28,20 @@ export default function ProductionDashboardPage() {
   const { locale } = useLocale();
   const t = translations[locale];
   const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const userData = localStorage.getItem('k_system_admin_user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+    }
+  }, []);
 
   // Department data
   const departments = [
@@ -226,9 +241,17 @@ export default function ProductionDashboardPage() {
                 </div>
               </div>
             </div>
-          </div>
-          <div>
-            <LanguageSwitcher />
+            <div className="flex items-center gap-3">
+              {mounted && currentUser && (
+                <div className="px-4 py-2 rounded-lg bg-green-50 border-2 border-green-200 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">
+                    {currentUser.name || currentUser.username}
+                  </span>
+                </div>
+              )}
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </div>

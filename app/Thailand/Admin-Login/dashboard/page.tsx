@@ -533,7 +533,7 @@ export default function ThailandAdminDashboard() {
             onMouseOut={e => (e.currentTarget.style.transform = 'translateY(0)')}>
               {L('Contracts', 'สัญญา')}
             </button>
-            <button onClick={() => router.push('/Thailand/Admin-Login/accounting-login')} style={{
+            <button onClick={() => router.push('/Thailand/Accounting-Login')} style={{
               padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(255,255,255,0.25)',
               background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 700,
               cursor: 'pointer', backdropFilter: 'blur(4px)', transition: 'all 0.2s',
@@ -546,7 +546,7 @@ export default function ThailandAdminDashboard() {
               </svg>
               {L('Accounting System', 'ระบบงบดุล')}
             </button>
-            <button onClick={() => router.push('/Thailand/Admin-Login/marketing-login')} style={{
+            <button onClick={() => router.push('/Thailand/Marketing-Login')} style={{
               padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(255,255,255,0.25)',
               background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 700,
               cursor: 'pointer', backdropFilter: 'blur(4px)', transition: 'all 0.2s',

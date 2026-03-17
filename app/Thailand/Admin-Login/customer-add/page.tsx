@@ -11,14 +11,18 @@ export default function CustomerAddPage() {
   const [loading, setLoading] = useState(false)
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  const [locale, setLocale] = useState<'en'|'th'>(() => {
-    try {
-      const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
-      return l === 'th' ? 'th' : 'en'
-    } catch { return 'th' }
-  })
+  // Start with default 'th' for SSR, then read from localStorage on client
+  const [locale, setLocale] = useState<'en'|'th'>('th')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // Read locale from localStorage only on client-side
+    setMounted(true)
+    try {
+      const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
+      if (l === 'en' || l === 'th') setLocale(l)
+    } catch {}
+
     const handler = (e: Event) => {
       const d = (e as any).detail
       const v = typeof d === 'string' ? d : d?.locale

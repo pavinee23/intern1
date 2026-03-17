@@ -7,16 +7,18 @@ import { translations } from '@/lib/translations';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import CompanyLogo from '@/components/CompanyLogo';
 import CountryFlag from '@/components/CountryFlag';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function ProductionLoginPage() {
   const router = useRouter();
   const { locale } = useLocale();
   const t = translations[locale];
-  
+
   const [credentials, setCredentials] = useState({
     username: '',
     password: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
@@ -98,13 +100,23 @@ export default function ProductionLoginPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {locale === 'ko' ? '비밀번호' : 'Password'}
               </label>
-              <input
-                type="password"
-                value={credentials.password}
-                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                placeholder={locale === 'ko' ? '비밀번호를 입력하세요' : 'Enter password'}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={credentials.password}
+                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                  className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  placeholder={locale === 'ko' ? '비밀번호를 입력하세요' : 'Enter password'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <button

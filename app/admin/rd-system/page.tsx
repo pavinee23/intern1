@@ -2,9 +2,14 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLocale } from '@/lib/LocaleContext'
+import { translations } from '@/lib/translations'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function RDSystemPage() {
   const router = useRouter()
+  const { locale } = useLocale()
+  const t = translations[locale]
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [connectingDevice, setConnectingDevice] = useState<string | null>(null)
   const [showZoom, setShowZoom] = useState(false)
@@ -103,16 +108,20 @@ export default function RDSystemPage() {
   }
 
   return (
-    <div style={{ 
+    <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: 20
+      padding: 20,
+      position: 'relative'
     }}>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+        <LanguageSwitcher />
+      </div>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         {/* Header */}
-        <header style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <header style={{
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: 40,
           background: 'rgba(255,255,255,0.95)',
@@ -121,18 +130,18 @@ export default function RDSystemPage() {
           boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
         }}>
           <div>
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: 36, 
+            <h1 style={{
+              margin: 0,
+              fontSize: 36,
               fontWeight: 800,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
-              K-SAVE R&D System
+              {t.rdSystem}
             </h1>
             <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: 16 }}>
-              Remote Access Portal for KSave Devices
+              {t.rdSystemDesc}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -162,7 +171,7 @@ export default function RDSystemPage() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M15.2 3.2c-.4-.3-.9-.2-1.3.1L11 5.6V4c0-1.1-.9-2-2-2H2C.9 2 0 2.9 0 4v8c0 1.1.9 2 2 2h7c1.1 0 2-.9 2-2v-1.6l2.9 2.3c.2.2.4.3.7.3.2 0 .3 0 .5-.1.4-.3.7-.7.7-1.2V4.4c0-.5-.2-.9-.6-1.2z"/>
               </svg>
-              Zoom Meeting
+              {t.zoomMeeting}
             </button>
             <button
               onClick={() => router.push('/Korea/Admin-Login')}
@@ -184,7 +193,7 @@ export default function RDSystemPage() {
                 e.currentTarget.style.background = '#fff'
               }}
             >
-              ← Back to Admin
+              ← {t.backToAdmin}
             </button>
             <button
               onClick={handleLogout}
@@ -206,7 +215,7 @@ export default function RDSystemPage() {
                 e.currentTarget.style.background = '#ef4444'
               }}
             >
-              Sign Out
+              {t.signOut}
             </button>
           </div>
         </header>
@@ -302,7 +311,7 @@ export default function RDSystemPage() {
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
                   }}
                 >
-                  🖥️ Connect Remote
+                  🖥️ {t.connectRemote}
                 </button>
 
                 {/* Status Indicator */}
@@ -321,7 +330,7 @@ export default function RDSystemPage() {
                     boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)'
                   }} />
                   <span style={{ fontSize: 13, color: '#10b981', fontWeight: 600 }}>
-                    Ready
+                    {t.ready}
                   </span>
                 </div>
               </div>
@@ -379,10 +388,10 @@ export default function RDSystemPage() {
           `}</style>
 
           <h3 style={{ margin: '0 0 8px 0', fontSize: 20, fontWeight: 700 }}>
-            Connecting to {connectingDevice}
+            {t.connecting} {connectingDevice}
           </h3>
           <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
-            Opening VNC Viewer...
+            {t.openingVNC}
           </p>
         </div>
       )}
@@ -421,7 +430,7 @@ export default function RDSystemPage() {
                 <path d="M22.8 4.8c-.6-.45-1.35-.3-1.95.15L16.5 8.4V6c0-1.65-1.35-3-3-3H3c-1.65 0-3 1.35-3 3v12c0 1.65 1.35 3 3 3h10.5c1.65 0 3-1.35 3-3v-2.4l4.35 3.45c.3.3.6.45 1.05.45.3 0 .45 0 .75-.15.6-.45 1.05-1.05 1.05-1.8V6.6c0-.75-.3-1.35-.9-1.8z"/>
               </svg>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
-                Zoom Meeting
+                {t.zoomMeeting}
               </h2>
             </div>
             <button

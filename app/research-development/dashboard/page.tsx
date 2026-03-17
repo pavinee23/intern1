@@ -61,23 +61,41 @@ export default function ResearchDevelopmentDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
   const t = translations[locale] as any;
-  
+
   const [departmentChats, setDepartmentChats] = useState<DepartmentMessages[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentMessages | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replyAttachments, setReplyAttachments] = useState<FileAttachment[]>([]);
   const [userName, setUserName] = useState('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [previousUnreadCounts, setPreviousUnreadCounts] = useState<Record<string, number>>({});
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper function for multilingual text
+  const L = (en: string, ko: string, th?: string) => {
+    if (locale === 'ko') return ko;
+    if (locale === 'th' && th) return th;
+    return en;
+  };
+
   useEffect(() => {
     // Load user name from localStorage
     const savedName = localStorage.getItem('chat-user-name');
     if (savedName) {
       setUserName(savedName);
+    }
+
+    // Load current user from localStorage
+    try {
+      const userData = localStorage.getItem('k_system_admin_user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
     }
 
     // Request notification permission
@@ -93,48 +111,48 @@ export default function ResearchDevelopmentDashboardPage() {
   }, []);
 
   const departmentConfigs = useMemo(() => ({
-    'hr': { 
-      name: locale === 'ko' ? 'HR & 회계 부서' : 'HR & Accounting',
+    'hr': {
+      name: L('HR & Accounting', 'HR & 회계 부서', 'HR และบัญชี'),
       icon: '👥',
       color: 'bg-blue-500'
     },
-    'production': { 
-      name: locale === 'ko' ? '생산 & 물류 부서' : 'Production & Logistics',
+    'production': {
+      name: L('Production & Logistics', '생산 & 물류 부서', 'ฝ่ายผลิตและโลจิสติกส์'),
       icon: '🏭',
       color: 'bg-orange-500'
     },
-    'international-market': { 
-      name: locale === 'ko' ? '해외 시장 부서' : 'International Market',
+    'international-market': {
+      name: L('International Market', '해외 시장 부서', 'ฝ่ายการตลาดต่างประเทศ'),
       icon: '🌍',
       color: 'bg-purple-500'
     },
-    'domestic-market': { 
-      name: locale === 'ko' ? '국내 시장 부서' : 'Domestic Market',
+    'domestic-market': {
+      name: L('Domestic Market', '국내 시장 부서', 'ฝ่ายการตลาดภายในประเทศ'),
       icon: '🏪',
       color: 'bg-orange-500'
     },
-    'quality-control': { 
-      name: locale === 'ko' ? '품질 관리 부서' : 'Quality Control',
+    'quality-control': {
+      name: L('Quality Control', '품질 관리 부서', 'ฝ่ายควบคุมคุณภาพ'),
       icon: '✅',
       color: 'bg-yellow-500'
     },
-    'after-sales': { 
-      name: locale === 'ko' ? '애프터 서비스 부서' : 'After-Sales Service',
+    'after-sales': {
+      name: L('After-Sales Service', '애프터 서비스 부서', 'ฝ่ายบริการหลังการขาย'),
       icon: '🎧',
       color: 'bg-teal-500'
     },
-    'maintenance': { 
-      name: locale === 'ko' ? '유지보수 부서' : 'Maintenance',
+    'maintenance': {
+      name: L('Maintenance', '유지보수 부서', 'ฝ่ายบำรุงรักษา'),
       icon: '🔧',
       color: 'bg-indigo-500'
     },
-    'customers': { 
-      name: locale === 'ko' ? '고객 관리' : 'Customer Management',
+    'customers': {
+      name: L('Customer Management', '고객 관리', 'ฝ่ายบริหารลูกค้า'),
       icon: '👥',
       color: 'bg-blue-500'
     },
-    'research-development': { 
-      name: locale === 'ko' ? '연구개발 부서' : 'Research & Development',
+    'research-development': {
+      name: L('Research & Development', '연구개발 부서', 'ฝ่ายวิจัยและพัฒนา'),
       icon: '🔬',
       color: 'bg-cyan-500'
     }
@@ -263,7 +281,7 @@ export default function ResearchDevelopmentDashboardPage() {
     Array.from(files).forEach(file => {
       // Limit file size to 5MB
       if (file.size > 5 * 1024 * 1024) {
-        alert(locale === 'ko' ? '파일 크기는 5MB를 초과할 수 없습니다.' : 'File size cannot exceed 5MB.');
+        alert(L('File size cannot exceed 5MB.', '파일 크기는 5MB를 초과할 수 없습니다.', 'ขนาดไฟล์ต้องไม่เกิน 5MB'));
         return;
       }
 
@@ -295,7 +313,7 @@ export default function ResearchDevelopmentDashboardPage() {
 
     const newMessage: Message = {
       id: Date.now().toString(),
-      sender: locale === 'ko' ? '연구개발 부서' : 'Research & Development',
+      sender: L('Research & Development', '연구개발 부서', 'ฝ่ายวิจัยและพัฒนา'),
       role: 'admin',
       text: replyText,
       timestamp: new Date().toISOString(),
@@ -371,36 +389,36 @@ export default function ResearchDevelopmentDashboardPage() {
   const totalUnread = departmentChats.reduce((sum, dept) => sum + dept.unreadCount, 0);
 
   const kpiData = useMemo(() => [
-    { name: locale === 'ko' ? '프로젝트 완료율' : 'Project Completion Rate', current: 85, target: 90, status: 'warning' },
-    { name: locale === 'ko' ? '연구 투자 효율성' : 'R&D Investment Efficiency', current: 92, target: 85, status: 'good' },
-    { name: locale === 'ko' ? '특허 출원 성공률' : 'Patent Application Success', current: 78, target: 80, status: 'warning' },
-    { name: locale === 'ko' ? '혁신 프로젝트 비율' : 'Innovation Project Ratio', current: 65, target: 70, status: 'critical' },
-    { name: locale === 'ko' ? '기술 이전 성공률' : 'Tech Transfer Success', current: 88, target: 85, status: 'good' },
+    { name: L('Project Completion Rate', '프로젝트 완료율', 'อัตราความสำเร็จของโครงการ'), current: 85, target: 90, status: 'warning' },
+    { name: L('R&D Investment Efficiency', '연구 투자 효율성', 'ประสิทธิภาพการลงทุน R&D'), current: 92, target: 85, status: 'good' },
+    { name: L('Patent Application Success', '특허 출원 성공률', 'ความสำเร็จในการจดสิทธิบัตร'), current: 78, target: 80, status: 'warning' },
+    { name: L('Innovation Project Ratio', '혁신 프로젝트 비율', 'อัตราโครงการนวัตกรรม'), current: 65, target: 70, status: 'critical' },
+    { name: L('Tech Transfer Success', '기술 이전 성공률', 'ความสำเร็จในการถ่ายทอดเทคโนโลยี'), current: 88, target: 85, status: 'good' },
   ], [locale]);
 
   const improvements = useMemo(() => [
-    { 
-      title: locale === 'ko' ? '프로토타입 테스트 프로세스 개선' : 'Improve Prototype Testing Process',
+    {
+      title: L('Improve Prototype Testing Process', '프로토타입 테스트 프로세스 개선', 'ปรับปรุงกระบวนการทดสอบต้นแบบ'),
       priority: 'high' as const,
-      status: locale === 'ko' ? '진행 중' : 'In Progress',
+      status: L('In Progress', '진행 중', 'กำลังดำเนินการ'),
       deadline: '2026-03-15'
     },
-    { 
-      title: locale === 'ko' ? '연구 예산 관리 시스템 업데이트' : 'Update Research Budget Management',
+    {
+      title: L('Update Research Budget Management', '연구 예산 관리 시스템 업데이트', 'อัปเดตระบบจัดการงบประมาณวิจัย'),
       priority: 'medium' as const,
-      status: locale === 'ko' ? '대기 중' : 'Pending',
+      status: L('Pending', '대기 중', 'รอดำเนินการ'),
       deadline: '2026-04-01'
     },
-    { 
-      title: locale === 'ko' ? '부서 간 협업 프로세스 강화' : 'Enhance Inter-department Collaboration',
+    {
+      title: L('Enhance Inter-department Collaboration', '부서 간 협업 프로세스 강화', 'เสริมสร้างการทำงานร่วมกันระหว่างแผนก'),
       priority: 'high' as const,
-      status: locale === 'ko' ? '진행 중' : 'In Progress',
+      status: L('In Progress', '진행 중', 'กำลังดำเนินการ'),
       deadline: '2026-03-30'
     },
-    { 
-      title: locale === 'ko' ? '연구 데이터 관리 표준화' : 'Standardize Research Data Management',
+    {
+      title: L('Standardize Research Data Management', '연구 데이터 관리 표준화', 'มาตรฐานการจัดการข้อมูลวิจัย'),
       priority: 'low' as const,
-      status: locale === 'ko' ? '계획 중' : 'Planning',
+      status: L('Planning', '계획 중', 'วางแผน'),
       deadline: '2026-05-15'
     },
   ], [locale]);
@@ -418,48 +436,48 @@ export default function ResearchDevelopmentDashboardPage() {
   const menuCards: MenuCard[] = [
     {
       icon: FileText,
-      title: locale === 'ko' ? 'เพิ่มโครงการ' : 'Create Project',
-      description: locale === 'ko' ? 'สร้างโครงการ R&D ใหม่' : 'Add a new R&D project',
+      title: L('Create Project', '프로젝트 생성', 'สร้างโครงการ'),
+      description: L('Add a new R&D project', '새로운 R&D 프로젝트 추가', 'เพิ่มโครงการ R&D ใหม่'),
       href: '/research-development/projects/new',
       color: 'bg-indigo-500',
       count: null,
     },
     {
       icon: Lightbulb,
-      title: t.activeProjects,
-      description: t.activeProjectsDesc,
+      title: L('Active Projects', '진행 중인 프로젝트', 'โครงการที่กำลังดำเนินการ'),
+      description: L('Ongoing R&D projects', '현재 진행 중인 R&D 프로젝트', 'โครงการ R&D ที่กำลังดำเนินการ'),
       href: '/research-development/active-projects',
       color: 'bg-blue-500',
       count: 14,
     },
     {
       icon: TestTube2,
-      title: t.prototypeTesting,
-      description: t.prototypeTestingDesc,
+      title: L('Prototype Testing', '프로토타입 테스트', 'การทดสอบต้นแบบ'),
+      description: L('Test and validate prototypes', '프로토타입 테스트 및 검증', 'ทดสอบและตรวจสอบต้นแบบ'),
       href: '/research-development/prototype-testing',
       color: 'bg-green-500',
       count: 6,
     },
     {
       icon: ScrollText,
-      title: t.patentManagement,
-      description: t.patentManagementDesc,
+      title: L('Patent Management', '특허 관리', 'การจัดการสิทธิบัตร'),
+      description: L('Manage patents and intellectual property', '특허 및 지적재산권 관리', 'จัดการสิทธิบัตรและทรัพย์สินทางปัญญา'),
       href: '/research-development/patents',
       color: 'bg-purple-500',
       count: 5,
     },
     {
       icon: DollarSign,
-      title: t.researchBudget,
-      description: t.researchBudgetDesc,
+      title: L('Research Budget', '연구 예산', 'งบประมาณวิจัย'),
+      description: L('Manage R&D budget and expenses', 'R&D 예산 및 지출 관리', 'จัดการงบประมาณและค่าใช้จ่าย R&D'),
       href: '/research-development/budget',
       color: 'bg-orange-500',
       count: null,
     },
     {
       icon: Workflow,
-      title: t.flowSystem,
-      description: t.flowSystemDesc,
+      title: L('Flow System', 'Flow 시스템', 'ระบบ Flow'),
+      description: L('Workflow management system', '워크플로우 관리 시스템', 'ระบบจัดการเวิร์กโฟลว์'),
       href: 'https://flow.team/signin.act',
       color: 'bg-cyan-600',
       count: null,
@@ -467,8 +485,8 @@ export default function ResearchDevelopmentDashboardPage() {
     },
     {
       icon: Download,
-      title: locale === 'ko' ? '데이터 내보내기' : 'Export Data',
-      description: locale === 'ko' ? '데이터를 CSV/JSON으로 내보내 AI 학습에 사용' : 'Export DB tables to CSV/JSON for AI training',
+      title: L('Export Data', '데이터 내보내기', 'ส่งออกข้อมูล'),
+      description: L('Export DB tables to CSV/JSON for AI training', '데이터를 CSV/JSON으로 내보내 AI 학습에 사용', 'ส่งออกตารางฐานข้อมูลเป็น CSV/JSON สำหรับการฝึก AI'),
       href: '/research-development/export',
       color: 'bg-emerald-500',
       count: null,
@@ -486,7 +504,7 @@ export default function ResearchDevelopmentDashboardPage() {
             </div>
             <div className="flex-1">
               <p className="font-semibold text-sm mb-1">
-                {locale === 'ko' ? '새 메시지' : 'New Message'}
+                {L('New Message', '새 메시지', 'ข้อความใหม่')}
               </p>
               <p className="text-sm text-white/90">{notificationMessage}</p>
             </div>
@@ -521,6 +539,32 @@ export default function ResearchDevelopmentDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Current User Display */}
+              {mounted && currentUser && (
+                <div className="px-4 py-2 rounded-lg bg-cyan-50 border-2 border-cyan-200 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-cyan-600" />
+                  <span className="text-sm font-medium text-cyan-700">
+                    {currentUser.name || currentUser.username}
+                  </span>
+                </div>
+              )}
+              {/* Admin Button */}
+              {mounted ? (
+                <Link
+                  href="/admin/AdminKsave"
+                  className="px-4 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors flex items-center gap-2 border-2 border-indigo-200"
+                >
+                  <Shield className="w-5 h-5 text-indigo-600" />
+                  <span className="text-sm font-medium text-indigo-700">
+                    {L('Admin', '관리자', 'ผู้ดูแลระบบ')}
+                  </span>
+                </Link>
+              ) : (
+                <div className="px-4 py-2 rounded-lg bg-indigo-50 transition-colors flex items-center gap-2 border-2 border-indigo-200">
+                  <Shield className="w-5 h-5 text-indigo-600" />
+                  <span className="text-sm font-medium text-indigo-700">{L('Admin', '관리자', 'ผู้ดูแลระบบ')}</span>
+                </div>
+              )}
               {/* Quick Messages Button - render only after client mount to avoid hydration mismatch */}
               {mounted ? (
                 <button
@@ -534,7 +578,7 @@ export default function ResearchDevelopmentDashboardPage() {
                 >
                   <MessageCircle className="w-5 h-5 text-purple-600" />
                   <span className="text-sm font-medium text-purple-700">
-                    {locale === 'ko' ? '부서 메시지' : 'Messages'}
+                    {L('Messages', '부서 메시지', 'ข้อความ')}
                   </span>
                   {totalUnread > 0 && (
                     <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
@@ -545,7 +589,7 @@ export default function ResearchDevelopmentDashboardPage() {
               ) : (
                 <div className="relative px-4 py-2 rounded-lg bg-purple-50 transition-colors flex items-center gap-2 border-2 border-purple-200">
                   <MessageCircle className="w-5 h-5 text-purple-600" />
-                  <span className="text-sm font-medium text-purple-700">{locale === 'ko' ? '부서 메시지' : 'Messages'}</span>
+                  <span className="text-sm font-medium text-purple-700">{L('Messages', '부서 메시지', 'ข้อความ')}</span>
                 </div>
               )}
               {mounted ? <LanguageSwitcher /> : <div className="w-[140px]" />}
@@ -570,7 +614,7 @@ export default function ResearchDevelopmentDashboardPage() {
                 <div>
                   <h3 className="text-white font-bold text-lg">{selectedDepartment.departmentName}</h3>
                   <p className="text-white/80 text-sm">
-                    {selectedDepartment.messages.length} {locale === 'ko' ? '메시지' : 'messages'}
+                    {selectedDepartment.messages.length} {L('messages', '메시지', 'ข้อความ')}
                   </p>
                 </div>
               </div>
@@ -579,7 +623,7 @@ export default function ResearchDevelopmentDashboardPage() {
                   href={`/admin-support/${selectedDepartment.department}`}
                   className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-sm transition-colors"
                 >
-                  {locale === 'ko' ? '전체 대화 보기' : 'View Full Chat'}
+                  {L('View Full Chat', '전체 대화 보기', 'ดูการสนทนาทั้งหมด')}
                 </Link>
                 <button onClick={handleCloseModal} className="text-white hover:bg-white/20 rounded p-1">
                   <X className="w-5 h-5" />
@@ -714,7 +758,7 @@ export default function ResearchDevelopmentDashboardPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="px-3 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
-                  title={locale === 'ko' ? '파일 첨부' : 'Attach files'}
+                  title={L('Attach files', '파일 첨부', 'แนบไฟล์')}
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
                 </button>
@@ -728,7 +772,7 @@ export default function ResearchDevelopmentDashboardPage() {
                         handleSendReply();
                       }
                     }}
-                    placeholder={locale === 'ko' ? '답장을 입력하세요...' : 'Type your reply...'}
+                    placeholder={L('Type your reply...', '답장을 입력하세요...', 'พิมพ์ข้อความของคุณ...')}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
                     rows={2}
                   />
@@ -743,7 +787,7 @@ export default function ResearchDevelopmentDashboardPage() {
                   }`}
                 >
                   <Send className="w-5 h-5" />
-                  <span>{locale === 'ko' ? '전송' : 'Send'}</span>
+                  <span>{L('Send', '전송', 'ส่ง')}</span>
                 </button>
               </div>
             </div>
@@ -763,10 +807,10 @@ export default function ResearchDevelopmentDashboardPage() {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-gray-800">
-                  {locale === 'ko' ? '부서 KPI 달성률' : 'Department KPI Performance'}
+                  {L('Department KPI Performance', '부서 KPI 달성률', 'ผลการดำเนินงาน KPI ของแผนก')}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {locale === 'ko' ? '연구개발 부서 핵심 성과 지표' : 'R&D Core Performance Indicators'}
+                  {L('R&D Core Performance Indicators', '연구개발 부서 핵심 성과 지표', 'ตัวชี้วัดผลการดำเนินงานหลักของ R&D')}
                 </p>
               </div>
             </div>
@@ -786,7 +830,7 @@ export default function ResearchDevelopmentDashboardPage() {
                         {kpi.current}%
                       </span>
                       <span className="text-xs text-gray-500">
-                        {locale === 'ko' ? '목표' : 'Target'}: {kpi.target}%
+                        {L('Target', '목표', 'เป้าหมาย')}: {kpi.target}%
                       </span>
                     </div>
                   </div>
@@ -805,7 +849,7 @@ export default function ResearchDevelopmentDashboardPage() {
             
             <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
               <span className="text-sm text-gray-600">
-                {locale === 'ko' ? '전체 평균 달성률' : 'Overall Average Achievement'}
+                {L('Overall Average Achievement', '전체 평균 달성률', 'ค่าเฉลี่ยความสำเร็จโดยรวม')}
               </span>
               <span className="text-2xl font-bold text-blue-600">
                 {Math.round(kpiData.reduce((sum, kpi) => sum + kpi.current, 0) / kpiData.length)}%
@@ -821,10 +865,10 @@ export default function ResearchDevelopmentDashboardPage() {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-gray-800">
-                  {locale === 'ko' ? '개선 필요 사항' : 'Improvement Areas'}
+                  {L('Improvement Areas', '개선 필요 사항', 'พื้นที่ที่ต้องปรับปรุง')}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {locale === 'ko' ? '진행 중인 개선 프로젝트' : 'Ongoing Improvement Projects'}
+                  {L('Ongoing Improvement Projects', '진행 중인 개선 프로젝트', 'โครงการปรับปรุงที่กำลังดำเนินการ')}
                 </p>
               </div>
             </div>
@@ -841,13 +885,13 @@ export default function ResearchDevelopmentDashboardPage() {
                           item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                           'bg-blue-100 text-blue-700'
                         }`}>
-                          {item.priority === 'high' ? (locale === 'ko' ? '높음' : 'High') :
-                           item.priority === 'medium' ? (locale === 'ko' ? '중간' : 'Medium') :
-                           (locale === 'ko' ? '낮음' : 'Low')}
+                          {item.priority === 'high' ? L('High', '높음', 'สูง') :
+                           item.priority === 'medium' ? L('Medium', '중간', 'ปานกลาง') :
+                           L('Low', '낮음', 'ต่ำ')}
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          item.status === (locale === 'ko' ? '진행 중' : 'In Progress') ? 'bg-green-100 text-green-700' :
-                          item.status === (locale === 'ko' ? '대기 중' : 'Pending') ? 'bg-gray-100 text-gray-700' :
+                          item.status === L('In Progress', '진행 중', 'กำลังดำเนินการ') ? 'bg-green-100 text-green-700' :
+                          item.status === L('Pending', '대기 중', 'รอดำเนินการ') ? 'bg-gray-100 text-gray-700' :
                           'bg-purple-100 text-purple-700'
                         }`}>
                           {item.status}
@@ -858,7 +902,7 @@ export default function ResearchDevelopmentDashboardPage() {
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <Clock className="w-3 h-3" />
                     <span>
-                      {locale === 'ko' ? '마감일' : 'Deadline'}: {new Date(item.deadline).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
+                      {L('Deadline', '마감일', 'กำหนดเสร็จ')}: {new Date(item.deadline).toLocaleDateString(locale === 'ko' ? 'ko-KR' : locale === 'th' ? 'th-TH' : 'en-US')}
                     </span>
                   </div>
                 </div>
@@ -867,11 +911,11 @@ export default function ResearchDevelopmentDashboardPage() {
 
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">{locale === 'ko' ? '총 개선 항목' : 'Total Items'}</span>
+                <span className="text-gray-600">{L('Total Items', '총 개선 항목', 'รายการทั้งหมด')}</span>
                 <span className="font-bold text-gray-800">{improvements.length}</span>
               </div>
               <div className="flex items-center justify-between text-sm mt-2">
-                <span className="text-gray-600">{locale === 'ko' ? '높은 우선순위' : 'High Priority'}</span>
+                <span className="text-gray-600">{L('High Priority', '높은 우선순위', 'ความสำคัญสูง')}</span>
                 <span className="font-bold text-red-600">
                   {improvements.filter(i => i.priority === 'high').length}
                 </span>
@@ -890,10 +934,10 @@ export default function ResearchDevelopmentDashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">
-                    {locale === 'ko' ? '부서 메시지 센터' : 'Department Messages Center'}
+                    {L('Department Messages Center', '부서 메시지 센터', 'ศูนย์ข้อความแผนก')}
                   </h2>
                   <p className="text-white/80 text-sm">
-                    {locale === 'ko' ? '각 부서의 문의사항 및 메시지 관리' : 'Manage inquiries and messages from all departments'}
+                    {L('Manage inquiries and messages from all departments', '각 부서의 문의사항 및 메시지 관리', 'จัดการคำถามและข้อความจากทุกแผนก')}
                   </p>
                 </div>
               </div>
@@ -901,7 +945,7 @@ export default function ResearchDevelopmentDashboardPage() {
                 <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-lg">
                   <Bell className="w-5 h-5 text-white" />
                   <span className="text-white font-bold">{totalUnread}</span>
-                  <span className="text-white/80 text-sm">{locale === 'ko' ? '새 메시지' : 'New'}</span>
+                  <span className="text-white/80 text-sm">{L('New', '새 메시지', 'ใหม่')}</span>
                 </div>
               )}
             </div>

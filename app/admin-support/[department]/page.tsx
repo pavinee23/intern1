@@ -224,9 +224,7 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
       id: '1',
       sender: locale === 'ko' ? '연구개발 부서' : 'Research & Development',
       role: 'admin',
-      text: locale === 'ko' 
-        ? `안녕하세요! ${departmentName} 담당 관리자입니다. 무엇을 도와드릴까요?` 
-        : `Hello! I'm the system administrator for ${departmentName}. How can I help you today?`,
+      text: t.adminWelcomeMessage.replace('{department}', departmentName),
       timestamp: new Date(Date.now() - 60000),
       status: 'read',
       department: params.department
@@ -508,10 +506,7 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${isAdminOnline ? 'bg-green-400' : 'bg-gray-400'}`}></div>
                     <p className="text-white/80 text-sm">
-                      {isAdminOnline 
-                        ? (locale === 'ko' ? '관리자 온라인' : 'Admin Online')
-                        : (locale === 'ko' ? '관리자 오프라인' : 'Admin Offline')
-                      }
+                      {isAdminOnline ? t.adminOnline : t.adminOffline}
                     </p>
                   </div>
                 </div>
@@ -705,13 +700,10 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
             <MessageCircle className={`w-5 h-5 text-${departmentConfig.color} mt-0.5`} />
             <div>
               <h4 className={`font-semibold text-${departmentConfig.color} mb-1`}>
-                {departmentName} - {locale === 'ko' ? '관리자 지원' : 'Administrator Support'}
+                {departmentName} - {t.administratorSupport}
               </h4>
               <p className="text-sm text-gray-700">
-                {locale === 'ko' 
-                  ? `${departmentName} 관련 시스템 문제나 질문이 있으시면 관리자와 채팅하세요. 메시지는 이 부서 전용으로 저장됩니다.`
-                  : `Chat with admin for ${departmentName} system issues or questions. Messages are saved specifically for this department.`
-                }
+                {t.chatWithDepartmentAdmin.replace('{department}', departmentName)}
               </p>
             </div>
           </div>
