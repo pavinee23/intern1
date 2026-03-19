@@ -5,8 +5,8 @@ import { generateDocumentNumber } from '@/lib/document-number'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id') || searchParams.get('poID')
-    const poNo = searchParams.get('poNo')
+    const id = searchParams.get('id')
+    const pdoNo = searchParams.get('pdoNo')
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -14,18 +14,18 @@ export async function GET(request: NextRequest) {
     const baseSelect = `SELECT * FROM production_orders`
 
     if (id) {
-      const [rows]: any = await pool.query(baseSelect + ` WHERE poID = ?`, [id])
+      const [rows]: any = await pool.query(baseSelect + ` WHERE pdoID = ?`, [id])
       if (rows && rows.length > 0) {
         const po = rows[0]
 
         // Get materials
         const [materials]: any = await pool.query(
-          `SELECT * FROM production_order_materials WHERE poID = ?`, [po.poID]
+          `SELECT * FROM production_order_materials WHERE pdoID = ?`, [po.pdoID]
         )
 
         // Get steps
         const [steps]: any = await pool.query(
-          `SELECT * FROM production_order_steps WHERE poID = ? ORDER BY step_number`, [po.poID]
+          `SELECT * FROM production_order_steps WHERE pdoID = ? ORDER BY step_number`, [po.pdoID]
         )
 
         po.materials = materials || []
@@ -36,15 +36,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
     }
 
-    if (poNo) {
-      const [rows]: any = await pool.query(baseSelect + ` WHERE poNo = ?`, [poNo])
+    if (pdoNo) {
+      const [rows]: any = await pool.query(baseSelect + ` WHERE pdoNo = ?`, [pdoNo])
       if (rows && rows.length > 0) {
         const po = rows[0]
         const [materials]: any = await pool.query(
-          `SELECT * FROM production_order_materials WHERE poID = ?`, [po.poID]
+          `SELECT * FROM production_order_materials WHERE pdoID = ?`, [po.pdoID]
         )
         const [steps]: any = await pool.query(
-          `SELECT * FROM production_order_steps WHERE poID = ? ORDER BY step_number`, [po.poID]
+          `SELECT * FROM production_order_steps WHERE pdoID = ? ORDER BY step_number`, [po.pdoID]
         )
         po.materials = materials || []
         po.steps = steps || []
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       params.push(status)
     }
 
-    query += ` ORDER BY poID DESC LIMIT ? OFFSET ?`
+    query += ` ORDER BY pdoID DESC LIMIT ? OFFSET ?`
     params.push(limit, offset)
 
     const [rows] = await pool.query(query, params)
@@ -77,12 +77,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      poDate, product_id, product_code, product_name, quantity_ordered, unit,
+      pdoDate, product_id, product_code, product_name, quantity_ordered, unit,
       start_date, due_date, priority, production_line, shift, supervisor,
       notes, materials, steps, created_by
     } = body
 
-    const poNo = await generateDocumentNumber('PDO', 'production_orders', 'poNo')
+    const pdoNo = await generateDocumentNumber('PDO', 'production_orders', 'pdoNo')
     const connection = await pool.getConnection()
 
     try {
@@ -90,21 +90,21 @@ export async function POST(request: NextRequest) {
 
       const [result]: any = await connection.query(
         `INSERT INTO production_orders
-        (poNo, poDate, product_id, product_code, product_name, quantity_ordered, unit, start_date, due_date, priority, production_line, shift, supervisor, notes, created_by, created_at)
+        (pdoNo, pdoDate, product_id, product_code, product_name, quantity_ordered, unit, start_date, due_date, priority, production_line, shift, supervisor, notes, created_by, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [poNo, poDate, product_id, product_code, product_name, quantity_ordered || 0, unit || 'pcs', start_date, due_date, priority || 'normal', production_line, shift, supervisor, notes, created_by]
+        [pdoNo, pdoDate, product_id, product_code, product_name, quantity_ordered || 0, unit || 'pcs', start_date, due_date, priority || 'normal', production_line, shift, supervisor, notes, created_by]
       )
 
-      const poID = result.insertId
+      const pdoID = result.insertId
 
       // Insert materials
       if (materials && Array.isArray(materials) && materials.length > 0) {
         for (const material of materials) {
           await connection.query(
             `INSERT INTO production_order_materials
-            (poID, material_id, material_code, material_name, quantity_required, unit)
+            (pdoID, material_id, material_code, material_name, quantity_required, unit)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [poID, material.material_id, material.material_code, material.material_name, material.quantity_required || 0, material.unit || 'pcs']
+            [pdoID, material.material_id, material.material_code, material.material_name, material.quantity_required || 0, material.unit || 'pcs']
           )
         }
       }
@@ -115,15 +115,15 @@ export async function POST(request: NextRequest) {
           const step = steps[i]
           await connection.query(
             `INSERT INTO production_order_steps
-            (poID, step_number, step_name, description, duration_minutes, assigned_to)
+            (pdoID, step_number, step_name, description, duration_minutes, assigned_to)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [poID, i + 1, step.step_name, step.description, step.duration_minutes || 0, step.assigned_to]
+            [pdoID, i + 1, step.step_name, step.description, step.duration_minutes || 0, step.assigned_to]
           )
         }
       }
 
       await connection.commit()
-      return NextResponse.json({ success: true, poID, poNo })
+      return NextResponse.json({ success: true, pdoID, pdoNo })
     } catch (error) {
       await connection.rollback()
       throw error
@@ -138,10 +138,10 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, poID, status, quantity_produced, quality_check_status, defect_quantity, actual_start_date, actual_end_date } = body
-    const recordId = id || poID
+    const { pdoID, status, quantity_produced, quality_check_status, defect_quantity, actual_start_date, actual_end_date } = body
+    const recordId = pdoID
 
-    if (!recordId) return NextResponse.json({ success: false, error: 'ID required' }, { status: 400 })
+    if (!recordId) return NextResponse.json({ success: false, error: 'pdoID required' }, { status: 400 })
 
     let updates = []
     let params = []
@@ -155,7 +155,7 @@ export async function PATCH(request: NextRequest) {
 
     if (updates.length === 0) return NextResponse.json({ success: false, error: 'No updates' }, { status: 400 })
 
-    const query = `UPDATE production_orders SET ${updates.join(', ')} WHERE poID = ?`
+    const query = `UPDATE production_orders SET ${updates.join(', ')} WHERE pdoID = ?`
     params.push(recordId)
 
     await pool.query(query, params)
@@ -168,10 +168,10 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id') || searchParams.get('poID')
+    const id = searchParams.get('id') || searchParams.get('pdoID')
     if (!id) return NextResponse.json({ success: false, error: 'ID required' }, { status: 400 })
 
-    await pool.query('DELETE FROM production_orders WHERE poID = ?', [id])
+    await pool.query('DELETE FROM production_orders WHERE pdoID = ?', [id])
     return NextResponse.json({ success: true })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })

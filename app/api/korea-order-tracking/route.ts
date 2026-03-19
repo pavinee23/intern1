@@ -42,8 +42,12 @@ export async function POST(req: NextRequest) {
         shippingMethod, trackingNumber, containerNo, status,
         estimatedDeparture, actualDeparture, estimatedArrival, actualArrival,
         customsStatus, customsNotes, warehouseLocation,
-        itemsSummary, totalValue, notes, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        itemsSummary, totalValue, notes,
+        thailand_tracking_no, thailand_carrier, thailand_delivery_status,
+        thailand_est_delivery, thailand_actual_delivery, thailand_delivery_address, thailand_delivery_notes,
+        pr_id, pdo_id,
+        created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         trackNo,
         body.orderID || null,
@@ -65,6 +69,15 @@ export async function POST(req: NextRequest) {
         body.itemsSummary || null,
         body.totalValue || 0,
         body.notes || null,
+        body.thailand_tracking_no || null,
+        body.thailand_carrier || null,
+        body.thailand_delivery_status || 'pending',
+        body.thailand_est_delivery || null,
+        body.thailand_actual_delivery || null,
+        body.thailand_delivery_address || null,
+        body.thailand_delivery_notes || null,
+        body.pr_id || null,
+        body.pdo_id || null,
         body.created_by || 'administrator'
       ]
     )
@@ -90,7 +103,10 @@ export async function PUT(req: NextRequest) {
       'shippingMethod', 'trackingNumber', 'containerNo', 'status',
       'estimatedDeparture', 'actualDeparture', 'estimatedArrival', 'actualArrival',
       'customsStatus', 'customsNotes', 'warehouseLocation',
-      'itemsSummary', 'totalValue', 'notes'
+      'itemsSummary', 'totalValue', 'notes',
+      'thailand_tracking_no', 'thailand_carrier', 'thailand_delivery_status',
+      'thailand_est_delivery', 'thailand_actual_delivery', 'thailand_delivery_address', 'thailand_delivery_notes',
+      'pr_id', 'pdo_id'
     ]
 
     for (const f of allowedFields) {

@@ -29,48 +29,64 @@ const menuGroups: MenuGroup[] = [
     ]
   },
   {
-    group: 'Sales', groupTh: 'ฝ่ายขาย', color: '#2563eb',
+    group: 'Support', groupTh: 'ฝ่ายสนับสนุน', color: '#475569',
     items: [
-      { label: 'Quotation', labelTh: 'ใบเสนอราคา', href: '/Thailand/Admin-Login/quotation', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
+    ]
+  },
+  {
+    group: 'Master Data', groupTh: 'ข้อมูลหลัก', color: '#7c3aed',
+    items: [
+      { label: 'Products', labelTh: 'สินค้า', href: '/Thailand/Admin-Login/products', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       ) },
-      { label: 'Quotation List', labelTh: 'รายการใบเสนอราคา', href: '/Thailand/Admin-Login/quotation/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
+      { label: 'Customers', labelTh: 'ลูกค้า', href: '/Thailand/Admin-Login/customers', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       ) },
-      { label: 'Sales Order', labelTh: 'ใบสั่งขาย', href: '/Thailand/Admin-Login/sales-order/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v7a2 2 0 0 0-2-2h-3"/><path d="M3 12h18"/><path d="M5 20h14a2 2 0 0 0 2-2v-5"/></svg>
-      ) },
-      { label: 'Contract', labelTh: 'สัญญา', href: '/Thailand/Admin-Login/contract/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
-      ) },
-      { label: 'Follow Up', labelTh: 'ติดตามงาน', href: '/Thailand/Admin-Login/follow-up', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      ) },
-      { label: 'Follow Up List', labelTh: 'รายการติดตามงาน', href: '/Thailand/Admin-Login/follow-up/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
+      { label: 'Suppliers', labelTh: 'ซัพพลายเออร์', href: '/Thailand/Admin-Login/supplier-add', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
       ) },
     ]
   },
   {
-    group: 'Finance', groupTh: 'ฝ่ายการเงิน', color: '#059669',
+    group: 'Marketing & Customer Care', groupTh: 'แผนกการตลาดและดูแลลูกค้า', color: '#db2777',
+    items: [
+      { label: 'Quotation', labelTh: 'ใบเสนอราคา', href: '/Thailand/Admin-Login/quotation', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
+      ) },
+      { label: 'Sales Order', labelTh: 'ใบสั่งขาย', href: '/Thailand/Admin-Login/sales-order/list', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v7a2 2 0 0 0-2-2h-3"/><path d="M3 12h18"/><path d="M5 20h14a2 2 0 0 0 2-2v-5"/></svg>
+      ) },
+      { label: 'Customers', labelTh: 'ลูกค้า', href: '/Thailand/Admin-Login/customers', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      ) },
+      { label: 'Add Customer', labelTh: 'เพิ่มลูกค้า', href: '/Thailand/Admin-Login/customer-add', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z"/><path d="M6 21v-2a4 4 0 0 1 4-4h4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
+      ) },
+      { label: 'Follow Up', labelTh: 'ติดตามงาน', href: '/Thailand/Admin-Login/follow-up', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      ) },
+      { label: 'Customer Testing', labelTh: 'ทดสอบลูกค้า', href: '/Thailand/Admin-Login/customer-testing', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><circle cx="12" cy="19" r="1"/></svg>
+      ) },
+    ]
+  },
+  {
+    group: 'Accounting', groupTh: 'แผนกบัญชี', color: '#059669',
     items: [
       { label: 'Invoice', labelTh: 'ใบแจ้งหนี้', href: '/Thailand/Admin-Login/invoice', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       ) },
-      { label: 'Invoice List', labelTh: 'รายการใบแจ้งหนี้', href: '/Thailand/Admin-Login/invoice/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
-      ) },
       { label: 'Tax Invoice', labelTh: 'ใบกำกับภาษี', href: '/Thailand/Admin-Login/tax-invoice', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>
-      ) },
-      { label: 'Tax Invoice List', labelTh: 'รายการใบกำกับภาษี', href: '/Thailand/Admin-Login/tax-invoice/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
       ) },
       { label: 'Receipt', labelTh: 'ใบเสร็จรับเงิน', href: '/Thailand/Admin-Login/receipt', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8.342a2 2 0 0 0-.602-1.43l-4.44-4.342A2 2 0 0 0 13.56 2H6a2 2 0 0 0-2 2z"/><path d="M9 13h6"/><path d="M9 17h3"/></svg>
       ) },
-      { label: 'Receipt List', labelTh: 'รายการใบเสร็จรับเงิน', href: '/Thailand/Admin-Login/receipt/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
+      { label: 'Credit Notes', labelTh: 'ใบลดหนี้', href: '/Thailand/Admin-Login/documents/credit-notes', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+      ) },
+      { label: 'Expense Bills', labelTh: 'บิลค่าใช้จ่าย', href: '/Thailand/Admin-Login/documents/expense-bills', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       ) },
       { label: 'Customer Payments', labelTh: 'รายการชำระเงิน', href: '/Thailand/Admin-Login/customer-pay', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3"/><path d="M5 20v-2a6 6 0 0 1 12 0v2"/><path d="M21 8v6"/><path d="M23 11h-6"/></svg>
@@ -81,113 +97,48 @@ const menuGroups: MenuGroup[] = [
     ]
   },
   {
-    group: 'Purchasing', groupTh: 'ฝ่ายจัดซื้อ', color: '#d97706',
-    items: [
-      { label: 'Purchase Order', labelTh: 'ใบสั่งซื้อ', href: '/Thailand/Admin-Login/purchase-order', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      ) },
-      { label: 'Purchase Order List', labelTh: 'รายการใบสั่งซื้อ', href: '/Thailand/Admin-Login/purchase-order/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
-      ) },
-      { label: 'Add Supplier', labelTh: 'เพิ่มซัพพลายเออร์', href: '/Thailand/Admin-Login/supplier-add', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-      ) },
-      { label: 'Korea HQ Tracking', labelTh: 'ติดตามสินค้าเกาหลี', href: '/Thailand/Admin-Login/korea-order-tracking', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      ) },
-    ]
-  },
-  {
-    group: 'Customers', groupTh: 'ฝ่ายลูกค้า', color: '#7c3aed',
-    items: [
-      { label: 'Add Customer', labelTh: 'เพิ่มลูกค้า', href: '/Thailand/Admin-Login/customer-add', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z"/><path d="M6 21v-2a4 4 0 0 1 4-4h4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
-      ) },
-      { label: 'Customers', labelTh: 'รายชื่อลูกค้า', href: '/Thailand/Admin-Login/customers', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      ) },
-      { label: 'Customer Testing', labelTh: 'ทดสอบลูกค้า', href: '/Thailand/Admin-Login/customer-testing', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><circle cx="12" cy="19" r="1"/></svg>
-      ) },
-    ]
-  },
-  {
-    group: 'Products', groupTh: 'ฝ่ายสินค้า', color: '#0891b2',
-    items: [
-      { label: 'Add Product', labelTh: 'เพิ่มสินค้า', href: '/Thailand/Admin-Login/product-add', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-      ) },
-      { label: 'Product List', labelTh: 'รายการสินค้า', href: '/Thailand/Admin-Login/products', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18M3 12h18M3 17h18" /></svg>
-      ) },
-      { label: 'Product Catalog', labelTh: 'แคตาล็อกสินค้า', href: '/Thailand/Admin-Login/products/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="14"/><path d="M3 11h18"/></svg>
-      ) },
-    ]
-  },
-  {
-    group: 'Installation', groupTh: 'ฝ่ายติดตั้ง', color: '#dc2626',
+    group: 'Technician', groupTh: 'แผนกช่าง', color: '#dc2626',
     items: [
       { label: 'Pre-Installation', labelTh: 'แบบฟอร์มก่อนติดตั้ง', href: '/Thailand/Admin-Login/pre-installation-form', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       ) },
-      { label: 'Pre-Installation List', labelTh: 'รายการก่อนติดตั้ง', href: '/Thailand/Admin-Login/pre-installation/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
-      ) },
       { label: 'Installation & Delivery', labelTh: 'ติดตั้งและจัดส่ง', href: '/Thailand/Admin-Login/delivery-note', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      ) },
+      { label: 'Field Work Logs', labelTh: 'บันทึกทำงานนอกสถานที่', href: '/Thailand/Admin-Login/documents/field-work-logs', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       ) },
     ]
   },
   {
-    group: 'Documents', groupTh: 'เอกสาร', color: '#ea580c',
+    group: 'Branch Manager', groupTh: 'แผนกผู้จัดการสาขา', color: '#0f172a',
     items: [
+      { label: 'Sales Report', labelTh: 'รายงานการขาย', href: '/Thailand/Admin-Login/quotation/list', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
+      ) },
+      { label: 'Financial Report', labelTh: 'รายงานการเงิน', href: '/Thailand/Admin-Login/invoice/list', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
+      ) },
+      { label: 'Inventory Report', labelTh: 'รายงานคลังสินค้า', href: '/Thailand/Admin-Login/documents/stock-cards', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      ) },
+      { label: 'Contract Management', labelTh: 'จัดการสัญญา', href: '/Thailand/Admin-Login/contract/list', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
+      ) },
+      { label: 'Customer Testing', labelTh: 'ทดสอบลูกค้า', href: '/Thailand/Admin-Login/customer-testing', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><circle cx="12" cy="19" r="1"/></svg>
+      ) },
       { label: 'Document Management', labelTh: 'จัดการเอกสาร', href: '/Thailand/Admin-Login/documents', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
       ) },
-      { label: 'Credit Notes', labelTh: 'ใบลดหนี้', href: '/Thailand/Admin-Login/documents/credit-notes', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
-      ) },
-      { label: 'Goods Receipts', labelTh: 'ใบรับสินค้า', href: '/Thailand/Admin-Login/documents/goods-receipts', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-      ) },
-      { label: 'Payment Vouchers', labelTh: 'ใบชำระเงิน', href: '/Thailand/Admin-Login/documents/payment-vouchers', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      { label: 'Import Export Delivery', labelTh: 'นำเข้า-ส่งออก สินค้า', href: '/Thailand/Admin-Login/korea-order-tracking', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       ) },
       { label: 'Warranties', labelTh: 'ใบรับประกัน', href: '/Thailand/Admin-Login/documents/warranties', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       ) },
-      { label: 'Purchase Requests', labelTh: 'ใบขอซื้อ', href: '/Thailand/Admin-Login/documents/purchase-requests', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      ) },
-      { label: 'Supplier Invoices', labelTh: 'ใบแจ้งหนี้ผู้ขาย', href: '/Thailand/Admin-Login/documents/supplier-invoices', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-      ) },
-      { label: 'Stock Cards', labelTh: 'การ์ดสินค้า', href: '/Thailand/Admin-Login/documents/stock-cards', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      ) },
-      { label: 'Stock Transfers', labelTh: 'ใบโอนสินค้า', href: '/Thailand/Admin-Login/documents/stock-transfers', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-      ) },
-      { label: 'Stock Adjustments', labelTh: 'ใบปรับสต๊อค', href: '/Thailand/Admin-Login/documents/stock-adjustments', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-      ) },
-      { label: 'Expense Bills', labelTh: 'บิลค่าใช้จ่าย', href: '/Thailand/Admin-Login/documents/expense-bills', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      ) },
       { label: 'Production Orders', labelTh: 'ใบสั่งผลิต', href: '/Thailand/Admin-Login/documents/production-orders', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m6.36 6.36l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m6.36-6.36l4.24-4.24"/></svg>
-      ) },
-    ]
-  },
-  {
-    group: 'Tools', groupTh: 'เครื่องมือ', color: '#475569',
-    items: [
-      { label: 'Power Calculator', labelTh: 'คำนวณพลังงาน', href: '/Thailand/Admin-Login/power-calculator', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
-      ) },
-      { label: 'Power Calculator List', labelTh: 'รายการคำนวณพลังงาน', href: '/Thailand/Admin-Login/power-calculator/list', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
       ) },
     ]
   },
@@ -217,7 +168,7 @@ export default function AdminLayout({
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [allowedPages, setAllowedPages] = useState<Set<string> | null>(null)
-  const [lang, setLang] = useState<'en' | 'th'>('en')
+  const [lang, setLang] = useState<'en' | 'th'>('th') // Default to Thai
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -225,15 +176,24 @@ export default function AdminLayout({
     try {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'en' || l === 'th') setLang(l)
+      else setLang('th') // Fallback to Thai if not set
     } catch (_) {}
     setMounted(true)
 
     try {
-      const userData = localStorage.getItem('k_system_admin_user')
+      const userData = localStorage.getItem('k_system_admin_user') ||
+                      localStorage.getItem('admin_user') ||
+                      localStorage.getItem('user')
       if (userData) {
-        setUser(JSON.parse(userData))
+        const parsedUser = JSON.parse(userData)
+        console.log('AdminLayout: Loaded user:', parsedUser)
+        setUser(parsedUser)
+      } else {
+        console.warn('AdminLayout: No user data found in localStorage')
       }
-    } catch (_) {}
+    } catch (e) {
+      console.error('AdminLayout: Error loading user:', e)
+    }
     // fetch permissions for current user type to filter menu for non-admins
     try {
       const raw = localStorage.getItem('k_system_admin_user')
@@ -268,8 +228,29 @@ export default function AdminLayout({
 
   const L = (en: string, th: string) => (mounted && lang === 'th') ? th : en
 
+  // Handle language change with immediate update
+  const handleLanguageChange = (newLang: 'en' | 'th') => {
+    console.log('Language change clicked:', newLang)
+    setLang(newLang)
+    try {
+      // Immediately persist and broadcast
+      localStorage.setItem('k_system_lang', newLang)
+      localStorage.setItem('locale', newLang)
+      console.log('Dispatching language events:', newLang)
+      window.dispatchEvent(new CustomEvent('k-system-lang', { detail: newLang }))
+      window.dispatchEvent(new CustomEvent('locale-changed', { detail: { locale: newLang } }))
+      // Force re-render
+      setTimeout(() => {
+        window.location.reload()
+      }, 100)
+    } catch (e) {
+      console.error('Language change error:', e)
+    }
+  }
+
   // persist language selection and broadcast to pages
   useEffect(() => {
+    if (!mounted) return
     try {
       // Persist both keys for backward compatibility and broadcast both events.
       localStorage.setItem('k_system_lang', lang)
@@ -277,7 +258,7 @@ export default function AdminLayout({
       window.dispatchEvent(new CustomEvent('k-system-lang', { detail: lang }))
       window.dispatchEvent(new CustomEvent('locale-changed', { detail: { locale: lang } }))
     } catch (_) {}
-  }, [lang])
+  }, [lang, mounted])
 
   return (
     <div className={styles.adminLayout}>
@@ -291,25 +272,26 @@ export default function AdminLayout({
           </div>
         </div>
 
-        <div className={styles.headerNav}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div className={`${styles.langPrintGroup} no-print`}>
             <div className={styles.langPill}>
-              <button type="button" onClick={() => setLang('th')} className={`${styles.btnLocale} ${mounted && lang === 'th' ? styles.localeActive : ''}`}>ไทย</button>
-              <button type="button" onClick={() => setLang('en')} className={`${styles.btnLocale} ${!mounted || lang === 'en' ? styles.localeActive : ''}`}>EN</button>
+              <button type="button" onClick={() => handleLanguageChange('th')} className={`${styles.btnLocale} ${lang === 'th' ? styles.localeActive : ''}`}>ไทย</button>
+              <button type="button" onClick={() => handleLanguageChange('en')} className={`${styles.btnLocale} ${lang === 'en' ? styles.localeActive : ''}`}>EN</button>
             </div>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {user && (
+          {mounted && user && (
             <div className={styles.headerUserInfo}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>
-              <span className={styles.headerUserName}>{user.name || user.username}</span>
+              <span className={styles.headerUserName}>
+                {user.fullName || user.name || user.username || user.email || 'Admin'}
+              </span>
             </div>
           )}
+
           <button onClick={handleLogout} className={styles.headerLogout}>
             {L('Logout', 'ออกจากระบบ')}
           </button>
@@ -366,7 +348,8 @@ export default function AdminLayout({
                   <div key={group.group} style={{
                     margin: '6px 8px',
                     borderRadius: 10,
-                    border: '1px solid rgba(0,0,0,0.06)',
+                    border: `1px solid ${group.color}40`,
+                    borderLeft: `4px solid ${group.color}`,
                     background: 'rgba(255,255,255,0.03)',
                     overflow: 'hidden'
                   }}>
@@ -377,15 +360,16 @@ export default function AdminLayout({
                       textTransform: 'uppercase',
                       letterSpacing: '0.06em',
                       color: group.color,
-                      background: `linear-gradient(135deg, ${group.color}12, ${group.color}08)`,
-                      borderBottom: '1px solid rgba(0,0,0,0.04)',
+                      background: `linear-gradient(135deg, ${group.color}30, ${group.color}18)`,
+                      borderBottom: `1px solid ${group.color}25`,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6
                     }}>
                       <span style={{
-                        width: 6, height: 6, borderRadius: '50%',
-                        background: group.color, display: 'inline-block', flexShrink: 0
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: group.color, display: 'inline-block', flexShrink: 0,
+                        boxShadow: `0 0 6px ${group.color}80`
                       }} />
                       {L(group.group, group.groupTh)}
                       {mounted && <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5, fontWeight: 500 }}>{filtered.length}</span>}

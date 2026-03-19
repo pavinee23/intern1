@@ -11,6 +11,7 @@ export default function PreInstallationFormPage() {
     const [customerLoading, setCustomerLoading] = useState(false)
   const router = useRouter()
   const [locale, setLocale] = useState<'en' | 'th'>('en')
+  const [mounted, setMounted] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Basic Information of the Distribution Panel
@@ -63,6 +64,7 @@ export default function PreInstallationFormPage() {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'th') setLocale('th')
     } catch {}
+    setMounted(true)
 
     const handler = (e: Event) => {
       const d = (e as any).detail
@@ -77,7 +79,7 @@ export default function PreInstallationFormPage() {
     }
   }, [])
 
-  const L = (en: string, th: string) => locale === 'th' ? th : en
+  const L = (en: string, th: string) => (mounted ? locale : 'en') === 'th' ? th : en
 
   const handleSave = async () => {
     setSaving(true)

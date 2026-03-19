@@ -4,21 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminLayout from '../../../components/AdminLayout'
 import styles from '../../../admin-theme.module.css'
-
-type MaterialType = {
-  material_code: string
-  material_name: string
-  quantity_required: number
-  unit: string
-}
-
-type StepType = {
-  step_number: number
-  step_name: string
-  description: string
-  duration_minutes: number
-  assigned_to: string
-}
+import ProductSearchModal from './ProductSearchModal'
 
 export default function CreateProductionOrderPage() {
   const router = useRouter()
@@ -37,31 +23,37 @@ export default function CreateProductionOrderPage() {
   const [supervisor, setSupervisor] = useState('')
   const [notes, setNotes] = useState('')
 
-  const [materials, setMaterials] = useState<MaterialType[]>([{
-    material_code: '',
-    material_name: '',
-    quantity_required: 0,
-    unit: 'pcs'
-  }])
-
-  const [steps, setSteps] = useState<StepType[]>([{
-    step_number: 1,
-    step_name: '',
-    description: '',
-    duration_minutes: 0,
-    assigned_to: ''
-  }])
-
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [showProductModal, setShowProductModal] = useState(false)
 
+  const [createdByName, setCreatedByName] = useState('')
   const [locale, setLocale] = useState<'en'|'th'>('th')
 
   useEffect(() => {
     try {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'en' || l === 'th') setLocale(l as 'en'|'th')
+
+      // Load user info - try multiple possible keys and fields
+      let userName = ''
+      try {
+        const userStr = localStorage.getItem('k_system_admin_user') || localStorage.getItem('admin_user') || localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr)
+          userName = user?.fullName || user?.name || user?.username || user?.email || ''
+        }
+      } catch (e) {
+        console.error('Error loading user info:', e)
+      }
+
+      // If still no name, try to get from other sources
+      if (!userName) {
+        userName = localStorage.getItem('admin_name') || localStorage.getItem('user_name') || ''
+      }
+
+      setCreatedByName(userName || 'Admin')
     } catch {}
 
     const handler = (e: Event) => {
@@ -79,82 +71,22 @@ export default function CreateProductionOrderPage() {
 
   const L = (en: string, th: string) => locale === 'th' ? th : en
 
-  // Renumber steps when they change
-  useEffect(() => {
-    const renumbered = steps.map((step, idx) => ({ ...step, step_number: idx + 1 }))
-    if (JSON.stringify(renumbered) !== JSON.stringify(steps)) {
-      setSteps(renumbered)
+  // Handle product selection from catalog
+  function handleProductSelect(product: any) {
+    setProductCode(product.sku || '')
+    setProductName(product.name || '')
+    setUnit(product.unit || 'pcs')
+
+    // Add product specs to notes
+    const specs = []
+    if (product['Capacity (kVA)']) specs.push(`Model: ${product['Capacity (kVA)']}`)
+    if (product.MCB) specs.push(`MCB: ${product.MCB}`)
+    if (product['Size (WxLxH) cm.']) specs.push(`Size: ${product['Size (WxLxH) cm.']}`)
+    if (product.Weight) specs.push(`Weight: ${product.Weight}`)
+
+    if (specs.length > 0) {
+      setNotes(specs.join(' | '))
     }
-  }, [steps.length])
-
-  // Materials management
-  function addMaterial() {
-    setMaterials([...materials, {
-      material_code: '',
-      material_name: '',
-      quantity_required: 0,
-      unit: 'pcs'
-    }])
-  }
-
-  function updateMaterial(i: number, key: keyof MaterialType, value: any) {
-    const copy = [...materials]
-    if (key === 'material_code' || key === 'material_name' || key === 'unit') {
-      copy[i][key] = value
-    } else {
-      copy[i][key] = Number(value)
-    }
-    setMaterials(copy)
-  }
-
-  function removeMaterial(i: number) {
-    if (materials.length === 1) return
-    setMaterials(materials.filter((_, idx) => idx !== i))
-  }
-
-  // Steps management
-  function addStep() {
-    setSteps([...steps, {
-      step_number: steps.length + 1,
-      step_name: '',
-      description: '',
-      duration_minutes: 0,
-      assigned_to: ''
-    }])
-  }
-
-  function updateStep(i: number, key: keyof StepType, value: any) {
-    const copy = [...steps]
-    if (key === 'step_number' || key === 'duration_minutes') {
-      copy[i][key] = Number(value)
-    } else {
-      copy[i][key] = value
-    }
-    setSteps(copy)
-  }
-
-  function removeStep(i: number) {
-    if (steps.length === 1) return
-    const filtered = steps.filter((_, idx) => idx !== i)
-    // Renumber after removal
-    const renumbered = filtered.map((step, idx) => ({ ...step, step_number: idx + 1 }))
-    setSteps(renumbered)
-  }
-
-  function moveStepUp(i: number) {
-    if (i === 0) return
-    const copy = [...steps]
-    ;[copy[i - 1], copy[i]] = [copy[i], copy[i - 1]]
-    const renumbered = copy.map((step, idx) => ({ ...step, step_number: idx + 1 }))
-    setSteps(renumbered)
-  }
-
-  function moveStepDown(i: number) {
-    if (i === steps.length - 1) return
-    const copy = [...steps]
-    ;[copy[i], copy[i + 1]] = [copy[i + 1], copy[i]]
-    const renumbered = copy.map((step, idx) => ({ ...step, step_number: idx + 1 }))
-    setSteps(renumbered)
   }
 
   function validate() {
@@ -169,18 +101,6 @@ export default function CreateProductionOrderPage() {
     }
     if (!productionLine) errs.push(L('Production line is required', 'กรุณาระบุสายการผลิต'))
     if (!supervisor) errs.push(L('Supervisor is required', 'กรุณาระบุหัวหน้างาน'))
-
-    if (materials.length === 0) errs.push(L('At least 1 material required', 'ต้องมีอย่างน้อย 1 วัตถุดิบ'))
-    materials.forEach((mat, idx) => {
-      if (!mat.material_name) errs.push(L(`Material ${idx + 1} needs name`, `วัตถุดิบที่ ${idx + 1} ต้องมีชื่อ`))
-      if (mat.quantity_required <= 0) errs.push(L(`Material ${idx + 1} quantity must be > 0`, `วัตถุดิบที่ ${idx + 1} จำนวนต้อง > 0`))
-    })
-
-    if (steps.length === 0) errs.push(L('At least 1 step required', 'ต้องมีอย่างน้อย 1 ขั้นตอน'))
-    steps.forEach((step, idx) => {
-      if (!step.step_name) errs.push(L(`Step ${idx + 1} needs name`, `ขั้นตอนที่ ${idx + 1} ต้องมีชื่อ`))
-      if (step.duration_minutes <= 0) errs.push(L(`Step ${idx + 1} duration must be > 0`, `ขั้นตอนที่ ${idx + 1} ระยะเวลาต้อง > 0`))
-    })
 
     setErrors(errs)
     return errs.length === 0
@@ -207,19 +127,6 @@ export default function CreateProductionOrderPage() {
         production_line: productionLine,
         shift,
         supervisor,
-        materials: materials.map(mat => ({
-          material_code: mat.material_code,
-          material_name: mat.material_name,
-          quantity_required: mat.quantity_required,
-          unit: mat.unit
-        })),
-        steps: steps.map(step => ({
-          step_number: step.step_number,
-          step_name: step.step_name,
-          description: step.description,
-          duration_minutes: step.duration_minutes,
-          assigned_to: step.assigned_to
-        })),
         notes,
         created_by
       }
@@ -283,6 +190,27 @@ export default function CreateProductionOrderPage() {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Date', 'วันที่')}</label>
                 <input type="date" value={pdoDate} readOnly className={styles.formInput} style={{ background: '#f5f5f5' }} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>{L('Created By', 'ผู้สร้าง')}</label>
+                <input type="text" value={createdByName} disabled className={styles.formInput} style={{ background: '#f5f5f5' }} />
+              </div>
+            </div>
+
+            {/* Product Selection from Catalog */}
+            <div style={{ marginTop: 24, marginBottom: 16, padding: 12, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, color: '#065f46' }}>
+                  🔍 {L('Select product from catalog (model/specs)', 'เลือกสินค้าจากแคตตาล็อก (โมเดล/รุ่น)')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowProductModal(true)}
+                  className={styles.btnSecondary}
+                  style={{ padding: '8px 16px' }}
+                >
+                  {L('Search Catalog', 'ค้นหาแคตตาล็อก')}
+                </button>
               </div>
             </div>
 
@@ -348,82 +276,14 @@ export default function CreateProductionOrderPage() {
               </div>
             </div>
 
-            <h3 style={{ marginTop: 30, marginBottom: 15, fontSize: 16, fontWeight: 600 }}>{L('Materials Required', 'วัตถุดิบที่ต้องใช้')}</h3>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '20%' }}>{L('Material Code', 'รหัสวัตถุดิบ')}</th>
-                    <th style={{ width: '35%' }}>{L('Material Name', 'ชื่อวัตถุดิบ')}</th>
-                    <th style={{ width: '20%' }}>{L('Quantity', 'จำนวน')}</th>
-                    <th style={{ width: '20%' }}>{L('Unit', 'หน่วย')}</th>
-                    <th style={{ width: '5%' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {materials.map((mat, i) => (
-                    <tr key={i}>
-                      <td><input type="text" value={mat.material_code} onChange={e => updateMaterial(i, 'material_code', e.target.value)} className={styles.formInput} style={{ width: '100%' }} /></td>
-                      <td><input type="text" value={mat.material_name} onChange={e => updateMaterial(i, 'material_name', e.target.value)} className={styles.formInput} style={{ width: '100%' }} /></td>
-                      <td><input type="number" value={mat.quantity_required} onChange={e => updateMaterial(i, 'quantity_required', e.target.value)} className={styles.formInput} min="0.01" step="0.01" style={{ width: '100%' }} /></td>
-                      <td><input type="text" value={mat.unit} onChange={e => updateMaterial(i, 'unit', e.target.value)} className={styles.formInput} style={{ width: '100%' }} /></td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button type="button" onClick={() => removeMaterial(i)} disabled={materials.length === 1} className={styles.btnDanger} style={{ padding: '6px 12px', fontSize: '14px' }}>×</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button type="button" onClick={addMaterial} className={styles.btnSecondary} style={{ marginTop: 10 }}>+ {L('Add Material', 'เพิ่มวัตถุดิบ')}</button>
-
-            <h3 style={{ marginTop: 30, marginBottom: 15, fontSize: 16, fontWeight: 600 }}>{L('Production Steps', 'ขั้นตอนการผลิต')}</h3>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '8%' }}>{L('#', '#')}</th>
-                    <th style={{ width: '22%' }}>{L('Step Name', 'ชื่อขั้นตอน')}</th>
-                    <th style={{ width: '25%' }}>{L('Description', 'คำอธิบาย')}</th>
-                    <th style={{ width: '12%' }}>{L('Duration (min)', 'ระยะเวลา (นาที)')}</th>
-                    <th style={{ width: '20%' }}>{L('Assigned To', 'ผู้รับผิดชอบ')}</th>
-                    <th style={{ width: '13%' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {steps.map((step, i) => (
-                    <tr key={i}>
-                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{step.step_number}</td>
-                      <td><input type="text" value={step.step_name} onChange={e => updateStep(i, 'step_name', e.target.value)} className={styles.formInput} style={{ width: '100%' }} /></td>
-                      <td><input type="text" value={step.description} onChange={e => updateStep(i, 'description', e.target.value)} className={styles.formInput} style={{ width: '100%' }} /></td>
-                      <td><input type="number" value={step.duration_minutes} onChange={e => updateStep(i, 'duration_minutes', e.target.value)} className={styles.formInput} min="1" style={{ width: '100%' }} /></td>
-                      <td><input type="text" value={step.assigned_to} onChange={e => updateStep(i, 'assigned_to', e.target.value)} className={styles.formInput} style={{ width: '100%' }} /></td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                          <button type="button" onClick={() => moveStepUp(i)} disabled={i === 0} className={styles.btnSecondary} style={{ padding: '4px 8px', fontSize: '12px' }}>↑</button>
-                          <button type="button" onClick={() => moveStepDown(i)} disabled={i === steps.length - 1} className={styles.btnSecondary} style={{ padding: '4px 8px', fontSize: '12px' }}>↓</button>
-                          <button type="button" onClick={() => removeStep(i)} disabled={steps.length === 1} className={styles.btnDanger} style={{ padding: '4px 8px', fontSize: '12px' }}>×</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button type="button" onClick={addStep} className={styles.btnSecondary} style={{ marginTop: 10 }}>+ {L('Add Step', 'เพิ่มขั้นตอน')}</button>
-
-            <div className={styles.formGroup} style={{ marginTop: 20 }}>
+            <div className={styles.formGroup} style={{ marginTop: 30 }}>
               <label className={styles.formLabel}>{L('Notes', 'หมายเหตุ')}</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} className={styles.formInput} rows={2} placeholder={L('Additional notes...', 'หมายเหตุเพิ่มเติม...')} />
             </div>
 
             {errors.length > 0 && (
               <div style={{ padding: '12px 16px', marginBottom: '16px', borderRadius: 8, background: '#fee2e2', border: '1px solid #fca5a5', color: '#7f1d1d' }}>
-                {errors.map((err, idx) => (<div key={idx}>• {err}</div>)))}
+                {errors.map((err, idx) => (<div key={idx}>• {err}</div>))}
               </div>
             )}
 
@@ -436,6 +296,13 @@ export default function CreateProductionOrderPage() {
           </form>
         </div>
       </div>
+
+      <ProductSearchModal
+        isOpen={showProductModal}
+        onClose={() => setShowProductModal(false)}
+        onSelect={handleProductSelect}
+        locale={locale}
+      />
     </AdminLayout>
   )
 }

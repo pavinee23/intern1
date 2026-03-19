@@ -288,7 +288,7 @@ export default function CreateStockAdjustmentPage() {
 
             {errors.length > 0 && (
               <div style={{ padding: '12px 16px', marginBottom: '16px', borderRadius: 8, background: '#fee2e2', border: '1px solid #fca5a5', color: '#7f1d1d' }}>
-                {errors.map((err, idx) => (<div key={idx}>• {err}</div>)))}
+                {errors.map((err, idx) => (<div key={idx}>• {err}</div>))}
               </div>
             )}
 

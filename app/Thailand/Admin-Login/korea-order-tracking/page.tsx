@@ -11,17 +11,26 @@ type TrackRecord = {
   estimatedArrival: string; actualArrival: string
   customsStatus: string; customsNotes: string; warehouseLocation: string
   itemsSummary: string; totalValue: number; notes: string
+  thailand_tracking_no: string; thailand_carrier: string; thailand_delivery_status: string
+  thailand_est_delivery: string; thailand_actual_delivery: string
+  thailand_delivery_address: string; thailand_delivery_notes: string
+  pr_id: number | null; pdo_id: number | null
   created_by: string; created_at: string; updated_at: string
 }
 
 type PO = { orderID: number; orderNo: string; customer_name: string; priceTotal: number; status: string }
+type PR = { prID: number; prNo: string; department: string; requested_by: string; status: string; total_amount: number; prDate: string }
+type PDO = { pdoID: number; pdoNo: string; product_code: string; product_name: string; quantity_ordered: number; unit: string; status: string; pdoDate: string }
 
 const emptyForm = {
   orderID: '', orderNo: '', orderDescription: '', supplierName: 'Korea HQ', orderDate: '',
-  shippingMethod: 'sea', trackingNumber: '', containerNo: '', status: 'ordered',
-  estimatedDeparture: '', actualDeparture: '', estimatedArrival: '', actualArrival: '',
-  customsStatus: 'none', customsNotes: '', warehouseLocation: '',
-  itemsSummary: '', totalValue: '', notes: ''
+  shippingMethod: 'sea', trackingNumber: '', containerNo: '', status: 'arrived',
+  estimatedDeparture: '', actualDeparture: '', estimatedArrival: '', actualArrival: new Date().toISOString().split('T')[0],
+  customsStatus: 'cleared', customsNotes: '', warehouseLocation: '',
+  itemsSummary: '', totalValue: '', notes: '',
+  thailand_tracking_no: '', thailand_carrier: '', thailand_delivery_status: 'preparing',
+  thailand_est_delivery: '', thailand_actual_delivery: '', thailand_delivery_address: '', thailand_delivery_notes: '',
+  pr_id: '', pdo_id: '', pdoNo: ''
 }
 
 const statusFlow = ['ordered', 'confirmed', 'manufacturing', 'shipped', 'customs', 'arrived', 'delivered'] as const
@@ -51,6 +60,7 @@ const customsLabels: Record<string, { en: string; th: string }> = {
 
 export default function KoreaOrderTrackingPage() {
   const [lang, setLang] = useState<'en' | 'th'>('th')
+  const [mounted, setMounted] = useState(false)
   const [records, setRecords] = useState<TrackRecord[]>([])
   const [purchaseOrders, setPurchaseOrders] = useState<PO[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,10 +72,13 @@ export default function KoreaOrderTrackingPage() {
   const [expandedID, setExpandedID] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [poSearch, setPoSearch] = useState('')
+  const [pdos, setPdos] = useState<PDO[]>([])
+  const [pdoSearch, setPdoSearch] = useState('')
 
-  const L = (en: string, th: string) => lang === 'th' ? th : en
+  const L = (en: string, th: string) => (mounted ? lang : 'th') === 'th' ? th : en
 
   useEffect(() => {
+    setMounted(true)
     try {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'en' || l === 'th') setLang(l)
@@ -100,9 +113,20 @@ export default function KoreaOrderTrackingPage() {
     } catch (_) {}
   }, [])
 
-  useEffect(() => { fetchRecords(); fetchPOs() }, [fetchRecords, fetchPOs])
+  const fetchPDOs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/mysql-proxy', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'SELECT pdoID, pdoNo, product_code, product_name, quantity_ordered, unit, status, pdoDate FROM purchase_detail_orders ORDER BY pdoID DESC LIMIT 200' })
+      })
+      const j = await res.json()
+      if (j.data) setPdos(j.data)
+    } catch (_) {}
+  }, [])
 
-  const openNew = () => { setEditID(null); setForm({ ...emptyForm }); setPoSearch(''); setShowForm(true) }
+  useEffect(() => { fetchRecords(); fetchPOs(); fetchPDOs() }, [fetchRecords, fetchPOs, fetchPDOs])
+
+  const openNew = () => { setEditID(null); setForm({ ...emptyForm }); setPoSearch(''); setPdoSearch(''); setShowForm(true) }
 
   const openEdit = (rec: TrackRecord) => {
     setEditID(rec.trackID)
@@ -118,13 +142,30 @@ export default function KoreaOrderTrackingPage() {
       actualArrival: rec.actualArrival ? rec.actualArrival.split('T')[0] : '',
       customsStatus: rec.customsStatus || 'none', customsNotes: rec.customsNotes || '',
       warehouseLocation: rec.warehouseLocation || '', itemsSummary: rec.itemsSummary || '',
-      totalValue: rec.totalValue ? String(rec.totalValue) : '', notes: rec.notes || ''
+      totalValue: rec.totalValue ? String(rec.totalValue) : '', notes: rec.notes || '',
+      thailand_tracking_no: rec.thailand_tracking_no || '', thailand_carrier: rec.thailand_carrier || '',
+      thailand_delivery_status: rec.thailand_delivery_status || 'pending',
+      thailand_est_delivery: rec.thailand_est_delivery ? rec.thailand_est_delivery.split('T')[0] : '',
+      thailand_actual_delivery: rec.thailand_actual_delivery ? rec.thailand_actual_delivery.split('T')[0] : '',
+      thailand_delivery_address: rec.thailand_delivery_address || '',
+      thailand_delivery_notes: rec.thailand_delivery_notes || ''
     })
     setShowForm(true)
   }
 
   const handleSave = async () => {
-    if (!form.orderDescription && !form.itemsSummary) { alert(L('Please enter order description or items', 'กรุณากรอกรายละเอียดสินค้า')); return }
+    if (!form.orderDescription && !form.itemsSummary) {
+      alert(L('Please enter order description or items', 'กรุณากรอกรายละเอียดสินค้า'))
+      return
+    }
+    if (!form.thailand_delivery_address) {
+      alert(L('Please enter delivery address in Thailand', 'กรุณากรอกที่อยู่จัดส่งในไทย'))
+      return
+    }
+    if (!form.thailand_carrier) {
+      alert(L('Please select delivery carrier', 'กรุณาเลือกบริษัทขนส่ง'))
+      return
+    }
     setSaving(true)
     try {
       const payload: any = { ...form }
@@ -156,6 +197,64 @@ export default function KoreaOrderTrackingPage() {
       totalValue: po.priceTotal ? String(po.priceTotal) : f.totalValue
     }))
     setPoSearch('')
+  }
+
+  const handlePDOSelect = (pdo: PDO) => {
+    setForm(f => ({
+      ...f,
+      pdo_id: String(pdo.pdoID),
+      pdoNo: pdo.pdoNo,
+      itemsSummary: f.itemsSummary || `PDO: ${pdo.pdoNo} - ${pdo.product_name} (${pdo.quantity_ordered} ${pdo.unit})`
+    }))
+    setPdoSearch('')
+  }
+
+  const handleExport = () => {
+    const rows = filtered
+    if (!rows.length) { alert(L('No records to export', 'ไม่มีข้อมูลให้ส่งออก')); return }
+    const headers = [
+      'Track No', 'Order No', 'Description', 'Supplier', 'Order Date',
+      'Shipping Method', 'Tracking No', 'Container/AWB', 'Status',
+      'Est. Departure', 'Actual Departure', 'Est. Arrival', 'Actual Arrival',
+      'Customs Status', 'Customs Notes', 'Warehouse',
+      'Items Summary', 'Total Value (THB)', 'Notes',
+      'TH Tracking No', 'TH Carrier', 'TH Delivery Status',
+      'TH Est. Delivery', 'TH Actual Delivery', 'TH Delivery Address', 'TH Delivery Notes',
+      'Created By', 'Created At'
+    ]
+    const fmt = (v: any) => {
+      if (v === null || v === undefined) return ''
+      const s = String(v).replace(/"/g, '""')
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s
+    }
+    const fmtDate = (v: string) => v ? new Date(v).toLocaleDateString('th-TH') : ''
+    const csvRows = [
+      headers.join(','),
+      ...rows.map(r => [
+        r.trackNo, r.orderNo, r.orderDescription, r.supplierName,
+        fmtDate(r.orderDate),
+        shippingLabels[r.shippingMethod]?.th || r.shippingMethod,
+        r.trackingNumber, r.containerNo,
+        statusMap[r.status]?.th || r.status,
+        fmtDate(r.estimatedDeparture), fmtDate(r.actualDeparture),
+        fmtDate(r.estimatedArrival), fmtDate(r.actualArrival),
+        customsLabels[r.customsStatus]?.th || r.customsStatus,
+        r.customsNotes, r.warehouseLocation,
+        r.itemsSummary, r.totalValue, r.notes,
+        r.thailand_tracking_no, r.thailand_carrier, r.thailand_delivery_status,
+        fmtDate(r.thailand_est_delivery), fmtDate(r.thailand_actual_delivery),
+        r.thailand_delivery_address, r.thailand_delivery_notes,
+        r.created_by, fmtDate(r.created_at)
+      ].map(fmt).join(','))
+    ]
+    const bom = '\uFEFF'
+    const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `korea-tracking-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const daysUntil = (dateStr: string) => {
@@ -192,33 +291,45 @@ export default function KoreaOrderTrackingPage() {
           <div>
             <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>
               <img src="https://flagcdn.com/kr.svg" alt="Korea" width={36} height={26} style={{ borderRadius: 4, objectFit: 'cover', verticalAlign: 'middle', marginRight: 10, display: 'inline-block' }} />
-              {L('Korea HQ Order Tracking', 'ติดตามสินค้าจากสำนักงานใหญ่เกาหลี')}
+              {L('Korea HQ — Goods Receipt & Export Tracking', 'ติดตาม รับเข้า- ส่งออกสินค้า')}
             </h2>
             <p style={{ margin: '6px 0 0', fontSize: 14, opacity: 0.9 }}>
-              {L('Track orders from Korea headquarters to Thailand branch', 'ตรวจสอบสถานะรายการสั่งสินค้าและกำหนดการสินค้าถึงสาขาประเทศไทย')}
+              {L('Record goods received/exported from Korea & schedule local delivery', 'บันทึกการรับ-ส่งออกสินค้า และกำหนดการจัดส่งในประเทศไทย')}
             </p>
           </div>
-          <button onClick={openNew} style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 10,
-            border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-            color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', backdropFilter: 'blur(4px)'
-          }}
-          onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
-          onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {L('New Order', 'เพิ่มรายการ')}
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={openNew} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 10,
+              border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
+              color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(4px)'
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+            onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              {L('Export Goods', 'ส่งสินค้าออก')}
+            </button>
+            <button onClick={openNew} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 10,
+              border: '2px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
+              color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', backdropFilter: 'blur(4px)'
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+            onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              {L('Record Goods Receipt', 'บันทึกรับสินค้า')}
+            </button>
+          </div>
         </div>
 
         {/* Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginTop: 20 }}>
           {[
             { key: 'total', label: L('Total', 'ทั้งหมด'), count: counts.total, icon: '📋' },
-            { key: 'ordered', label: L('Ordered', 'สั่งแล้ว'), count: counts.ordered, icon: '📝' },
-            { key: 'manufacturing', label: L('Making', 'ผลิต'), count: counts.manufacturing, icon: '🏭' },
+            { key: 'ordered', label: L('Ordered', 'สั่งซื้อแล้ว'), count: counts.ordered, icon: '📝' },
+            { key: 'manufacturing', label: L('Manufacturing', 'กำลังผลิต'), count: counts.manufacturing, icon: '🏭' },
             { key: 'inTransit', label: L('In Transit', 'ระหว่างทาง'), count: inTransit, icon: '🚢' },
-            { key: 'arrived', label: L('Arrived', 'ถึงแล้ว'), count: counts.arrived, icon: '📦' },
-            { key: 'delivered', label: L('Delivered', 'ส่งแล้ว'), count: counts.delivered, icon: '✅' },
+            { key: 'arrived', label: L('Arrived', 'ถึงไทยแล้ว'), count: counts.arrived, icon: '📦' },
+            { key: 'delivered', label: L('Delivered', 'จัดส่งสำเร็จ'), count: counts.delivered, icon: '✅' },
           ].map(s => (
             <div key={s.key} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '12px 16px', textAlign: 'center', backdropFilter: 'blur(4px)' }}>
               <div style={{ fontSize: 20 }}>{s.icon}</div>
@@ -409,26 +520,70 @@ export default function KoreaOrderTrackingPage() {
                       })}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-                      {[
-                        { icon: '📦', label: L('Items', 'รายการสินค้า'), value: rec.itemsSummary },
-                        { icon: '💰', label: L('Total Value', 'มูลค่ารวม'), value: rec.totalValue ? `${Number(rec.totalValue).toLocaleString()} ${L('THB', 'บาท')}` : null },
-                        { icon: '🏢', label: L('Supplier', 'ผู้จัดส่ง'), value: rec.supplierName },
-                        { icon: '🚢', label: L('Tracking No.', 'เลขพัสดุ'), value: rec.trackingNumber },
-                        { icon: '📋', label: L('Container/AWB', 'เลขตู้/AWB'), value: rec.containerNo },
-                        { icon: '📅', label: L('Est. Departure', 'กำหนดออก'), value: rec.estimatedDeparture ? new Date(rec.estimatedDeparture).toLocaleDateString('th-TH') : null },
-                        { icon: '🛬', label: L('Est. Arrival', 'กำหนดถึง'), value: rec.estimatedArrival ? new Date(rec.estimatedArrival).toLocaleDateString('th-TH') : null },
-                        { icon: '✅', label: L('Actual Arrival', 'ถึงจริง'), value: rec.actualArrival ? new Date(rec.actualArrival).toLocaleDateString('th-TH') : null },
-                        { icon: '🛃', label: L('Customs', 'ศุลกากร'), value: customsLabels[rec.customsStatus] ? L(customsLabels[rec.customsStatus].en, customsLabels[rec.customsStatus].th) : null },
-                        { icon: '🏪', label: L('Warehouse', 'คลังสินค้า'), value: rec.warehouseLocation },
-                        { icon: '📝', label: L('Notes', 'หมายเหตุ'), value: rec.notes },
-                      ].filter(d => d.value).map((d, i) => (
-                        <div key={i}>
-                          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>{d.icon} {d.label}</div>
-                          <div style={{ fontSize: 14, color: '#334155', whiteSpace: 'pre-line' }}>{d.value}</div>
-                        </div>
-                      ))}
+                    {/* Korea to Thailand Shipping */}
+                    <div style={{ marginBottom: 20 }}>
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 18 }}>🇰🇷→🇹🇭</span> {L('Korea to Thailand Shipping', 'การจัดส่งจากเกาหลีมาไทย')}
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                        {[
+                          { icon: '📦', label: L('Items', 'รายการสินค้า'), value: rec.itemsSummary },
+                          { icon: '💰', label: L('Total Value', 'มูลค่ารวม'), value: rec.totalValue ? `${Number(rec.totalValue).toLocaleString()} ${L('THB', 'บาท')}` : null },
+                          { icon: '🏢', label: L('Supplier', 'ผู้จัดส่ง'), value: rec.supplierName },
+                          { icon: '🚢', label: L('Tracking No.', 'เลขพัสดุ'), value: rec.trackingNumber },
+                          { icon: '📋', label: L('Container/AWB', 'เลขตู้/AWB'), value: rec.containerNo },
+                          { icon: '📅', label: L('Est. Departure', 'กำหนดออก'), value: rec.estimatedDeparture ? new Date(rec.estimatedDeparture).toLocaleDateString('th-TH') : null },
+                          { icon: '🛬', label: L('Est. Arrival', 'กำหนดถึง'), value: rec.estimatedArrival ? new Date(rec.estimatedArrival).toLocaleDateString('th-TH') : null },
+                          { icon: '✅', label: L('Actual Arrival', 'ถึงจริง'), value: rec.actualArrival ? new Date(rec.actualArrival).toLocaleDateString('th-TH') : null },
+                          { icon: '🛃', label: L('Customs', 'ศุลกากร'), value: customsLabels[rec.customsStatus] ? L(customsLabels[rec.customsStatus].en, customsLabels[rec.customsStatus].th) : null },
+                          { icon: '🏪', label: L('Warehouse', 'คลังสินค้า'), value: rec.warehouseLocation },
+                          { icon: '📝', label: L('Notes', 'หมายเหตุ'), value: rec.notes },
+                        ].filter(d => d.value).map((d, i) => (
+                          <div key={i}>
+                            <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>{d.icon} {d.label}</div>
+                            <div style={{ fontSize: 14, color: '#334155', whiteSpace: 'pre-line' }}>{d.value}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Thailand Local Delivery */}
+                    {(rec.thailand_tracking_no || rec.thailand_carrier || rec.thailand_delivery_address) && (
+                      <div style={{ borderTop: '2px dashed #e2e8f0', paddingTop: 20 }}>
+                        <h4 style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 18 }}>🚚</span> {L('Thailand Local Delivery', 'การจัดส่งในไทย')}
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                          {[
+                            { icon: '📦', label: L('Thailand Tracking', 'เลขพัสดุไทย'), value: rec.thailand_tracking_no },
+                            { icon: '🚚', label: L('Carrier', 'บริษัทขนส่ง'), value: rec.thailand_carrier },
+                            { icon: '📍', label: L('Delivery Status', 'สถานะจัดส่ง'), value: rec.thailand_delivery_status ? L(
+                              rec.thailand_delivery_status === 'pending' ? 'Pending' :
+                              rec.thailand_delivery_status === 'preparing' ? 'Preparing' :
+                              rec.thailand_delivery_status === 'in_transit' ? 'In Transit' :
+                              rec.thailand_delivery_status === 'out_for_delivery' ? 'Out for Delivery' :
+                              rec.thailand_delivery_status === 'delivered' ? 'Delivered' :
+                              rec.thailand_delivery_status === 'failed' ? 'Failed' : rec.thailand_delivery_status,
+                              rec.thailand_delivery_status === 'pending' ? 'รอดำเนินการ' :
+                              rec.thailand_delivery_status === 'preparing' ? 'กำลังเตรียม' :
+                              rec.thailand_delivery_status === 'in_transit' ? 'ระหว่างจัดส่ง' :
+                              rec.thailand_delivery_status === 'out_for_delivery' ? 'ออกจัดส่งแล้ว' :
+                              rec.thailand_delivery_status === 'delivered' ? 'จัดส่งสำเร็จ' :
+                              rec.thailand_delivery_status === 'failed' ? 'จัดส่งไม่สำเร็จ' : rec.thailand_delivery_status
+                            ) : null },
+                            { icon: '📅', label: L('Est. Delivery', 'กำหนดส่ง'), value: rec.thailand_est_delivery ? new Date(rec.thailand_est_delivery).toLocaleDateString('th-TH') : null },
+                            { icon: '✅', label: L('Actual Delivery', 'ส่งสำเร็จ'), value: rec.thailand_actual_delivery ? new Date(rec.thailand_actual_delivery).toLocaleDateString('th-TH') : null },
+                            { icon: '🏠', label: L('Delivery Address', 'ที่อยู่จัดส่ง'), value: rec.thailand_delivery_address },
+                            { icon: '📝', label: L('Delivery Notes', 'หมายเหตุ'), value: rec.thailand_delivery_notes },
+                          ].filter(d => d.value).map((d, i) => (
+                            <div key={i}>
+                              <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>{d.icon} {d.label}</div>
+                              <div style={{ fontSize: 14, color: '#334155', whiteSpace: 'pre-line' }}>{d.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -447,10 +602,10 @@ export default function KoreaOrderTrackingPage() {
               <div>
                 <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#1e293b' }}>
                   <img src="https://flagcdn.com/kr.svg" alt="Korea" width={28} height={20} style={{ borderRadius: 3, objectFit: 'cover', verticalAlign: 'middle', marginRight: 8, display: 'inline-block' }} />
-                  {editID ? L('Edit Order Tracking', 'แก้ไขรายการติดตาม') : L('New Order from Korea HQ', 'เพิ่มรายการสั่งสินค้าจากเกาหลี')}
+                  {editID ? L('Edit Export Goods', 'แก้ไขส่งออกสินค้า') : L('Record Export Goods', 'บันทึกส่งออกสินค้า')}
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>
-                  {L('Track shipment from Korea to Thailand', 'ติดตามการจัดส่งจากเกาหลีมาไทย')}
+                  {L('Record export goods', 'บันทึกส่งออก สินค้า')}
                 </p>
               </div>
               <button onClick={() => setShowForm(false)} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#f1f5f9', cursor: 'pointer', fontSize: 18, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
@@ -458,57 +613,69 @@ export default function KoreaOrderTrackingPage() {
 
             <div style={{ padding: '20px 28px 28px' }}>
 
-              {/* Link PO (optional) */}
-              {!editID && (
-                <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 12, padding: 16, marginBottom: 20, border: '1px solid #fcd34d' }}>
-                  <label style={{ ...lbl, color: '#92400e', fontSize: 14 }}>
-                    📋 {L('Link to Purchase Order (optional)', 'เชื่อมกับใบสั่งซื้อ (ไม่บังคับ)')}
-                  </label>
-                  <div style={{ position: 'relative', marginBottom: 8 }}>
-                    <input value={poSearch} onChange={e => setPoSearch(e.target.value)}
-                      placeholder={L('Search PO number...', 'ค้นหาเลข PO...')}
-                      style={{ ...inp, borderColor: '#fcd34d' }} />
-                  </div>
-                  {poSearch && (
-                    <div style={{ maxHeight: 150, overflowY: 'auto', borderRadius: 8, border: '1px solid #fcd34d', background: '#fff' }}>
-                      {purchaseOrders.filter(po =>
-                        po.orderNo.toLowerCase().includes(poSearch.toLowerCase()) ||
-                        (po.customer_name || '').toLowerCase().includes(poSearch.toLowerCase())
-                      ).map(po => (
-                        <div key={po.orderID} onClick={() => handlePOSelect(po)}
-                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #fef3c7', fontSize: 13 }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#fffbeb'}
-                          onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                          <span style={{ fontWeight: 700, color: '#d4940a' }}>{po.orderNo}</span>
-                          <span style={{ marginLeft: 8, color: '#64748b' }}>{po.customer_name}</span>
-                          <span style={{ float: 'right', color: '#059669', fontWeight: 600 }}>{Number(po.priceTotal || 0).toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {form.orderNo && (
-                    <div style={{ marginTop: 8, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
-                      ✓ {L('Linked to', 'เชื่อมกับ')} {form.orderNo}
-                      <button onClick={() => setForm(f => ({ ...f, orderID: '', orderNo: '' }))}
-                        style={{ marginLeft: 8, padding: '2px 10px', borderRadius: 6, border: '1px solid #fcd34d', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#d4940a' }}>
-                        {L('Clear', 'ล้าง')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Link PDO (optional) */}
+              <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 12, padding: 16, marginBottom: 20, border: '1px solid #fcd34d' }}>
+                <label style={{ ...lbl, color: '#92400e', fontSize: 14, marginBottom: 12 }}>
+                  📋 {L('Link to Transfer & Sales Order', 'เชื่อมกับใบโอนสินค้า และ ใบสั่งขาย')}
+                </label>
 
-              {/* Order Info */}
+                  {/* PDO Column */}
+                  <div>
+                    <label style={{ ...lbl, fontSize: 12, color: '#92400e' }}>📦 {L('Search SO No.', 'ค้นหาเลข SO')}</label>
+                    <div style={{ position: 'relative', marginBottom: 6 }}>
+                      <input value={pdoSearch} onChange={e => setPdoSearch(e.target.value)}
+                        placeholder={L('Search ST...', 'ค้นหาเลข ST...')}
+                        style={{ ...inp, borderColor: '#fcd34d', fontSize: 13 }} />
+                    </div>
+                    {pdoSearch && (
+                      <div style={{ maxHeight: 140, overflowY: 'auto', borderRadius: 8, border: '1px solid #fcd34d', background: '#fff', marginBottom: 4 }}>
+                        {pdos.filter(p =>
+                          p.pdoNo.toLowerCase().includes(pdoSearch.toLowerCase()) ||
+                          (p.product_name || '').toLowerCase().includes(pdoSearch.toLowerCase()) ||
+                          (p.product_code || '').toLowerCase().includes(pdoSearch.toLowerCase())
+                        ).slice(0, 30).map(p => (
+                          <div key={p.pdoID} onClick={() => handlePDOSelect(p)}
+                            style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #fef3c7', fontSize: 12 }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#fffbeb'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                            <span style={{ fontWeight: 700, color: '#d4940a' }}>{p.pdoNo}</span>
+                            <span style={{ marginLeft: 6, color: '#64748b' }}>{p.product_name}</span>
+                            <span style={{ float: 'right', color: '#475569', fontSize: 11 }}>{p.quantity_ordered} {p.unit}</span>
+                          </div>
+                        ))}
+                        {pdos.filter(p =>
+                          p.pdoNo.toLowerCase().includes(pdoSearch.toLowerCase()) ||
+                          (p.product_name || '').toLowerCase().includes(pdoSearch.toLowerCase()) ||
+                          (p.product_code || '').toLowerCase().includes(pdoSearch.toLowerCase())
+                        ).length === 0 && (
+                          <div style={{ padding: '10px 12px', fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>{L('No results', 'ไม่พบรายการ')}</div>
+                        )}
+                      </div>
+                    )}
+                    {form.pdoNo && (
+                      <div style={{ fontSize: 12, color: '#92400e', fontWeight: 600, background: '#fff', borderRadius: 6, padding: '4px 10px', border: '1px solid #fcd34d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>✓ {form.pdoNo}</span>
+                        <button onClick={() => setForm(f => ({ ...f, pdo_id: '', pdoNo: '' }))}
+                          style={{ padding: '1px 8px', borderRadius: 5, border: '1px solid #fcd34d', background: 'transparent', cursor: 'pointer', fontSize: 11, color: '#d4940a' }}>
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+              </div>
+
+              {/* Goods Receipt Info */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 28, height: 28, borderRadius: 8, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>📦</span>
-                  {L('Order Information', 'ข้อมูลการสั่งซื้อ')}
+                  {L('Goods Receipt Information', 'ข้อมูลการรับสินค้า')}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={lbl}>{L('Order Description', 'รายละเอียดคำสั่งซื้อ')} <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label style={lbl}>{L('Goods Description', 'รายละเอียดสินค้า')} <span style={{ color: '#ef4444' }}>*</span></label>
                     <textarea value={form.orderDescription} onChange={e => setForm(f => ({ ...f, orderDescription: e.target.value }))} style={{ ...inp, minHeight: 60, resize: 'vertical' }}
-                      placeholder={L('Description of order from Korea HQ', 'รายละเอียดสินค้าที่สั่งจากเกาหลี')} />
+                      placeholder={L('Description of goods received from Korea HQ', 'รายละเอียดสินค้าที่รับจากเกาหลี')} />
                   </div>
                   <div>
                     <label style={lbl}>{L('Supplier', 'ผู้จัดส่ง')}</label>
@@ -606,9 +773,72 @@ export default function KoreaOrderTrackingPage() {
                 </div>
               </div>
 
+              {/* Thailand Local Delivery */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🚚</span>
+                  {L('Thailand Local Delivery', 'การจัดส่งในไทย')}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={lbl}>{L('Thailand Tracking No.', 'เลขพัสดุในไทย')}</label>
+                    <input value={form.thailand_tracking_no} onChange={e => setForm(f => ({ ...f, thailand_tracking_no: e.target.value }))} style={inp} placeholder="THXXX123456" />
+                  </div>
+                  <div>
+                    <label style={lbl}>{L('Delivery Carrier', 'บริษัทขนส่ง')} <span style={{ color: '#ef4444' }}>*</span></label>
+                    <select value={form.thailand_carrier} onChange={e => setForm(f => ({ ...f, thailand_carrier: e.target.value }))} style={inp}>
+                      <option value="">{L('Select carrier', 'เลือกบริษัทขนส่ง')}</option>
+                      <option value="Kerry Express">Kerry Express</option>
+                      <option value="Flash Express">Flash Express</option>
+                      <option value="J&T Express">J&T Express</option>
+                      <option value="SCG Express">SCG Express</option>
+                      <option value="Thailand Post">Thailand Post (ไปรษณีย์ไทย)</option>
+                      <option value="Ninja Van">Ninja Van</option>
+                      <option value="Best Express">Best Express</option>
+                      <option value="DHL">DHL</option>
+                      <option value="FedEx">FedEx</option>
+                      <option value="Own Delivery">Own Delivery (จัดส่งเอง)</option>
+                      <option value="Other">Other (อื่นๆ)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>{L('Delivery Status', 'สถานะการจัดส่ง')}</label>
+                    <select value={form.thailand_delivery_status} onChange={e => setForm(f => ({ ...f, thailand_delivery_status: e.target.value }))} style={inp}>
+                      <option value="pending">{L('Pending', 'รอดำเนินการ')}</option>
+                      <option value="preparing">{L('Preparing', 'กำลังเตรียมสินค้า')}</option>
+                      <option value="in_transit">{L('In Transit', 'ระหว่างจัดส่ง')}</option>
+                      <option value="out_for_delivery">{L('Out for Delivery', 'ออกจัดส่งแล้ว')}</option>
+                      <option value="delivered">{L('Delivered', 'จัดส่งสำเร็จ')}</option>
+                      <option value="failed">{L('Failed', 'จัดส่งไม่สำเร็จ')}</option>
+                      <option value="returned">{L('Returned', 'ส่งคืน')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>{L('Est. Delivery Date', 'วันที่กำหนดส่ง')}</label>
+                    <input type="date" value={form.thailand_est_delivery} onChange={e => setForm(f => ({ ...f, thailand_est_delivery: e.target.value }))} style={inp} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={lbl}>{L('Actual Delivery Date', 'วันที่ส่งสำเร็จจริง')}</label>
+                    <input type="date" value={form.thailand_actual_delivery} onChange={e => setForm(f => ({ ...f, thailand_actual_delivery: e.target.value }))} style={inp} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={lbl}>{L('Delivery Address', 'ที่อยู่จัดส่ง')} <span style={{ color: '#ef4444' }}>*</span></label>
+                    <textarea value={form.thailand_delivery_address} onChange={e => setForm(f => ({ ...f, thailand_delivery_address: e.target.value }))}
+                      style={{ ...inp, minHeight: 70, resize: 'vertical' }}
+                      placeholder={L('Customer delivery address in Thailand (Required)', 'ที่อยู่จัดส่งของลูกค้าในไทย (จำเป็น)')} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={lbl}>{L('Delivery Notes', 'หมายเหตุการจัดส่ง')}</label>
+                    <textarea value={form.thailand_delivery_notes} onChange={e => setForm(f => ({ ...f, thailand_delivery_notes: e.target.value }))}
+                      style={{ ...inp, minHeight: 50, resize: 'vertical' }}
+                      placeholder={L('Special instructions, delivery issues, etc.', 'คำแนะนำพิเศษ, ปัญหาการจัดส่ง ฯลฯ')} />
+                  </div>
+                </div>
+              </div>
+
               {/* Notes */}
               <div style={{ marginBottom: 24 }}>
-                <label style={lbl}>{L('Notes', 'หมายเหตุ')}</label>
+                <label style={lbl}>{L('General Notes', 'หมายเหตุทั่วไป')}</label>
                 <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ ...inp, minHeight: 60, resize: 'vertical' }} />
               </div>
 
@@ -623,7 +853,7 @@ export default function KoreaOrderTrackingPage() {
                   background: saving ? '#94a3b8' : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
                   boxShadow: saving ? 'none' : '0 4px 12px rgba(251,191,36,0.4)'
                 }}>
-                  {saving ? L('Saving...', 'กำลังบันทึก...') : editID ? L('Update', 'อัปเดต') : L('Create Tracking', 'สร้างรายการติดตาม')}
+                  {saving ? L('Saving...', 'กำลังบันทึก...') : editID ? L('Update', 'อัปเดต') : L('Record Receipt & Delivery', 'บันทึกรับสินค้าและจัดส่ง')}
                 </button>
               </div>
             </div>
