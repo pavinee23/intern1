@@ -16,9 +16,7 @@ type User = {
 export default function ThailandAdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [lang, setLang] = useState<'en'|'th'>(() => {
-    try { return (localStorage.getItem('k_system_lang') as 'en' | 'th') || 'en' } catch (_) { return 'en' }
-  })
+  const [lang, setLang] = useState<'en'|'th'>('th')
   const [stats, setStats] = useState({
     orders: 0,
     customers: 0,
@@ -40,6 +38,17 @@ export default function ThailandAdminDashboard() {
   })
 
   useEffect(() => {
+    // Load language preference
+    try {
+      const savedLang = localStorage.getItem('k_system_lang') as 'en' | 'th'
+      if (savedLang === 'en' || savedLang === 'th') {
+        setLang(savedLang)
+      }
+    } catch (e) {
+      console.error('Failed to load language:', e)
+    }
+
+    // Load user data
     try {
       const raw = localStorage.getItem('k_system_admin_user')
       if (raw) {
@@ -306,6 +315,20 @@ export default function ThailandAdminDashboard() {
         </svg>
       ),
       color: '#eab308'
+    },
+    {
+      title: 'Documents',
+      titleTh: 'จัดการเอกสาร',
+      desc: 'Manage all documents',
+      descTh: 'จัดการเอกสารทั้งหมด',
+      href: '/Thailand/Admin-Login/documents',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <polyline points="13 2 13 9 20 9"/>
+        </svg>
+      ),
+      color: '#ea580c'
     }
   ]
 

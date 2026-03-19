@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Globe } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function MarketingLoginPage() {
   const router = useRouter()
@@ -67,21 +67,38 @@ export default function MarketingLoginPage() {
     setLoading(true)
     setError('')
 
-    // Check credentials - customize as needed
-    if (username === 'marketing' && password === 'marketing2025') {
-      // Redirect to marketing system
-      window.open('https://marketing.ksystem.com', '_blank')
-      router.push('/Thailand/Admin-Login/dashboard')
-    } else {
-      setError('invalid_credentials')
+    try {
+      // เรียก API ตรวจสอบ username/password จากฐานข้อมูล
+      const response = await fetch('/api/marketing-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.user) {
+        // บันทึกข้อมูล user ลง localStorage
+        localStorage.setItem('k_system_marketing_user', JSON.stringify(data.user))
+
+        // Redirect to marketing dashboard
+        router.push('/Thailand/Marketing-Login/dashboard')
+      } else {
+        // แสดง error ตามประเภท
+        setError(data.error || 'invalid_credentials')
+      }
+    } catch (error: any) {
+      console.error('Login error:', error)
+      setError('server_error')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #fbbf24 100%)',
+      background: 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 30%, #ffa600 70%, #ffb627 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -90,7 +107,7 @@ export default function MarketingLoginPage() {
       <div style={{
         background: 'white',
         borderRadius: isMobile ? '12px' : '16px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        boxShadow: '0 25px 70px rgba(255, 107, 53, 0.35), 0 10px 30px rgba(0,0,0,0.2)',
         maxWidth: '500px',
         width: '100%',
         overflow: 'hidden'
@@ -99,7 +116,7 @@ export default function MarketingLoginPage() {
           position: 'relative',
           textAlign: 'center',
           padding: isMobile ? '32px 20px 24px' : '40px 20px 32px',
-          background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)'
+          background: 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 50%, #ffa600 100%)'
         }}>
           {/* Language Switcher */}
           <div style={{
@@ -108,10 +125,11 @@ export default function MarketingLoginPage() {
             right: isMobile ? '12px' : '16px',
             display: 'flex',
             gap: '6px',
-            background: 'rgba(255,255,255,0.15)',
+            background: 'rgba(255,255,255,0.2)',
             padding: isMobile ? '5px' : '6px',
             borderRadius: '10px',
-            backdropFilter: 'blur(10px)'
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
           }}>
             <button
               type="button"
@@ -120,17 +138,18 @@ export default function MarketingLoginPage() {
                 padding: isMobile ? '6px 12px' : '8px 14px',
                 borderRadius: '8px',
                 border: 'none',
-                background: locale === 'en' ? 'rgba(255,255,255,0.95)' : 'transparent',
-                color: locale === 'en' ? '#f59e0b' : 'rgba(255,255,255,0.9)',
+                background: locale === 'en' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.1)',
+                color: locale === 'en' ? '#ff6b35' : 'rgba(255,255,255,0.95)',
                 fontSize: isMobile ? '0.75rem' : '0.813rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
                 touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                WebkitTapHighlightColor: 'transparent',
+                boxShadow: locale === 'en' ? '0 2px 8px rgba(0,0,0,0.15)' : 'none'
               }}
             >
               EN
@@ -142,17 +161,18 @@ export default function MarketingLoginPage() {
                 padding: isMobile ? '6px 12px' : '8px 14px',
                 borderRadius: '8px',
                 border: 'none',
-                background: locale === 'th' ? 'rgba(255,255,255,0.95)' : 'transparent',
-                color: locale === 'th' ? '#f59e0b' : 'rgba(255,255,255,0.9)',
+                background: locale === 'th' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.1)',
+                color: locale === 'th' ? '#ff6b35' : 'rgba(255,255,255,0.95)',
                 fontSize: isMobile ? '0.75rem' : '0.813rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
                 touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                WebkitTapHighlightColor: 'transparent',
+                boxShadow: locale === 'th' ? '0 2px 8px rgba(0,0,0,0.15)' : 'none'
               }}
             >
               ไทย
@@ -169,7 +189,7 @@ export default function MarketingLoginPage() {
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <svg width={isMobile ? "35" : "40"} height={isMobile ? "35" : "40"} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
+            <svg width={isMobile ? "35" : "40"} height={isMobile ? "35" : "40"} viewBox="0 0 24 24" fill="none" stroke="#ff6b35" strokeWidth="2.5">
               <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
             </svg>
           </div>
@@ -204,8 +224,14 @@ export default function MarketingLoginPage() {
                 fontSize: isMobile ? '0.938rem' : '0.875rem',
                 lineHeight: '1.5'
               }}>
-                ⚠ {error === 'invalid_credentials'
+                ⚠️ {error === 'no_permission'
+                  ? L('You do not have permission to access the marketing system (Admin, Executive, M_Marketing, Marketing, and Branch Manager only)', 'คุณไม่มีสิทธิ์เข้าถึงระบบการตลาด (เฉพาะ Admin, Executive, M_Marketing, Marketing และ Branch Manager)')
+                  : error === 'invalid_credentials'
                   ? L('Invalid username or password', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+                  : error === 'server_error'
+                  ? L('Server error. Please try again later.', 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง')
+                  : error === 'missing_credentials'
+                  ? L('Please enter username and password', 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน')
                   : error}
               </div>
             )}
@@ -239,7 +265,7 @@ export default function MarketingLoginPage() {
                   transition: 'border-color 0.2s',
                   WebkitAppearance: 'none'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#f59e0b'}
+                onFocus={(e) => e.target.style.borderColor = '#ff6b35'}
                 onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
               />
             </div>
@@ -308,19 +334,33 @@ export default function MarketingLoginPage() {
                 width: '100%',
                 padding: isMobile ? '16px 24px' : '14px 24px',
                 fontSize: isMobile ? '1.063rem' : '1rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'white',
-                background: loading ? '#9ca3af' : '#f59e0b',
+                background: loading ? '#9ca3af' : 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)',
                 border: 'none',
                 borderRadius: '10px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background 0.2s',
+                transition: 'all 0.3s ease',
                 marginBottom: '12px',
                 touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                WebkitTapHighlightColor: 'transparent',
+                boxShadow: loading ? 'none' : '0 4px 15px rgba(255, 107, 53, 0.4)',
+                transform: 'translateY(0)'
               }}
-              onMouseEnter={(e) => !loading && (e.currentTarget.style.background = '#d97706')}
-              onMouseLeave={(e) => !loading && (e.currentTarget.style.background = '#f59e0b')}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ff8c42 0%, #ffa600 100%)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 107, 53, 0.5)'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)'
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 107, 53, 0.4)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }
+              }}
             >
               {loading ? L('Logging in...', 'กำลังเข้าสู่ระบบ...') : L('Login', 'เข้าสู่ระบบ')}
             </button>
