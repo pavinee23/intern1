@@ -17,6 +17,7 @@ export default function SupplierInvoicesListPage() {
         { key: 'due_date', label: 'Due Date' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/supplier-invoices/print', paramName: 'siNo', idKey: 'siID', newTab: true }}
     />
   )
 }

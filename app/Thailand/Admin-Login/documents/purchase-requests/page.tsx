@@ -16,6 +16,7 @@ export default function PurchaseRequestsListPage() {
         { key: 'required_date', label: 'Required Date' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/purchase-requests/print', paramName: 'prNo', idKey: 'prID', newTab: true }}
     />
   )
 }

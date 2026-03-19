@@ -19,6 +19,7 @@ export default function Page() {
         { key: 'created_by', label: 'Created By' },
         { key: 'created_at', label: 'Created' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/pre-installation/print', paramName: 'preInstallID', idKey: 'preInstallID', newTab: true }}
       link={{ columnKey: 'formID', path: '/Thailand/Admin-Login/pre-installation/print', paramName: 'formID' }}
     />
   )

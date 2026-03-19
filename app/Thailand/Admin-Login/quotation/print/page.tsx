@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import PrintStyles from '../../components/PrintStyles'
 import { useSearchParams } from 'next/navigation'
 
-export default function QuotationPrintPage() {
+function QuotationPrintContent() {
   const searchParams = useSearchParams()
   const quoteID = searchParams?.get('quoteID') || ''
   const quoteNo = searchParams?.get('quoteNo') || ''
@@ -62,7 +62,7 @@ export default function QuotationPrintPage() {
     const onAfter = () => {
       try {
         const newCnt = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1
-        const ts = new Date().toLocaleString()
+        const ts = new Date().toISOString()
         localStorage.setItem(key, String(newCnt))
         localStorage.setItem(key + ':last', ts)
         setPrintCount(newCnt)
@@ -93,12 +93,11 @@ export default function QuotationPrintPage() {
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
 
   const items = Array.isArray(quote.items) ? quote.items : []
-  const subtotal = Number(quote.subtotal || items.reduce((s: number, it: any) => s + Number(it.total_price || it.total || (Number(it.quantity||0) * Number(it.unit_price||it.unitPrice||0))), 0))
+  const subtotal = Number(quote.subtotal || 0)
   const discount = Number(quote.discount || 0)
   const afterDiscount = subtotal - discount
-  const vatRate = Number(quote.vat || 7)
-  const vat = (afterDiscount * vatRate) / 100
-  const grandTotal = Number(quote.total_amount || (afterDiscount + vat))
+  const vat = Number(quote.vat || ((afterDiscount * 7) / 100))
+  const grandTotal = Number(quote.total || quote.total_amount || (afterDiscount + vat))
 
   const customerName = quote.customer_name || quote.customer || '-'
   const customerAddress = quote.customer_address || quote.address || '-'
@@ -108,11 +107,19 @@ export default function QuotationPrintPage() {
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 10mm 12mm; }
-        @media print { .no-print { display: none !important; } body { margin: 0; padding: 0; } .a4-page { box-shadow: none !important; } }
-        @media screen { body { background: #e5e5e5; } }
+        @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
+        @media print {
+          .no-print { display: none !important; }
+          body { margin: 0; padding: 0; overflow: hidden !important; }
+          html, body { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+          ::-webkit-scrollbar { display: none !important; }
+          .a4-page { box-shadow: none !important; }
+        }
+        @media screen { body { background: #e5e5e5; overflow-y: auto; } }
         * { box-sizing: border-box; }
-        .a4-page { width: 210mm; min-height: 297mm; margin: 10mm auto; padding: 12mm 15mm; background: white; font-family: 'Sarabun', 'Segoe UI', sans-serif; font-size: 11pt; line-height: 1.4; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
+        ::-webkit-scrollbar { display: none; }
+        html { -ms-overflow-style: none; scrollbar-width: none; }
+        .a4-page { width: 100%; max-width: 190mm; min-height: 297mm; margin: 10mm auto; padding: 10mm 12mm; background: white; font-family: 'Sarabun', 'Segoe UI', sans-serif; font-size: 11pt; line-height: 1.4; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
         .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #16a34a; }
         .company-info { flex: 1; }
         .company-name { font-size: 18pt; font-weight: 700; color: #16a34a; margin-bottom: 4px; }
@@ -177,8 +184,8 @@ export default function QuotationPrintPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'contain', background: '#fff', padding: 4, border: '1px solid #ddd' }} />
               <div>
-                <div className="company-name">K Energy Save</div>
-                <div className="company-name-en">K Energy Save Co., Ltd.</div>
+                <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
+                <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
               </div>
             </div>
             <div className="company-address" style={{ marginTop: 8 }}>
@@ -274,7 +281,7 @@ export default function QuotationPrintPage() {
               <span>{discount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
             </div>
             <div className="summary-row">
-              <span>{L(`VAT ${vatRate}%`, `ภาษีมูลค่าเพิ่ม ${vatRate}%`)}</span>
+              <span>{L('VAT 7%', 'ภาษีมูลค่าเพิ่ม 7%')}</span>
               <span>{vat.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
             </div>
             <div className="summary-row total">
@@ -319,17 +326,37 @@ export default function QuotationPrintPage() {
           </div>
           <div className="signature-box">
             <div className="signature-line"></div>
-            <div className="signature-label">{L('Accepted By', 'ผู้ยอมรับ')}</div>
+            <div className="signature-label">{L('Received By', 'ผู้รับ')}</div>
             <div className="signature-sublabel">{L('Customer', 'ลูกค้า')}</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 20, padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', marginBottom: 8 }}>
+            {L('Bank Account Information', 'ข้อมูลบัญชีธนาคาร')}
+          </div>
+          <div style={{ fontSize: 9, lineHeight: 1.6, color: '#334155' }}>
+            <div><strong>{L('Bank:', 'ธนาคาร:')}</strong> {L('Kasikorn Bank (KBANK)', 'ธนาคารกสิกรไทย')}</div>
+            <div><strong>{L('Current Account:', 'บัญชีกระแสรายวัน:')}</strong> 212-1-17253-7</div>
+            <div><strong>{L('Savings Account:', 'บัญชีออมทรัพย์:')}</strong> 211-8-78336-3</div>
+            <div><strong>{L('Account Name:', 'ชื่อบัญชี:')}</strong> {L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
           </div>
         </div>
 
         <div className="footer-info">
           <span>{L('User:', 'ผู้พิมพ์:')} {loggedUser || '-'}</span>
-          <span>{L('Printed:', 'พิมพ์เมื่อ:')} {lastPrinted || new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
+          <span>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
           <span>{L('Print Count:', 'ครั้งที่พิมพ์:')} {printCount + 1}</span>
         </div>
       </div>
     </>
+  )
+}
+
+export default function QuotationPrintPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>}>
+      <QuotationPrintContent />
+    </Suspense>
   )
 }

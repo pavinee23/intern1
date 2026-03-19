@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import PrintStyles from '../../components/PrintStyles'
 import { useSearchParams } from 'next/navigation'
 
-export default function ReceiptPrintPage() {
+function ReceiptPrintPageContent() {
   const searchParams = useSearchParams()
   const receiptID = searchParams?.get('receiptID') || ''
   const auto = searchParams?.get('autoPrint')
@@ -89,7 +89,7 @@ export default function ReceiptPrintPage() {
     const onAfter = () => {
       try {
         const newCnt = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1
-        const ts = new Date().toLocaleString()
+        const ts = new Date().toISOString()
         localStorage.setItem(key, String(newCnt))
         localStorage.setItem(key + ':last', ts)
         setPrintCount(newCnt)
@@ -121,11 +121,13 @@ export default function ReceiptPrintPage() {
 
   // Calculate amounts
   const items = Array.isArray(invoiceSource?.items) ? invoiceSource.items : (Array.isArray(receipt.items) ? receipt.items : [])
-  const subtotal = Number(
-    invoiceSource?.subtotal ??
-    ((items.length > 0 ? items.reduce((s: number, it: any) => s + Number(it.total_price || it.total || (Number(it.quantity||0) * Number(it.unit_price||it.unitPrice||it.price||0))), 0) : 0) ||
-    (receipt.invoice_total || receipt.amount || 0))
-  )
+  const subtotal = Number(receipt.amount || receipt.invoice_total || invoiceSource?.subtotal || 0)
+
+
+
+
+
+
   const discount = Number(receipt.discount ?? receipt.discount_amount ?? invoiceSource?.discount ?? 0)
   const afterDiscount = subtotal - discount
   const vat = afterDiscount * 0.07
@@ -203,8 +205,8 @@ export default function ReceiptPrintPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'contain', background: '#fff', padding: 4, border: '1px solid #ddd' }} />
               <div>
-                <div className="company-name">K Energy Save</div>
-                <div className="company-name-en">K Energy Save Co., Ltd.</div>
+                <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
+                <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
               </div>
             </div>
             <div className="company-address" style={{ marginTop: 8 }}>
@@ -366,13 +368,34 @@ export default function ReceiptPrintPage() {
         </div>
 
         {/* Footer */}
+
+        <div style={{ marginTop: 20, padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', marginBottom: 8 }}>
+            {L('Bank Account Information', 'ข้อมูลบัญชีธนาคาร')}
+          </div>
+          <div style={{ fontSize: 9, lineHeight: 1.6, color: '#334155' }}>
+            <div><strong>{L('Bank:', 'ธนาคาร:')}</strong> {L('Kasikorn Bank (KBANK)', 'ธนาคารกสิกรไทย')}</div>
+            <div><strong>{L('Current Account:', 'บัญชีกระแสรายวัน:')}</strong> 212-1-17253-7</div>
+            <div><strong>{L('Savings Account:', 'บัญชีออมทรัพย์:')}</strong> 211-8-78336-3</div>
+            <div><strong>{L('Account Name:', 'ชื่อบัญชี:')}</strong> {L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
+          </div>
+        </div>
+
         <div className="footer-info">
           <span style={{ opacity: 0.9 }}>{L('User:', 'ผู้พิมพ์:')} {loggedUser || '-'}</span>
-          <span style={{ opacity: 0.9 }}>{L('Printed:', 'พิมพ์เมื่อ:')} {lastPrinted || new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
+          <span style={{ opacity: 0.9 }}>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
           <span className="page-number" style={{ opacity: 0.9 }}></span>
           <span style={{ opacity: 0.9 }}>{L('Print Count:', 'ครั้งที่พิมพ์:')} {printCount + 1}</span>
         </div>
       </div>
     </>
+  )
+}
+
+export default function ReceiptPrintPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>}>
+      <ReceiptPrintPageContent />
+    </Suspense>
   )
 }

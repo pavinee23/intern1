@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import PrintStyles from '../../components/PrintStyles'
 import { useSearchParams } from 'next/navigation'
 
-export default function TaxInvoicePrintPage() {
+function TaxInvoicePrintPageContent() {
   const searchParams = useSearchParams()
   const taxNo = searchParams?.get('taxNo') || ''
   const auto = searchParams?.get('autoPrint')
@@ -54,7 +54,7 @@ export default function TaxInvoicePrintPage() {
     const onAfter = () => {
       try {
         const newCnt = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1
-        const ts = new Date().toLocaleString()
+        const ts = new Date().toISOString()
         localStorage.setItem(key, String(newCnt))
         localStorage.setItem(key + ':last', ts)
         setPrintCount(newCnt)
@@ -77,9 +77,8 @@ export default function TaxInvoicePrintPage() {
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
 
   const items = Array.isArray(taxInvoice.items) ? taxInvoice.items : []
-  const subtotal = Number(taxInvoice.subtotal || items.reduce((s: number, it: any) => s + Number(it.total_price || it.total || (Number(it.qty||it.quantity||1) * Number(it.unitPrice||it.unit_price||it.price||0))), 0))
-  const vatRate = Number(taxInvoice.vat || 7)
-  const vat = Number(taxInvoice.vat || ((subtotal * vatRate) / 100))
+  const subtotal = Number(taxInvoice.subtotal || 0)
+  const vat = Number(taxInvoice.vat || ((subtotal * 7) / 100))
   const grandTotal = Number(taxInvoice.total_amount || (subtotal + vat))
 
   const customerName = taxInvoice.customer_name || taxInvoice.cusName || '-'
@@ -90,7 +89,7 @@ export default function TaxInvoicePrintPage() {
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 10mm 12mm; }
+        @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
         @media print { .no-print { display: none !important } body { margin:0; padding:0 } }
         body { font-family: 'Sarabun', 'Segoe UI', sans-serif; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -164,7 +163,7 @@ export default function TaxInvoicePrintPage() {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           <div style={{ width: 320 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>{L('Subtotal','รวม')}</span><span style={{ textAlign: 'right' }}>{fmtNumber(subtotal)} ฿</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>{L(`VAT ${vatRate}%`, `ภาษีมูลค่าเพิ่ม ${vatRate}%`)}</span><span style={{ textAlign: 'right' }}>{fmtNumber(vat)} ฿</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>{L(`VAT 7%`, `ภาษีมูลค่าเพิ่ม 7%`)}</span><span style={{ textAlign: 'right' }}>{fmtNumber(vat)} ฿</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700, fontSize: 16, marginTop: 6 }}><span>{L('Grand Total','ยอดรวมสุทธิ')}</span><span style={{ textAlign: 'right', color: '#e67e22' }}>{fmtNumber(grandTotal)} ฿</span></div>
           </div>
         </div>
@@ -182,9 +181,17 @@ export default function TaxInvoicePrintPage() {
 
         <div style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
           <div>{L('Printed by', 'ผู้พิมพ์')}: {loggedUser || '-'}</div>
-          <div>{L('Printed at', 'พิมพ์เมื่อ')}: {lastPrinted || new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</div>
+          <div>{L('Printed at', 'พิมพ์เมื่อ')}: {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</div>
         </div>
       </div>
     </>
+  )
+}
+
+export default function TaxInvoicePrintPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>}>
+      <TaxInvoicePrintPageContent />
+    </Suspense>
   )
 }

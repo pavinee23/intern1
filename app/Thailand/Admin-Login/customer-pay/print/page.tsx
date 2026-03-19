@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import PrintStyles from '../../components/PrintStyles'
 import { useSearchParams } from 'next/navigation'
 
-export default function CustomerPayPrintPage() {
+function CustomerPayPrintPageContent() {
   const searchParams = useSearchParams()
   const paymentId = searchParams?.get('id') || ''
   const auto = searchParams?.get('autoPrint')
@@ -72,7 +72,7 @@ export default function CustomerPayPrintPage() {
     const onAfter = () => {
       try {
         const newCnt = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1
-        const ts = new Date().toLocaleString()
+        const ts = new Date().toISOString()
         localStorage.setItem(key, String(newCnt))
         localStorage.setItem(key + ':last', ts)
         setPrintCount(newCnt)
@@ -99,12 +99,13 @@ export default function CustomerPayPrintPage() {
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
 
   const items = Array.isArray(invoice?.items) ? invoice.items : []
-  const subtotal = Number(
-    invoice?.subtotal ??
-    (items.length > 0
-      ? items.reduce((s: number, it: any) => s + Number(it.total_price || it.total || (Number(it.quantity || 0) * Number(it.unit_price || it.unitPrice || it.price || 0))), 0)
-      : (payment.amount || 0))
-  )
+  const subtotal = Number(payment.amount || invoice?.subtotal || 0)
+
+
+
+
+
+
   const discount = Number(payment.discount ?? invoice?.discount ?? 0)
   const afterDiscount = subtotal - discount
   const vat = afterDiscount * 0.07
@@ -183,8 +184,8 @@ export default function CustomerPayPrintPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'contain', background: '#fff', padding: 4, border: '1px solid #ddd' }} />
               <div>
-                <div className="company-name">K Energy Save</div>
-                <div className="company-name-en">K Energy Save Co., Ltd.</div>
+                <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
+                <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
               </div>
             </div>
             <div className="company-address" style={{ marginTop: 8 }}>
@@ -336,11 +337,19 @@ export default function CustomerPayPrintPage() {
         {/* Footer */}
         <div className="footer-info">
           <span>{L('User:', 'ผู้พิมพ์:')} {loggedUser || '-'}</span>
-          <span>{L('Printed:', 'พิมพ์เมื่อ:')} {lastPrinted || new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
+          <span>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
           <span className="page-number"></span>
           <span>{L('Print Count:', 'ครั้งที่พิมพ์:')} {printCount + 1}</span>
         </div>
       </div>
     </>
+  )
+}
+
+export default function CustomerPayPrintPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>}>
+      <CustomerPayPrintPageContent />
+    </Suspense>
   )
 }

@@ -16,6 +16,7 @@ export default function ExpenseBillsListPage() {
         { key: 'total_amount', label: 'Total Amount' },
         { key: 'payment_status', label: 'Payment Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/expense-bills/print', paramName: 'ebNo', idKey: 'ebID', newTab: true }}
     />
   )
 }

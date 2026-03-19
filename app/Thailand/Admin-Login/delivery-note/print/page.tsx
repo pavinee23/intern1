@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import PrintStyles from '../../components/PrintStyles'
 import { useSearchParams } from 'next/navigation'
 
-export default function DeliveryNotePrintPage() {
+function DeliveryNotePrintPageContent() {
   const searchParams = useSearchParams()
   const deliveryID = searchParams?.get('deliveryID') || ''
   const deliveryNo = searchParams?.get('deliveryNo') || ''
@@ -62,7 +62,7 @@ export default function DeliveryNotePrintPage() {
     const onAfter = () => {
       try {
         const newCnt = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1
-        const ts = new Date().toLocaleString()
+        const ts = new Date().toISOString()
         localStorage.setItem(key, String(newCnt))
         localStorage.setItem(key + ':last', ts)
         setPrintCount(newCnt)
@@ -101,11 +101,18 @@ export default function DeliveryNotePrintPage() {
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 10mm 12mm; }
-        @media print { .no-print { display: none !important; } body { margin: 0; padding: 0; } .a4-page { box-shadow: none !important; } }
+        @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
+        @media print {
+          .no-print { display: none !important; }
+          body { margin: 0; padding: 0; overflow: hidden !important; }
+          html, body { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+          ::-webkit-scrollbar { display: none !important; }
+          .a4-page { box-shadow: none !important; } }
         @media screen { body { background: #e5e5e5; } }
         * { box-sizing: border-box; }
-        .a4-page { width: 210mm; min-height: 297mm; margin: 10mm auto; padding: 12mm 15mm; background: white; font-family: 'Sarabun', 'Segoe UI', sans-serif; font-size: 11pt; line-height: 1.4; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
+        ::-webkit-scrollbar { display: none; }
+        html { -ms-overflow-style: none; scrollbar-width: none; }
+        .a4-page { width: 100%; max-width: 190mm; min-height: 297mm; margin: 10mm auto; padding: 10mm 12mm; background: white; font-family: 'Sarabun', 'Segoe UI', sans-serif; font-size: 11pt; line-height: 1.4; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
         .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #7c3aed; }
         .company-info { flex: 1; }
         .company-name { font-size: 18pt; font-weight: 700; color: #7c3aed; margin-bottom: 4px; }
@@ -163,8 +170,8 @@ export default function DeliveryNotePrintPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'contain', background: '#fff', padding: 4, border: '1px solid #ddd' }} />
               <div>
-                <div className="company-name">K Energy Save</div>
-                <div className="company-name-en">K Energy Save Co., Ltd.</div>
+                <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
+                <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
               </div>
             </div>
             <div className="company-address" style={{ marginTop: 8 }}>
@@ -272,10 +279,18 @@ export default function DeliveryNotePrintPage() {
 
         <div className="footer-info">
           <span>{L('User:', 'ผู้พิมพ์:')} {loggedUser || '-'}</span>
-          <span>{L('Printed:', 'พิมพ์เมื่อ:')} {lastPrinted || new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
+          <span>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
           <span>{L('Print Count:', 'ครั้งที่พิมพ์:')} {printCount + 1}</span>
         </div>
       </div>
     </>
+  )
+}
+
+export default function DeliveryNotePrintPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>}>
+      <DeliveryNotePrintPageContent />
+    </Suspense>
   )
 }

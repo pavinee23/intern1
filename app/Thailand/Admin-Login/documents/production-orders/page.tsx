@@ -17,6 +17,7 @@ export default function ProductionOrdersListPage() {
         { key: 'priority', label: 'Priority' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/production-orders/print', paramName: 'pdoNo', idKey: 'pdoID', newTab: true }}
     />
   )
 }

@@ -16,6 +16,7 @@ export default function StockAdjustmentsListPage() {
         { key: 'adjusted_by', label: 'Adjusted By' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/stock-adjustments/print', paramName: 'saNo', idKey: 'saID', newTab: true }}
     />
   )
 }

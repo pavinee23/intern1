@@ -17,6 +17,7 @@ export default function WarrantiesListPage() {
         { key: 'warranty_end_date', label: 'Expiry Date' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/warranties/print', paramName: 'wcNo', idKey: 'wcID', newTab: true }}
     />
   )
 }

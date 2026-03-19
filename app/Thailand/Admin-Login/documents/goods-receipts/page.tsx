@@ -16,6 +16,7 @@ export default function GoodsReceiptsListPage() {
         { key: 'warehouse', label: 'Warehouse' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/goods-receipts/print', paramName: 'grNo', idKey: 'grID', newTab: true }}
     />
   )
 }

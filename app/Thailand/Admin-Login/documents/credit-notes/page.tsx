@@ -16,6 +16,7 @@ export default function CreditNotesListPage() {
         { key: 'total_amount', label: 'Total Amount' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/credit-notes/print', paramName: 'cnNo', idKey: 'cnID', newTab: true }}
     />
   )
 }

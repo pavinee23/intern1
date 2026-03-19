@@ -16,6 +16,7 @@ export default function StockTransfersListPage() {
         { key: 'transfer_by', label: 'Transfer By' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/stock-transfers/print', paramName: 'stNo', idKey: 'stID', newTab: true }}
     />
   )
 }

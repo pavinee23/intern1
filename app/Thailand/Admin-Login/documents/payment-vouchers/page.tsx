@@ -16,6 +16,7 @@ export default function PaymentVouchersListPage() {
         { key: 'total_amount', label: 'Amount' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/payment-vouchers/print', paramName: 'pvNo', idKey: 'pvID', newTab: true }}
     />
   )
 }

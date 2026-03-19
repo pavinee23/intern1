@@ -46,6 +46,7 @@ export default function Page() {
         { key: 'total_amount', label: 'Total' },
         { key: 'status', label: 'Status' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/invoice/print', paramName: 'invoiceID', idKey: 'invoiceID', newTab: true }}
       link={{ columnKey: 'invNo', path: '/Thailand/Admin-Login/invoice', paramName: 'invNo' }}
       selectable={selectMode}
     />

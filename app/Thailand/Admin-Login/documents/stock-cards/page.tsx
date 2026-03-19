@@ -18,6 +18,7 @@ export default function StockCardsListPage() {
         { key: 'quantity_out', label: 'Out' },
         { key: 'balance', label: 'Balance' }
       ]}
+      print={{ path: '/Thailand/Admin-Login/stock-cards/print', paramName: 'scNo', idKey: 'scID', newTab: true }}
     />
   )
 }

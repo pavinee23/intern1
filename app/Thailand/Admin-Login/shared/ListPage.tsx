@@ -208,6 +208,273 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
 
   const [modalMessage, setModalMessage] = useState<string | null>(null)
 
+  const handlePrintList = () => {
+    // Create print window
+    const printWindow = window.open('', '_blank', 'width=1200,height=800')
+    if (!printWindow) {
+      alert(T('Please allow popups to print', 'กรุณาอนุญาตให้เปิดหน้าต่างใหม่เพื่อพิมพ์'))
+      return
+    }
+
+    // Calculate totals if there are amount columns
+    const amountKeys = columns.filter(c =>
+      /amount|total|price|value|cost|subtotal/i.test(c.key)
+    ).map(c => c.key)
+
+    let subtotal = 0
+    if (amountKeys.length > 0) {
+      rows.forEach(r => {
+        amountKeys.forEach(key => {
+          const val = r?.[key]
+          if (typeof val === 'number' && !isNaN(val)) {
+            subtotal += val
+          } else if (typeof val === 'string') {
+            const num = parseFloat(val)
+            if (!isNaN(num)) subtotal += num
+          }
+        })
+      })
+    }
+
+    const vat = subtotal * 0.07
+    const grandTotal = subtotal + vat
+    const hasAmounts = subtotal > 0
+
+    // Generate print content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>${T(title, title)} - ${T('Report', 'รายงาน')}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 1.8cm 2.5cm 1.8cm 2.5cm;
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body {
+            width: 100%;
+            overflow: hidden !important;
+          }
+          /* Hide scrollbar */
+          ::-webkit-scrollbar {
+            display: none;
+          }
+          html {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          body {
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 5px;
+            font-size: 7px;
+            max-width: 155mm;
+            margin: 0 auto;
+            background: white;
+          }
+          h1 {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            color: #1e293b;
+          }
+          .subtitle {
+            font-size: 7px;
+            color: #64748b;
+            margin-bottom: 6px;
+          }
+          .meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 8px;
+            color: #475569;
+            padding: 4px 6px;
+            background: #f8fafc;
+            border-radius: 3px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 3px;
+            font-size: 6px;
+            table-layout: auto;
+          }
+          th, td {
+            padding: 2px 3px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 6px;
+            white-space: nowrap;
+          }
+          tbody tr:nth-child(even) {
+            background: #f8fafc;
+          }
+          .badge {
+            padding: 1px 6px;
+            border-radius: 6px;
+            font-size: 7px;
+            font-weight: 600;
+            display: inline-block;
+          }
+          .summary {
+            margin-top: 10px;
+            border-top: 2px solid #1e293b;
+            padding-top: 8px;
+            display: flex;
+            justify-content: flex-end;
+          }
+          .summary-table {
+            width: 250px;
+            border: none;
+          }
+          .summary-table td {
+            border: none;
+            padding: 4px 8px;
+            font-size: 9px;
+          }
+          .summary-table .label {
+            text-align: right;
+            font-weight: 500;
+            color: #475569;
+          }
+          .summary-table .value {
+            text-align: right;
+            font-weight: 600;
+            color: #1e293b;
+          }
+          .summary-table .total-row {
+            border-top: 2px solid #1e293b;
+            background: #f1f5f9;
+          }
+          .summary-table .total-row td {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
+            padding-top: 6px;
+            padding-bottom: 6px;
+          }
+          @media print {
+            html, body {
+              overflow: hidden !important;
+              -ms-overflow-style: none !important;
+              scrollbar-width: none !important;
+            }
+            ::-webkit-scrollbar {
+              display: none !important;
+            }
+            body { padding: 0; max-width: 100%; }
+            h1 { font-size: 11px; }
+            th, td { padding: 2px 3px; font-size: 6px; }
+            .meta { padding: 2px 4px; font-size: 6px; }
+            .summary-table td { font-size: 7px; }
+            .summary-table .total-row td { font-size: 9px; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${T(title, title)}</h1>
+        <div class="subtitle">${T('List Report', 'รายงานรายการ')}</div>
+        <div class="meta">
+          <div>${T('Total Records', 'จำนวนรายการทั้งหมด')}: <strong>${rows.length}</strong></div>
+          <div>${T('Printed', 'พิมพ์เมื่อ')}: <strong>${new Date().toLocaleString(locale === 'th' ? 'th-TH' : 'en-US')}</strong></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              ${columns.map(c => `<th>${translateLabel(c.label || c.key)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                ${columns.map(c => {
+                  const v = r?.[c.key]
+
+                  // Handle status with badge
+                  if (c.key === 'status') {
+                    const badgeMap: Record<string, { label: string; color: string; bg: string }> = {
+                      open: { label: 'Open', color: '#92400e', bg: '#fff7ed' },
+                      in_progress: { label: 'In Progress', color: '#1e40af', bg: '#dbeafe' },
+                      done: { label: 'Done', color: '#166534', bg: '#dcfce7' },
+                      closed: { label: 'Closed', color: '#991b1b', bg: '#fee2e2' },
+                      pending: { label: 'Pending', color: '#92400e', bg: '#fef3c7' },
+                      confirmed: { label: 'Confirmed', color: '#1e40af', bg: '#dbeafe' },
+                      completed: { label: 'Completed', color: '#166534', bg: '#dcfce7' },
+                      cancelled: { label: 'Cancelled', color: '#991b1b', bg: '#fee2e2' }
+                    }
+                    const badge = badgeMap[v] || { label: v, color: '#666', bg: '#f5f5f5' }
+                    return `<td><span class="badge" style="color: ${badge.color}; background: ${badge.bg};">${badge.label}</span></td>`
+                  }
+
+                  // Handle numbers
+                  if (typeof v === 'number') {
+                    const isId = /id$/i.test(c.key)
+                    const isAmount = /amount|total|price|value|cost/i.test(c.key)
+                    if (isAmount) {
+                      return `<td style="text-align: right;">${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>`
+                    }
+                    return `<td>${isId ? Number(v) : Number(v).toFixed(2)}</td>`
+                  }
+
+                  // Handle created_by
+                  if (/created_by$/i.test(c.key)) {
+                    try {
+                      const obj = (typeof v === 'string' && v.length > 0) ? JSON.parse(v) : v
+                      const name = obj?.name || obj?.username || obj?.userName || v
+                      return `<td>${name ?? '-'}</td>`
+                    } catch (_) {
+                      return `<td>${String(v ?? '-')}</td>`
+                    }
+                  }
+
+                  return `<td>${v ?? '-'}</td>`
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        ${hasAmounts ? `
+        <div class="summary">
+          <table class="summary-table">
+            <tr>
+              <td class="label">${T('Subtotal', 'ยอดรวม')}:</td>
+              <td class="value">${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            <tr>
+              <td class="label">${T('VAT 7%', 'ภาษีมูลค่าเพิ่ม 7%')}:</td>
+              <td class="value">${vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            <tr class="total-row">
+              <td class="label">${T('Grand Total', 'ยอดรวมทั้งสิ้น')}:</td>
+              <td class="value">${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          </table>
+        </div>
+        ` : ''}
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+
+    // Auto print after content loaded
+    setTimeout(() => {
+      printWindow.focus()
+      printWindow.print()
+    }, 250)
+  }
+
   const handleOpenWithSignatureCheck = async (r: any, c: Column) => {
     try {
       const rowId = r?.receiptID ?? r?.id ?? null
@@ -261,7 +528,21 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                 <button className={`${styles.btn} ${styles.btnPrimary}`}>{T('+ Create', '+ สร้างใหม่')}</button>
               </Link>
             ) : <div />}
-            <div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handlePrintList}
+                className={styles.btnOutline}
+                disabled={loading || rows.length === 0}
+                title={T('Print Report', 'พิมพ์รายงาน')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                {T('Print', 'พิมพ์')}
+              </button>
               <button onClick={async () => {
                 // If this list is the invoices list, pre-generate an invoice number
                 try {
