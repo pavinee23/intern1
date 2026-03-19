@@ -2,8 +2,9 @@ import { pool } from '@/lib/mysql'
 
 /**
  * สร้างเลขที่เอกสารอัตโนมัติตามรูปแบบ:
- * - Warranty: WT-TH-YYYYMM-####
- * - อื่นๆ: XX-YYYYMM-####
+ * - Warranty: WT-TH-YYYYMMDD-####
+ * - อื่นๆ: XX-YYYYMMDD-####
+ * เลขเอกสารรีเซ็ตทุกวัน (daily reset)
  * ใช้ตาราง document_counters เพื่อป้องกันการซ้ำกัน (thread-safe)
  * @param prefix รหัสประเภทเอกสาร (เช่น CN, GR, PV, WT)
  * @param tableName ชื่อตาราง (ไม่ใช้แล้ว แต่เก็บไว้เพื่อ backward compatibility)
@@ -18,26 +19,31 @@ export async function generateDocumentNumber(
   const now = new Date()
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
   const yearMonth = `${year}${month}`
+  const yearMonthDay = `${year}${month}${day}`
 
   const connection = await pool.getConnection()
 
   try {
     await connection.beginTransaction()
 
+    // ใช้ yearMonthDay สำหรับทุกเอกสาร (daily reset)
+    const periodKey = yearMonthDay
+
     // ใช้ INSERT ... ON DUPLICATE KEY UPDATE เพื่อเพิ่ม counter แบบ atomic
     await connection.query(
       `INSERT INTO document_counters (prefix, \`year_month\`, counter)
        VALUES (?, ?, 1)
        ON DUPLICATE KEY UPDATE counter = counter + 1`,
-      [prefix, yearMonth]
+      [prefix, periodKey]
     )
 
     // อ่านค่า counter ล่าสุด
     const [rows]: any = await connection.query(
       `SELECT counter FROM document_counters
        WHERE prefix = ? AND \`year_month\` = ?`,
-      [prefix, yearMonth]
+      [prefix, periodKey]
     )
 
     await connection.commit()
@@ -48,11 +54,11 @@ export async function generateDocumentNumber(
     // สร้างเลขเอกสารตามรูปแบบของแต่ละประเภท
     let docNumber: string
     if (prefix === 'WT') {
-      // Warranty: WT-TH-YYYYMM-####
-      docNumber = `${prefix}-TH-${yearMonth}-${counterStr}`
+      // Warranty: WT-TH-YYYYMMDD-####
+      docNumber = `${prefix}-TH-${yearMonthDay}-${counterStr}`
     } else {
-      // เอกสารอื่นๆ: XX-YYYYMM-####
-      docNumber = `${prefix}-${yearMonth}-${counterStr}`
+      // เอกสารอื่นๆ: XX-YYYYMMDD-####
+      docNumber = `${prefix}-${yearMonthDay}-${counterStr}`
     }
 
     return docNumber

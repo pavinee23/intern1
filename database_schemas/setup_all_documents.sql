@@ -14,7 +14,7 @@ USE `ksystem`;
 
 CREATE TABLE IF NOT EXISTS `document_counters` (
   `prefix` varchar(10) NOT NULL COMMENT 'Document prefix (CN, GR, PV, etc.)',
-  `year_month` varchar(6) NOT NULL COMMENT 'Format: YYYYMM',
+  `year_month` varchar(8) NOT NULL COMMENT 'Format: YYYYMMDD (daily reset for all documents)',
   `counter` int NOT NULL DEFAULT 0 COMMENT 'Auto-increment counter',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`prefix`, `year_month`)
@@ -27,7 +27,7 @@ COMMENT='Stores document number counters for atomic generation';
 
 CREATE TABLE IF NOT EXISTS `credit_notes` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `cnNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: CN-YYYYMM-####',
+  `cnNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: CN-YYYYMMDD-####',
   `cnDate` date NOT NULL,
   `customer_name` varchar(255) NOT NULL,
   `invoice_ref` varchar(50) DEFAULT NULL,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS `credit_note_items` (
 
 CREATE TABLE IF NOT EXISTS `goods_receipts` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `grNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: GR-YYYYMM-####',
+  `grNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: GR-YYYYMMDD-####',
   `grDate` date NOT NULL,
   `supplier_name` varchar(255) NOT NULL,
   `po_ref` varchar(50) DEFAULT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS `goods_receipt_items` (
 
 CREATE TABLE IF NOT EXISTS `payment_vouchers` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `pvNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PV-YYYYMM-####',
+  `pvNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PV-YYYYMMDD-####',
   `pvDate` date NOT NULL,
   `payee_name` varchar(255) NOT NULL,
   `payment_method` enum('cash','bank_transfer','cheque','credit_card') DEFAULT 'bank_transfer',
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS `payment_voucher_items` (
 
 CREATE TABLE IF NOT EXISTS `warranties` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `wtNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: WT-TH-YYYYMM-####',
+  `wtNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: WT-TH-YYYYMMDD-####',
   `wtDate` date NOT NULL,
   `customer_name` varchar(255) NOT NULL,
   `phone` varchar(50) DEFAULT NULL,
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS `warranties` (
 
 CREATE TABLE IF NOT EXISTS `purchase_requests` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `prNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PR-YYYYMM-####',
+  `prNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PR-YYYYMMDD-####',
   `prDate` date NOT NULL,
   `requester_name` varchar(100) NOT NULL,
   `department` varchar(100) NOT NULL,
@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS `purchase_request_items` (
 
 CREATE TABLE IF NOT EXISTS `supplier_invoices` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `siNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: SI-YYYYMM-####',
+  `siNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: SI-YYYYMMDD-####',
   `siDate` date NOT NULL,
   `supplier_name` varchar(255) NOT NULL,
   `supplier_invoice_no` varchar(100) NOT NULL,
@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS `supplier_invoice_items` (
 
 CREATE TABLE IF NOT EXISTS `stock_cards` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `scNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: SC-YYYYMM-####',
+  `scNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: SC-YYYYMMDD-####',
   `scDate` date NOT NULL,
   `product_code` varchar(100) DEFAULT NULL,
   `product_name` varchar(255) NOT NULL,
@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS `stock_cards` (
 
 CREATE TABLE IF NOT EXISTS `stock_transfers` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `stNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: ST-YYYYMM-####',
+  `stNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: ST-YYYYMMDD-####',
   `stDate` date NOT NULL,
   `from_warehouse` varchar(100) NOT NULL,
   `to_warehouse` varchar(100) NOT NULL,
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS `stock_transfer_items` (
 
 CREATE TABLE IF NOT EXISTS `stock_adjustments` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `saNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: SA-YYYYMM-####',
+  `saNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: SA-YYYYMMDD-####',
   `saDate` date NOT NULL,
   `warehouse` varchar(100) NOT NULL,
   `adjustment_type` enum('increase','decrease','recount') NOT NULL,
@@ -333,7 +333,7 @@ CREATE TABLE IF NOT EXISTS `stock_adjustment_items` (
 
 CREATE TABLE IF NOT EXISTS `expense_bills` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `ebNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: EB-YYYYMM-####',
+  `ebNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: EB-YYYYMMDD-####',
   `ebDate` date NOT NULL,
   `expense_type` enum('operational','administrative','marketing','maintenance','utilities','other') NOT NULL,
   `category` varchar(100) NOT NULL,
@@ -375,7 +375,7 @@ CREATE TABLE IF NOT EXISTS `expense_bill_items` (
 
 CREATE TABLE IF NOT EXISTS `production_orders` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `pdoNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PDO-YYYYMM-####',
+  `pdoNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PDO-YYYYMMDD-####',
   `pdoDate` date NOT NULL,
   `product_code` varchar(100) DEFAULT NULL,
   `product_name` varchar(255) NOT NULL,

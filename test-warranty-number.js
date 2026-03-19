@@ -24,15 +24,18 @@ async function testWarrantyNumber() {
     const now = new Date()
     const year = now.getFullYear()
     const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
     const yearMonth = `${year}${month}`
+    const yearMonthDay = `${year}${month}${day}`
 
     console.log('📅 Current Year-Month:', yearMonth)
+    console.log('📅 Current Year-Month-Day:', yearMonthDay)
     console.log()
 
-    // Get current counter for WT
+    // Get current counter for WT (uses yearMonthDay)
     const [before] = await connection.query(
       `SELECT counter FROM document_counters WHERE prefix = 'WT' AND \`year_month\` = ?`,
-      [yearMonth]
+      [yearMonthDay]
     )
 
     const currentCounter = before.length > 0 ? before[0].counter : 0
@@ -43,17 +46,17 @@ async function testWarrantyNumber() {
       `INSERT INTO document_counters (prefix, \`year_month\`, counter)
        VALUES ('WT', ?, 1)
        ON DUPLICATE KEY UPDATE counter = counter + 1`,
-      [yearMonth]
+      [yearMonthDay]
     )
 
     const [after] = await connection.query(
       `SELECT counter FROM document_counters WHERE prefix = 'WT' AND \`year_month\` = ?`,
-      [yearMonth]
+      [yearMonthDay]
     )
 
     const newCounter = after[0].counter
     const counterStr = String(newCounter).padStart(4, '0')
-    const wtNo = `WT-TH-${yearMonth}-${counterStr}`
+    const wtNo = `WT-TH-${yearMonthDay}-${counterStr}`
 
     console.log(`📊 New WT counter: ${newCounter}`)
     console.log()
@@ -61,25 +64,25 @@ async function testWarrantyNumber() {
     console.log(`   ${wtNo}`)
     console.log()
 
-    // Test other document types (should not have TH)
+    // Test other document types (use YYYYMMDD like Warranty)
     const testPrefixes = ['CN', 'GR', 'PV', 'PR']
-    console.log('🔍 Testing other document types (should NOT have TH):')
+    console.log('🔍 Testing other document types (use YYYYMMDD):')
 
     for (const prefix of testPrefixes) {
       await connection.query(
         `INSERT INTO document_counters (prefix, \`year_month\`, counter)
          VALUES (?, ?, 1)
          ON DUPLICATE KEY UPDATE counter = counter + 1`,
-        [prefix, yearMonth]
+        [prefix, yearMonthDay]
       )
 
       const [result] = await connection.query(
         `SELECT counter FROM document_counters WHERE prefix = ? AND \`year_month\` = ?`,
-        [prefix, yearMonth]
+        [prefix, yearMonthDay]
       )
 
       const counter = result[0].counter
-      const docNo = `${prefix}-${yearMonth}-${String(counter).padStart(4, '0')}`
+      const docNo = `${prefix}-${yearMonthDay}-${String(counter).padStart(4, '0')}`
       console.log(`   ${prefix}: ${docNo}`)
     }
 
@@ -87,8 +90,10 @@ async function testWarrantyNumber() {
     console.log('✅ All tests completed!')
     console.log()
     console.log('📋 Summary:')
-    console.log('   - Warranty (WT): Uses WT-TH-YYYYMM-#### format ✅')
-    console.log('   - Other docs:    Uses XX-YYYYMM-#### format ✅')
+    console.log('   - Warranty (WT): Uses WT-TH-YYYYMMDD-#### format (daily reset) ✅')
+    console.log('   - Other docs:    Uses XX-YYYYMMDD-#### format (daily reset) ✅')
+    console.log()
+    console.log('🔄 All documents reset counter daily at midnight')
 
   } catch (error) {
     console.error('❌ Error:', error.message)
