@@ -1,7 +1,9 @@
 import { pool } from '@/lib/mysql'
 
 /**
- * สร้างเลขที่เอกสารอัตโนมัติตามรูปแบบ XX-YYYYMM-####
+ * สร้างเลขที่เอกสารอัตโนมัติตามรูปแบบ:
+ * - Warranty: WT-TH-YYYYMM-####
+ * - อื่นๆ: XX-YYYYMM-####
  * ใช้ตาราง document_counters เพื่อป้องกันการซ้ำกัน (thread-safe)
  * @param prefix รหัสประเภทเอกสาร (เช่น CN, GR, PV, WT)
  * @param tableName ชื่อตาราง (ไม่ใช้แล้ว แต่เก็บไว้เพื่อ backward compatibility)
@@ -25,7 +27,7 @@ export async function generateDocumentNumber(
 
     // ใช้ INSERT ... ON DUPLICATE KEY UPDATE เพื่อเพิ่ม counter แบบ atomic
     await connection.query(
-      `INSERT INTO document_counters (prefix, year_month, counter)
+      `INSERT INTO document_counters (prefix, \`year_month\`, counter)
        VALUES (?, ?, 1)
        ON DUPLICATE KEY UPDATE counter = counter + 1`,
       [prefix, yearMonth]
@@ -34,14 +36,24 @@ export async function generateDocumentNumber(
     // อ่านค่า counter ล่าสุด
     const [rows]: any = await connection.query(
       `SELECT counter FROM document_counters
-       WHERE prefix = ? AND year_month = ?`,
+       WHERE prefix = ? AND \`year_month\` = ?`,
       [prefix, yearMonth]
     )
 
     await connection.commit()
 
     const counter = rows[0].counter
-    const docNumber = `${prefix}-${yearMonth}-${String(counter).padStart(4, '0')}`
+    const counterStr = String(counter).padStart(4, '0')
+
+    // สร้างเลขเอกสารตามรูปแบบของแต่ละประเภท
+    let docNumber: string
+    if (prefix === 'WT') {
+      // Warranty: WT-TH-YYYYMM-####
+      docNumber = `${prefix}-TH-${yearMonth}-${counterStr}`
+    } else {
+      // เอกสารอื่นๆ: XX-YYYYMM-####
+      docNumber = `${prefix}-${yearMonth}-${counterStr}`
+    }
 
     return docNumber
   } catch (error) {

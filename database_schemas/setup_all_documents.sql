@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS `payment_voucher_items` (
 
 CREATE TABLE IF NOT EXISTS `warranties` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `wtNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: WT-YYYYMM-####',
+  `wtNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: WT-TH-YYYYMM-####',
   `wtDate` date NOT NULL,
   `customer_name` varchar(255) NOT NULL,
   `phone` varchar(50) DEFAULT NULL,
