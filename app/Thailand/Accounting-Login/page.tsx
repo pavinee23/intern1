@@ -57,12 +57,51 @@ export default function AccountingLoginPage() {
     setLoading(true)
     setError('')
 
-    // Check credentials
-    if (username === 'ksystem' && password === 'Ksave2025Admin') {
-      // Redirect to phpMyAdmin
-      window.open('http://127.0.0.1:8081/phpmyadmin/', '_blank')
-      router.push('/Thailand/Admin-Login/dashboard')
-    } else {
+    try {
+      // Superadmin shortcut
+      if (username === 'ksystem' && password === 'Ksave2025Admin') {
+        window.open('http://127.0.0.1:8081/phpmyadmin/', '_blank')
+        router.push('/Thailand/Accounting-Login/dashboard')
+        setLoading(false)
+        return
+      }
+
+      // Authenticate via API
+      const res = await fetch('/api/user/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, site: 'admin' })
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        setError('invalid_credentials')
+        setLoading(false)
+        return
+      }
+
+      const userTypeID = parseInt(data.typeID)
+      const allowedTypes = [18, 9, 4, 11]
+
+      if (!allowedTypes.includes(userTypeID)) {
+        setError('access_denied')
+        setLoading(false)
+        return
+      }
+
+      // Store session
+      try {
+        localStorage.setItem('user_id', String(data.userID || data.userId || ''))
+        localStorage.setItem('username', data.username || username)
+        localStorage.setItem('fullname', data.fullname || '')
+        localStorage.setItem('typeID', String(userTypeID))
+        localStorage.setItem('site', data.site || 'thailand')
+        localStorage.setItem('token', data.token || '')
+        localStorage.setItem('locale', locale)
+      } catch (_) {}
+
+      router.push('/Thailand/Accounting-Login/dashboard')
+    } catch (_) {
       setError('invalid_credentials')
     }
     setLoading(false)
@@ -190,6 +229,8 @@ export default function AccountingLoginPage() {
               }}>
                 ⚠ {error === 'invalid_credentials'
                   ? L('Invalid username or password', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+                  : error === 'access_denied'
+                  ? L('Access denied. This login is for accounting staff only.', 'ไม่มีสิทธิ์เข้าใช้งาน สำหรับพนักงานบัญชีเท่านั้น')
                   : error}
               </div>
             )}
