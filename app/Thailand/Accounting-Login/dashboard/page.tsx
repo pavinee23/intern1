@@ -183,7 +183,7 @@ export default function AccountingDashboardPage() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div>{L('Working Date: ', 'วันที่ทำการ: ')}<span style={{ fontWeight: 600, color: '#4b5563' }}>{dateShort}</span></div>
-            <div style={{ marginTop: 3 }}>{L('User ID: ', 'รหัสผู้ใช้: ')}<span style={{ fontWeight: 600, color: '#4b5563' }}>{username || 'USER'}</span></div>
+            <div style={{ marginTop: 3 }}>{L('User: ', 'ผู้ใช้: ')}<span style={{ fontWeight: 600, color: '#4b5563' }}>{fullname || username || 'USER'}</span></div>
           </div>
         </div>
 

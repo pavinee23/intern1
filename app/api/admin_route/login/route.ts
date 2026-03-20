@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/mysql'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 // ⚠️ Changed from 'edge' to 'nodejs' to support PostgreSQL
 export const runtime = 'nodejs'
@@ -21,8 +22,8 @@ export async function POST(req: Request) {
     // Query database for admin user authentication from 'user_list' table
     try {
       const users = await query(
-        'SELECT userId, userName, password, name, email, site, typeID FROM user_list WHERE userName = ? LIMIT 1',
-        [username]
+        'SELECT userId, userName, password, name, email, site, typeID FROM user_list WHERE TRIM(userName) = ? LIMIT 1',
+        [username.trim()]
       ) as any[]
 
       if (!users || users.length === 0) {
@@ -31,13 +32,21 @@ export async function POST(req: Request) {
 
       const user = users[0]
 
-      // Check password (supports bcrypt hashes)
+      // Check password (supports bcrypt, MD5 hashes, and plain text)
       let passwordMatches = false
+
+      // Try bcrypt first
       try {
         passwordMatches = await bcrypt.compare(password, user.password)
       } catch (e) {
-        // Fallback to plain text comparison for legacy accounts
-        passwordMatches = password === user.password
+        // If bcrypt fails, try MD5
+        const md5Hash = crypto.createHash('md5').update(password).digest('hex')
+        if (md5Hash === user.password) {
+          passwordMatches = true
+        } else {
+          // Fallback to plain text comparison for legacy accounts
+          passwordMatches = password === user.password
+        }
       }
 
       if (!passwordMatches) {

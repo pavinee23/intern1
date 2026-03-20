@@ -6,8 +6,28 @@ import { LocaleProvider as ContextLocaleProvider } from '@/context/LocaleContext
 import { SiteProvider } from '@/lib/SiteContext'
 
 export const metadata: Metadata = {
-  title: 'Korea Management System',
-  description: 'Comprehensive management system for Korea operations',
+  title: 'K Energy Save | ระบบบริหารจัดการ',
+  description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์จี เซฟ จำกัด | K Energy Save Co., Ltd.',
+  icons: {
+    icon: [
+      { url: '/k-energy-save-logo.png', sizes: 'any' },
+      { url: '/k-energy-save-logo.jpg', type: 'image/jpeg' }
+    ],
+    apple: '/k-energy-save-logo.png',
+  },
+  openGraph: {
+    title: 'K Energy Save | ระบบบริหารจัดการ',
+    description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์จี เซฟ จำกัด',
+    images: ['/k-energy-save-logo.jpg'],
+    siteName: 'K Energy Save',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'K Energy Save | ระบบบริหารจัดการ',
+    description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์จี เซฟ จำกัด',
+    images: ['/k-energy-save-logo.jpg'],
+  },
 }
 
 export const viewport = {

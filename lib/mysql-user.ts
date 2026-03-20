@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 // Create MySQL connection pool for user database (lazy initialization)
 // Support both MYSQL_* and MYSQL_USER_* environment variables
@@ -122,14 +123,14 @@ export async function authenticateUser(
            ct.departmentID
     FROM user_list ul
     LEFT JOIN cus_type ct ON ul.typeID = ct.typeID
-    WHERE ul.userName = ?
+    WHERE TRIM(ul.userName) = ?
     LIMIT 1
   `
 
   const connection = await getPool().getConnection()
 
   try {
-    const [rows] = await connection.execute(sql, [username])
+    const [rows] = await connection.execute(sql, [username.trim()])
     const users = rows as any[]
 
     if (users.length === 0) {
@@ -140,9 +141,11 @@ export async function authenticateUser(
     const user = users[0];
     console.log('[AUTH] User record:', user);
 
-    // Check if password matches (bcrypt). If DB contains a plaintext password, allow it and upgrade to bcrypt.
+    // Check if password matches (supports bcrypt, MD5, and plaintext)
     const storedPassword = user.password || '';
     let passwordMatches = false;
+
+    // Try bcrypt first
     try {
       passwordMatches = await bcrypt.compare(password, storedPassword);
     } catch (err: any) {
@@ -150,21 +153,28 @@ export async function authenticateUser(
     }
 
     if (!passwordMatches) {
-      // Fallback: if stored password appears to be plaintext and matches input, accept and upgrade to bcrypt
-      const looksLikeHash = typeof storedPassword === 'string' && /^\$2[aby]\$/.test(storedPassword);
-      if (!looksLikeHash && storedPassword === password) {
+      // Try MD5
+      const md5Hash = crypto.createHash('md5').update(password).digest('hex');
+      if (md5Hash === storedPassword) {
         passwordMatches = true;
-        try {
-          const newHash = await bcrypt.hash(password, 10);
-          // Update password hash in DB (non-blocking but await to ensure consistency)
-          await connection.execute('UPDATE user_list SET password = ? WHERE userId = ?', [newHash, user.userId]);
-          console.log('[AUTH] Upgraded plaintext password to bcrypt for', username);
-        } catch (err: any) {
-          console.error('[AUTH] Failed to upgrade password hash for', username, (err && (err as any).message) || err);
-        }
+        console.log('[AUTH] Password verified with MD5 for', username);
       } else {
-        console.log('[AUTH] Password mismatch for', username);
-        return null;
+        // Fallback: if stored password appears to be plaintext and matches input, accept and upgrade to bcrypt
+        const looksLikeHash = typeof storedPassword === 'string' && /^\$2[aby]\$/.test(storedPassword);
+        if (!looksLikeHash && storedPassword === password) {
+          passwordMatches = true;
+          try {
+            const newHash = await bcrypt.hash(password, 10);
+            // Update password hash in DB (non-blocking but await to ensure consistency)
+            await connection.execute('UPDATE user_list SET password = ? WHERE userId = ?', [newHash, user.userId]);
+            console.log('[AUTH] Upgraded plaintext password to bcrypt for', username);
+          } catch (err: any) {
+            console.error('[AUTH] Failed to upgrade password hash for', username, (err && (err as any).message) || err);
+          }
+        } else {
+          console.log('[AUTH] Password mismatch for', username);
+          return null;
+        }
       }
     }
 

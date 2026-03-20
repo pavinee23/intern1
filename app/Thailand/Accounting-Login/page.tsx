@@ -66,11 +66,11 @@ export default function AccountingLoginPage() {
         return
       }
 
-      // Authenticate via API
+      // Authenticate via API (no site check for Thailand Accounting Login)
       const res = await fetch('/api/user/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, site: 'admin' })
+        body: JSON.stringify({ username, password })
       })
       const data = await res.json()
 
@@ -93,7 +93,7 @@ export default function AccountingLoginPage() {
       try {
         localStorage.setItem('user_id', String(data.userID || data.userId || ''))
         localStorage.setItem('username', data.username || username)
-        localStorage.setItem('fullname', data.fullname || '')
+        localStorage.setItem('fullname', data.name || data.fullname || '')
         localStorage.setItem('typeID', String(userTypeID))
         localStorage.setItem('site', data.site || 'thailand')
         localStorage.setItem('token', data.token || '')

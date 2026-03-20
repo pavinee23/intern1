@@ -5,6 +5,9 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const docType = searchParams.get('doc_type')
+    const search = searchParams.get('q')
+
     if (id) {
       const [rows]: any = await pool.query(
         'SELECT si.*, c.name_th as customer_name FROM acc_sales_invoices si LEFT JOIN acc_customers c ON si.customer_id = c.id WHERE si.id = ?',
@@ -14,8 +17,26 @@ export async function GET(req: NextRequest) {
         [id])
       return NextResponse.json({ ok: true, data: { ...(rows[0] || {}), items } })
     }
-    const [rows]: any = await pool.query(
-      'SELECT si.*, c.name_th as customer_name FROM acc_sales_invoices si LEFT JOIN acc_customers c ON si.customer_id = c.id ORDER BY si.doc_date DESC, si.id DESC LIMIT 200')
+
+    // Build query with filters
+    let query = 'SELECT si.*, c.name_th as customer_name FROM acc_sales_invoices si LEFT JOIN acc_customers c ON si.customer_id = c.id WHERE 1=1'
+    const params: any[] = []
+
+    // Filter by doc_type
+    if (docType) {
+      query += ' AND si.doc_type = ?'
+      params.push(docType)
+    }
+
+    // Filter by search term
+    if (search) {
+      query += ' AND (si.doc_no LIKE ? OR c.name_th LIKE ? OR si.note LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`)
+    }
+
+    query += ' ORDER BY si.doc_date DESC, si.id DESC LIMIT 200'
+
+    const [rows]: any = await pool.query(query, params)
     return NextResponse.json({ ok: true, data: rows })
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 })

@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
+import SupplierSearch from '../../components/SupplierSearch'
 
 type Row = { id?: number; doc_no?: string; doc_date?: string; supplier_id?: number; supplier_name?: string; subtotal?: number; vat?: number; total?: number; status?: string; note?: string }
 const empty: Row = { doc_date: new Date().toISOString().slice(0, 10), supplier_name: '', subtotal: 0, vat: 0, total: 0, status: 'draft', note: '' }
@@ -18,10 +19,10 @@ export default function CashPurchasePage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [msg, setMsg] = useState('')
-  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [supplierDisplay, setSupplierDisplay] = useState('')
 
   const load = async () => { const r = await fetch('/api/accounting/purchase-orders?doc_type=cash' + (search ? '&q=' + encodeURIComponent(search) : '')); const d = await r.json(); if (d.ok) setData(d.data) }
-  useEffect(() => { load(); fetch('/api/accounting/suppliers').then(r => r.json()).then(d => { if (d.ok) setSuppliers(d.data) }) }, [])
+  useEffect(() => { load() }, [])
 
   const save = async () => {
     setLoading(true); setMsg('')
@@ -37,7 +38,7 @@ export default function CashPurchasePage() {
     <AccWindow title={L('Cash Purchase','ซื้อเงินสด')}>
       <div style={{ padding: 12 }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button style={btn('#f3f4f6')} onClick={() => { setForm(empty); setShowForm(true) }}>+ {L('New','เพิ่มใหม่')}</button>
+          <button style={btn('#f3f4f6')} onClick={() => { setForm(empty); setSupplierDisplay(''); setShowForm(true) }}>+ {L('New','เพิ่มใหม่')}</button>
           <input style={{ ...inp, width: 200 }} placeholder={L('Search...','ค้นหา...')} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} />
           <button style={btn('#f3f4f6')} onClick={load}>{L('Search','ค้นหา')}</button>
           {msg && <span style={{ color: msg.startsWith('Error') ? 'red' : 'green', fontSize: 13 }}>{msg}</span>}
@@ -53,7 +54,7 @@ export default function CashPurchasePage() {
                   <td style={{ ...td, textAlign: 'right' }}>{fmt(r.subtotal||0)}</td><td style={{ ...td, textAlign: 'right' }}>{fmt(r.vat||0)}</td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{fmt(r.total||0)}</td><td style={{ ...td, textAlign: 'center' }}>{r.status}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                    <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={() => { setForm({ ...r }); setShowForm(true) }}>{L('Edit','แก้ไข')}</button>
+                    <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={() => { setForm({ ...r }); setSupplierDisplay(r.supplier_name || ''); setShowForm(true) }}>{L('Edit','แก้ไข')}</button>
                     <button style={btn('#f3f4f6','#dc2626')} onClick={() => del(r.id)}>{L('Del','ลบ')}</button>
                   </td>
                 </tr>))}
@@ -68,9 +69,14 @@ export default function CashPurchasePage() {
             <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Date','วันที่')}</div><input style={inp} type="date" value={form.doc_date||''} onChange={e => setForm(f => ({ ...f, doc_date: e.target.value }))} /></div>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Supplier','ผู้จำหน่าย')}</div>
-                <select style={inp} value={form.supplier_id||''} onChange={e => { const s = suppliers.find((x: any) => x.id === +e.target.value); setForm(f => ({ ...f, supplier_id: s?.id, supplier_name: s?.name_th||'' })) }}>
-                  <option value="">{L('-- Select --','-- เลือก --')}</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name_th}</option>)}
-                </select></div>
+                <SupplierSearch
+                  value={form.supplier_id}
+                  displayValue={supplierDisplay || form.supplier_name || ''}
+                  onChange={s => {
+                    if (s) { setForm(f => ({ ...f, supplier_id: s.id, supplier_name: s.name_th })); setSupplierDisplay(s.name_th) }
+                    else { setForm(f => ({ ...f, supplier_id: undefined, supplier_name: '' })); setSupplierDisplay('') }
+                  }}
+                /></div>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Subtotal','ราคาก่อน VAT')}</div><input style={inp} type="number" value={form.subtotal||''} onChange={e => { const sub = +e.target.value||0; const vat = Math.round(sub * 7) / 100; setForm(f => ({ ...f, subtotal: sub, vat, total: sub + vat })) }} /></div>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('VAT 7%','VAT 7%')}</div><input style={inp} readOnly value={fmt(form.vat||0)} /></div>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Total','รวมทั้งสิ้น')}</div><input style={inp} readOnly value={fmt(form.total||0)} /></div>

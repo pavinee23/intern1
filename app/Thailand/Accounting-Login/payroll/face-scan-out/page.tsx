@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
+import * as faceapi from 'face-api.js'
 
 export default function FaceScanOutPage() {
   const { L } = useLang()
@@ -9,9 +10,28 @@ export default function FaceScanOutPage() {
   const [success, setSuccess] = useState(false)
   const [employee, setEmployee] = useState<any>(null)
   const [time, setTime] = useState('')
-  const [workingHours, setWorkingHours] = useState('8:30')
+  const [modelsLoaded, setModelsLoaded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
+
+  // โหลด AI models
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/models')
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/models')
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+        setModelsLoaded(true)
+      } catch (err) {
+        console.error('Error loading models:', err)
+        setError(L('Failed to load AI models', 'โหลด AI models ไม่สำเร็จ'))
+      }
+    }
+    loadModels()
+  }, [])
 
   useEffect(() => {
     const updateTime = () => {
@@ -53,25 +73,85 @@ export default function FaceScanOutPage() {
     setScanning(false)
   }
 
-  const handleScan = () => {
-    // Simulate face recognition
-    setTimeout(() => {
-      setEmployee({
-        id: 'E001',
-        name: 'สมชาย ใจดี',
-        department: 'บัญชี',
-        position: 'นักบัญชี',
-        clockIn: '09:00:00'
-      })
-      setSuccess(true)
-      stopCamera()
+  const handleScan = async () => {
+    if (!videoRef.current || !modelsLoaded) return
 
-      // Auto reset after 5 seconds
-      setTimeout(() => {
-        setSuccess(false)
-        setEmployee(null)
-      }, 5000)
-    }, 1500)
+    setLoading(true)
+    setError('')
+
+    try {
+      // ตรวจจับใบหน้า
+      const detections = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor()
+
+      if (!detections) {
+        setError(L('No face detected', 'ไม่พบใบหน้า'))
+        setLoading(false)
+        return
+      }
+
+      // วาดกรอบใบหน้า
+      if (canvasRef.current && videoRef.current) {
+        const canvas = canvasRef.current
+        const displaySize = {
+          width: videoRef.current.videoWidth,
+          height: videoRef.current.videoHeight
+        }
+        faceapi.matchDimensions(canvas, displaySize)
+        const resizedDetections = faceapi.resizeResults(detections, displaySize)
+        canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+        faceapi.draw.drawDetections(canvas, [resizedDetections])
+        faceapi.draw.drawFaceLandmarks(canvas, [resizedDetections])
+      }
+
+      // บันทึกรูป
+      const canvas = document.createElement('canvas')
+      canvas.width = videoRef.current.videoWidth
+      canvas.height = videoRef.current.videoHeight
+      canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8)
+
+      // ตรวจสอบใบหน้า
+      const faceDescriptor = Array.from(detections.descriptor)
+
+      const res = await fetch('/api/face-recognition/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          faceDescriptor,
+          type: 'checkout',
+          imageUrl: imageDataUrl
+        })
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        setEmployee({
+          id: data.employee.userId,
+          name: data.employee.name_th || data.employee.name,
+          email: data.employee.email,
+          time: data.time
+        })
+        setSuccess(true)
+        stopCamera()
+
+        // Auto reset after 5 seconds
+        setTimeout(() => {
+          setSuccess(false)
+          setEmployee(null)
+        }, 5000)
+      } else {
+        setError(data.message || L('Face not recognized', 'ไม่สามารถระบุตัวตนได้'))
+      }
+    } catch (err: any) {
+      console.error('Scan error:', err)
+      setError(err.message || L('An error occurred', 'เกิดข้อผิดพลาด'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -88,21 +168,36 @@ export default function FaceScanOutPage() {
 
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
           borderRadius: 16,
           padding: '30px 40px',
           marginBottom: 30,
           color: '#fff',
           textAlign: 'center',
-          boxShadow: '0 8px 24px rgba(245,158,11,0.3)'
+          boxShadow: '0 8px 24px rgba(239,68,68,0.3)'
         }}>
           <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
-            🏃 {L('Face Scan Clock-Out', 'สแกนหน้าเลิกงาน')}
+            📸 {L('Face Scan Clock-Out', 'สแกนหน้าออกงาน')}
           </div>
           <div style={{ fontSize: 24, fontWeight: 700, marginTop: 12, opacity: 0.95 }}>
             {time}
           </div>
         </div>
+
+        {!modelsLoaded && (
+          <div style={{
+            background: '#fef3c7',
+            border: '2px solid #fbbf24',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 20,
+            textAlign: 'center',
+            color: '#92400e',
+            fontWeight: 600
+          }}>
+            ⏳ {L('Loading AI models...', 'กำลังโหลด AI models...')}
+          </div>
+        )}
 
         {!success ? (
           <>
@@ -126,12 +221,24 @@ export default function FaceScanOutPage() {
                 justifyContent: 'center'
               }}>
                 {scanning ? (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <canvas
+                      ref={canvasRef}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%'
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>
                     <div style={{ fontSize: 80, marginBottom: 20 }}>📷</div>
@@ -147,19 +254,20 @@ export default function FaceScanOutPage() {
                 {!scanning ? (
                   <button
                     onClick={startCamera}
+                    disabled={!modelsLoaded}
                     style={{
                       padding: '14px 32px',
                       fontSize: 16,
                       fontWeight: 700,
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      background: modelsLoaded ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#9ca3af',
                       color: '#fff',
                       border: 'none',
                       borderRadius: 10,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(245,158,11,0.3)',
+                      cursor: modelsLoaded ? 'pointer' : 'not-allowed',
+                      boxShadow: modelsLoaded ? '0 4px 12px rgba(16,185,129,0.3)' : 'none',
                       transition: 'all 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseEnter={e => modelsLoaded && (e.currentTarget.style.transform = 'translateY(-2px)')}
                     onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                   >
                     📷 {L('Start Camera', 'เปิดกล้อง')}
@@ -168,38 +276,40 @@ export default function FaceScanOutPage() {
                   <>
                     <button
                       onClick={handleScan}
+                      disabled={loading}
                       style={{
                         padding: '14px 32px',
                         fontSize: 16,
                         fontWeight: 700,
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        background: loading ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 10,
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        boxShadow: loading ? 'none' : '0 4px 12px rgba(59,130,246,0.3)',
                         transition: 'all 0.2s'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                      onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
                       onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                     >
-                      ✅ {L('Scan Face', 'สแกนใบหน้า')}
+                      {loading ? '⏳ กำลังตรวจสอบ...' : `✅ ${L('Scan Face', 'สแกนใบหน้า')}`}
                     </button>
                     <button
                       onClick={stopCamera}
+                      disabled={loading}
                       style={{
                         padding: '14px 32px',
                         fontSize: 16,
                         fontWeight: 700,
-                        background: '#6b7280',
+                        background: loading ? '#9ca3af' : '#6b7280',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 10,
-                        cursor: 'pointer',
+                        cursor: loading ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#4b5563'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#6b7280'}
+                      onMouseEnter={e => !loading && (e.currentTarget.style.background = '#4b5563')}
+                      onMouseLeave={e => !loading && (e.currentTarget.style.background = '#6b7280')}
                     >
                       ❌ {L('Cancel', 'ยกเลิก')}
                     </button>
@@ -208,37 +318,53 @@ export default function FaceScanOutPage() {
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div style={{
+                background: '#fee2e2',
+                border: '2px solid #ef4444',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 20,
+                color: '#991b1b',
+                fontWeight: 600,
+                textAlign: 'center'
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+
             {/* Instructions */}
             <div style={{
-              background: '#fef3c7',
-              border: '2px solid #f59e0b',
+              background: '#eff6ff',
+              border: '2px solid #3b82f6',
               borderRadius: 12,
               padding: 20,
             }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#92400e', marginBottom: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1e40af', marginBottom: 8 }}>
                 💡 {L('Instructions', 'คำแนะนำ')}
               </div>
-              <ul style={{ margin: 0, paddingLeft: 24, color: '#92400e', fontSize: 13, lineHeight: 1.8 }}>
+              <ul style={{ margin: 0, paddingLeft: 24, color: '#1e40af', fontSize: 13, lineHeight: 1.8 }}>
                 <li>{L('Position your face in the camera frame', 'จัดตำแหน่งใบหน้าให้อยู่ในกรอบกล้อง')}</li>
                 <li>{L('Remove glasses and mask for better accuracy', 'ถอดแว่นและหน้ากากเพื่อความแม่นยำ')}</li>
                 <li>{L('Ensure good lighting', 'ตรวจสอบว่ามีแสงสว่างเพียงพอ')}</li>
-                <li>{L('System will calculate your working hours', 'ระบบจะคำนวณชั่วโมงทำงานให้อัตโนมัติ')}</li>
+                <li>{L('Click "Scan Face" when ready', 'กดปุ่ม "สแกนใบหน้า" เมื่อพร้อม')}</li>
               </ul>
             </div>
           </>
         ) : (
           /* Success Message */
           <div style={{
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             borderRadius: 16,
             padding: 50,
             textAlign: 'center',
             color: '#fff',
-            boxShadow: '0 8px 24px rgba(245,158,11,0.4)'
+            boxShadow: '0 8px 24px rgba(239,68,68,0.4)'
           }}>
-            <div style={{ fontSize: 80, marginBottom: 20 }}>👋</div>
+            <div style={{ fontSize: 80, marginBottom: 20 }}>✅</div>
             <div style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>
-              {L('Clock-Out Successful!', 'บันทึกเวลาเลิกงานสำเร็จ!')}
+              {L('Clock-Out Successful!', 'บันทึกเวลาออกงานสำเร็จ!')}
             </div>
             {employee && (
               <div style={{
@@ -253,24 +379,11 @@ export default function FaceScanOutPage() {
                 </div>
                 <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>{employee.name}</div>
                 <div style={{ fontSize: 16, opacity: 0.95 }}>
-                  {L('ID', 'รหัส')}: {employee.id} | {L('Dept', 'แผนก')}: {employee.department}
+                  {L('ID', 'รหัส')}: {employee.id}
                 </div>
-                <div style={{ fontSize: 16, opacity: 0.95 }}>{employee.position}</div>
-                <div style={{
-                  marginTop: 20,
-                  padding: 16,
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: 8
-                }}>
-                  <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
-                    ⏰ {L('Clock-In', 'เวลาเข้างาน')}: {employee.clockIn}
-                  </div>
-                  <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
-                    🏃 {L('Clock-Out', 'เวลาเลิกงาน')}: {time.split(' ')[1]}
-                  </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, marginTop: 12 }}>
-                    ⌚ {L('Total Hours', 'รวมชั่วโมงทำงาน')}: {workingHours} {L('hours', 'ชั่วโมง')}
-                  </div>
+                <div style={{ fontSize: 16, opacity: 0.95 }}>{employee.email}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, marginTop: 16 }}>
+                  ⏰ {employee.time || time}
                 </div>
               </div>
             )}

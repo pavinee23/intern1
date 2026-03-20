@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react'
 import AccWindow from '../../components/AccWindow'
+import SupplierSearch from '../../components/SupplierSearch'
 
 type Item = { product_id?: number; description: string; qty: number; unit: string; unit_price: number; amount: number }
 type PO = { id?: number; doc_no?: string; doc_date: string; supplier_id?: number; supplier_name?: string; status: string; subtotal: number; discount: number; vat_amount: number; total: number; note?: string; items?: Item[] }
@@ -23,7 +24,7 @@ function calcItems(items: Item[], discount: number, vatRate: number) {
 
 export default function PurchaseOrderPage() {
   const [list, setList] = useState<PO[]>([])
-  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [supplierDisplay, setSupplierDisplay] = useState('')
   const [form, setForm] = useState<PO>(emptyPO())
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -36,7 +37,6 @@ export default function PurchaseOrderPage() {
   }
   useEffect(() => {
     load()
-    fetch('/api/accounting/suppliers').then(r => r.json()).then(d => { if (d.ok) setSuppliers(d.data) })
   }, [])
 
   const setItem = (idx: number, field: keyof Item, val: any) => {
@@ -72,7 +72,7 @@ export default function PurchaseOrderPage() {
     <AccWindow title="ใบสั่งซื้อ">
       <div style={{ padding: 12 }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-          <button style={btn('#f3f4f6')} onClick={() => { setForm(emptyPO()); setShowForm(true) }}>+ สร้างใบสั่งซื้อ</button>
+          <button style={btn('#f3f4f6')} onClick={() => { setForm(emptyPO()); setSupplierDisplay(''); setShowForm(true) }}>+ สร้างใบสั่งซื้อ</button>
           {msg && <span style={{ fontSize: 13, color: msg.startsWith('Error') ? 'red' : 'green' }}>{msg}</span>}
         </div>
         <div style={{ overflowX: 'auto', border: '1px solid #d1d5db', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
@@ -90,7 +90,7 @@ export default function PurchaseOrderPage() {
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={async () => {
                       const r = await fetch('/api/accounting/purchase-orders?id=' + row.id)
-                      const d = await r.json(); if (d.ok) { setForm(d.data); setShowForm(true) }
+                      const d = await r.json(); if (d.ok) { setForm(d.data); setSupplierDisplay(d.data.supplier_name || ''); setShowForm(true) }
                     }}>แก้ไข</button>
                     <button style={{ ...btn('#f3f4f6', '#cc0000') }} onClick={() => del(row.id)}>ลบ</button>
                   </td>
@@ -117,10 +117,19 @@ export default function PurchaseOrderPage() {
                   </div>
                   <div>
                     <div style={{ fontSize: 12, marginBottom: 2 }}>ผู้จำหน่าย</div>
-                    <select style={inp} value={form.supplier_id || ''} onChange={e => setForm(f => ({ ...f, supplier_id: Number(e.target.value) }))}>
-                      <option value="">-- เลือก --</option>
-                      {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name_th}</option>)}
-                    </select>
+                    <SupplierSearch
+                      value={form.supplier_id}
+                      displayValue={supplierDisplay || form.supplier_name || ''}
+                      onChange={s => {
+                        if (s) {
+                          setForm(f => ({ ...f, supplier_id: s.id, supplier_name: s.name_th }))
+                          setSupplierDisplay(s.name_th)
+                        } else {
+                          setForm(f => ({ ...f, supplier_id: undefined, supplier_name: undefined }))
+                          setSupplierDisplay('')
+                        }
+                      }}
+                    />
                   </div>
                   <div>
                     <div style={{ fontSize: 12, marginBottom: 2 }}>สถานะ</div>

@@ -424,6 +424,7 @@ export default function AdminPage(): React.ReactElement {
           <Link href="/add-machine" className="k-btn k-btn-ghost crisp-text">Add Machine</Link>
           <Link href="/admin/set-values" className="k-btn k-btn-ghost crisp-text">Add Value</Link>
           <Link href="/admin/database" className="k-btn k-btn-ghost crisp-text">Database</Link>
+          <Link href="/admin/AdminKsave/pg46-test" className="k-btn k-btn-ghost crisp-text" style={{ background: '#10b981', color: '#fff' }}>📡 PG46 Test</Link>
 
           <button className="k-btn k-btn-primary crisp-text" onClick={handleLogout}>
             {token ? 'Logout' : 'Exit'}
