@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import AdminLayout from '../components/AdminLayout'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import styles from '../admin-theme.module.css'
 
 export default function PowerCalculatorPage() {
+  const searchParams = useSearchParams()
+  const editCalcID = searchParams?.get('calcID')
     // ตรวจสอบและสร้างข้อมูลใหม่ถ้ายังไม่มีในฐานข้อมูล
     useEffect(() => {
       async function ensureInitialData() {
@@ -49,6 +51,65 @@ export default function PowerCalculatorPage() {
     generatePowerCalcuNo()
   }, [])
 
+  // Load existing calculation data for editing
+  useEffect(() => {
+    if (!editCalcID) return
+
+    async function loadExistingData() {
+      try {
+        const res = await fetch(`/api/power-calculations?calcID=${editCalcID}`)
+        const json = await res.json()
+        if (json.success && json.rows && json.rows[0]) {
+          const data = json.rows[0]
+          const params = data.parameters ? (typeof data.parameters === 'string' ? JSON.parse(data.parameters) : data.parameters) : {}
+          const result = data.result ? (typeof data.result === 'string' ? JSON.parse(data.result) : data.result) : {}
+
+          // Load all parameters
+          setTitle(data.title || 'Power Calculation')
+          setPowerCalcuNo(data.power_calcuNo || '')
+          setVoltage(params.voltage || 230)
+          setCurrent(params.current || 0)
+          setPf(params.pf || 1)
+          setPhase(params.phase || 'single')
+          setAppliances(params.appliances || [])
+          setUsageHistory(params.usage_history || params.usageHistory || [])
+          setResults(result)
+          setCompanyName(params.companyName || '')
+          setCustomerName(params.customerName || '')
+          setUnitPrice(params.unitPrice || 5.0)
+          setExpectedSavingsPercent(params.expectedSavingsPercent || 10)
+          setDeviceCost(params.deviceCost || 0)
+          setAmortizeMonths(params.amortizeMonths || 12)
+          setContractedCapacity(params.contractedCapacity || 0)
+          setPeakPower(params.peakPower || 0)
+          setAvgMonthlyUsage(params.avgMonthlyUsage || 0)
+          setFaucetMethod(params.faucetMethod || '')
+          setPowerSavingRate(params.powerSavingRate || 10)
+          setDeviceCapacity(params.deviceCapacity || 30)
+          setProductPrice(params.productPrice || 128037)
+          setPaymentMonths(params.paymentMonths || 60)
+          setUsageDataMonths(params.usageDataMonths || 6)
+          setMonthlyKwh(params.monthlyKwh || Array(12).fill(0))
+          setTwelveMonths(params.twelveMonths || [])
+
+          // Load customer if available
+          if (data.cusID) {
+            setCustomer({
+              cusID: data.cusID,
+              name: data.customerName || params.companyName || '',
+              phone: '',
+              address: ''
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load calculation data', err)
+      }
+    }
+
+    loadExistingData()
+  }, [editCalcID])
+
   const router = useRouter()
   const [voltage, setVoltage] = useState<number>(230)
   const [current, setCurrent] = useState<number>(0)
@@ -62,11 +123,17 @@ export default function PowerCalculatorPage() {
   const [title, setTitle] = useState<string>('Power Calculation')
   const [customer, setCustomer] = useState<{ cusID?: number; name?: string; phone?: string; address?: string } | null>(null)
   const [loadingSave, setLoadingSave] = useState(false)
+  const [loadingSaveDraft, setLoadingSaveDraft] = useState(false)
   const [powerCalcuNo, setPowerCalcuNo] = useState<string | null>(null)
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
   const [showCustomerModal, setShowCustomerModal] = useState(false)
   const [customerResults, setCustomerResults] = useState<any[]>([])
   const [searchingCustomers, setSearchingCustomers] = useState(false)
+  const [productSearchTerm, setProductSearchTerm] = useState('')
+  const [showProductModal, setShowProductModal] = useState(false)
+  const [productResults, setProductResults] = useState<any[]>([])
+  const [searchingProducts, setSearchingProducts] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<{ productID?: number; name?: string; price?: number } | null>(null)
   const [preInstallResults, setPreInstallResults] = useState<any[]>([])
   const [showPreInstallModal, setShowPreInstallModal] = useState(false)
   const [loadingPreInsts, setLoadingPreInsts] = useState(false)
@@ -88,6 +155,7 @@ export default function PowerCalculatorPage() {
   const [paymentMonths, setPaymentMonths] = useState<number>(60)
   const [emissionFactor] = useState<number>(0.466)
   const [companyName, setCompanyName] = useState<string>('')
+  const [customerName, setCustomerName] = useState<string>('')
   const [usageDataMonths, setUsageDataMonths] = useState<number>(6)
 
   // Monthly electricity data for editable table (Jan-Dec)
@@ -250,12 +318,25 @@ export default function PowerCalculatorPage() {
       apparent = totalW / (Number(pf) || 1)
       real = totalW
     } else {
-      apparent = Number(voltage) * Number(current)
-      real = apparent * Number(pf)
+      // Calculate based on phase type
+      const v = Number(voltage)
+      const i = Number(current)
+      const powerFactor = Number(pf)
+
+      if (phase === 'three') {
+        // Three-phase: S = √3 × V × I
+        apparent = Math.sqrt(3) * v * i
+      } else {
+        // Single-phase: S = V × I
+        apparent = v * i
+      }
+
+      // Real power: P = S × PF
+      real = apparent * powerFactor
     }
     const reactive = Math.sqrt(Math.max(0, apparent * apparent - real * real))
     setResults({ real, apparent, reactive })
-  }, [voltage, current, pf, appliances])
+  }, [voltage, current, pf, phase, appliances])
 
   // Compute monthly electricity cost summary data from editable monthlyKwh state
   const monthlyElectricitySummary = useMemo(() => {
@@ -652,6 +733,43 @@ export default function PowerCalculatorPage() {
             </div>
           )}
 
+          {showProductModal && (
+            <div style={{ marginTop: 12, padding: 12, background: '#fff', borderRadius: 8, border: '1px solid #e6eef6' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontWeight: 700 }}>{L('Product Search Results','ผลการค้นหาสินค้า')}</div>
+                <button className={styles.btnOutline} onClick={() => setShowProductModal(false)}>{L('Close','ปิด')}</button>
+              </div>
+              {productResults.length === 0 ? (
+                <div style={{ color: '#666' }}>{L('No products','ไม่พบสินค้า')}</div>
+              ) : (
+                <table className={styles.table} style={{ width: '100%', tableLayout: 'fixed' }}>
+                  <colgroup><col style={{ width: '15%' }} /><col style={{ width: '35%' }} /><col style={{ width: '20%' }} /><col style={{ width: '20%' }} /><col style={{ width: '10%' }} /></colgroup>
+                  <thead>
+                    <tr><th>{L('SKU','รหัส')}</th><th>{L('Name','ชื่อสินค้า')}</th><th>{L('Capacity','ความจุ')}</th><th>{L('Price','ราคา')}</th><th>{L('Action','เลือก')}</th></tr>
+                  </thead>
+                  <tbody>
+                    {productResults.map((p, i) => (
+                      <tr key={i}>
+                        <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.sku || '-'}</td>
+                        <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || ''}</td>
+                        <td>{p.capacity || '-'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{(p.price || 0).toLocaleString()}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => {
+                            setSelectedProduct({ productID: p.productID, name: p.name, price: p.price || 0 })
+                            setProductPrice(p.price || 0)
+                            setShowProductModal(false)
+                            setProductSearchTerm('')
+                          }}>{L('Select','เลือก')}</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
           {showPreInstallModal && (
             <div style={{ marginTop: 12, padding: 12, background: '#fff', borderRadius: 8, border: '1px solid #e6eef6' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -822,8 +940,14 @@ export default function PowerCalculatorPage() {
             <div style={{ padding: 20 }}>
               {/* Company name input */}
               <div style={{ marginBottom: 16 }}>
-                <label className={styles.formLabel}>{L('Company/Customer Name', 'ชื่อบริษัท/ลูกค้า')}</label>
+                <label className={styles.formLabel}>{L('Company Name', 'ชื่อบริษัท')}</label>
                 <input className={styles.formInput} value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={L('Enter company name', 'กรอกชื่อบริษัท')} style={{ maxWidth: 400 }} />
+              </div>
+
+              {/* Customer name input */}
+              <div style={{ marginBottom: 16 }}>
+                <label className={styles.formLabel}>{L('Customer Name', 'ชื่อลูกค้า')}</label>
+                <input className={styles.formInput} value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={L('Enter customer name', 'กรอกชื่อลูกค้า')} style={{ maxWidth: 400 }} />
               </div>
 
               {/* Section 1: Contracted capacity and average monthly usage */}
@@ -948,10 +1072,44 @@ export default function PowerCalculatorPage() {
                     </tr>
                     <tr>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', background: '#fffde7' }}>{L('Product price', 'ราคาสินค้า')}</td>
-                      <td style={{ border: '1px solid #ddd', padding: '8px 12px', textAlign: 'right' }}>
-                        <input type="number" className={styles.formInput} value={productPrice || ''} onChange={e => setProductPrice(Number(e.target.value || 0))} style={{ width: 120, textAlign: 'right' }} />
+                      <td colSpan={2} style={{ border: '1px solid #ddd', padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input
+                            className={styles.formInput}
+                            placeholder={L('Search product by name/SKU','ค้นหาสินค้าด้วยชื่อ/SKU')}
+                            value={productSearchTerm}
+                            onChange={e => setProductSearchTerm(e.target.value)}
+                            style={{ width: 200 }}
+                          />
+                          <button className={`${styles.btn} ${styles.btnOutline}`} onClick={async () => {
+                            setSearchingProducts(true)
+                            try {
+                              const searchQuery = productSearchTerm.trim() ? `?q=${encodeURIComponent(productSearchTerm)}` : '?limit=100'
+                              const res = await fetch(`/api/products${searchQuery}`)
+                              const j = await res.json()
+                              if (res.ok && j && j.success && Array.isArray(j.products)) {
+                                setProductResults(j.products)
+                                setShowProductModal(true)
+                              } else {
+                                setProductResults([])
+                                alert(L('No products found','ไม่พบสินค้า'))
+                              }
+                            } catch (err) {
+                              setProductResults([])
+                              console.error('Product search error', err)
+                              alert(L('Search failed','ค้นหาไม่สำเร็จ'))
+                            } finally {
+                              setSearchingProducts(false)
+                            }
+                          }}>{searchingProducts ? L('Searching...','ค้นหา...') : L('Search Product','ค้นหาสินค้า')}</button>
+                          {selectedProduct && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: '#ecfdf5', border: '1px solid #86efac', borderRadius: 6 }}>
+                              <span style={{ fontSize: 13, color: '#065f46' }}>{selectedProduct.name}</span>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: '#059669' }}>{(selectedProduct.price || 0).toLocaleString()} {L('Baht','บาท')}</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td style={{ border: '1px solid #ddd', padding: '8px 12px' }}></td>
                     </tr>
                     <tr>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', background: '#fffde7' }}>{L('Monthly payment', 'ผ่อนชำระรายเดือน')}</td>
@@ -1110,11 +1268,6 @@ export default function PowerCalculatorPage() {
 
           <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
               <button type="button" onClick={async () => {
-              // Validate required fields
-              if (!powerCalcuNo || powerCalcuNo.trim() === '') {
-                alert(L('Please enter Power Calcu No', 'กรุณากรอกเลขที่บิล'))
-                return
-              }
               setLoadingSave(true)
               try {
                 let createdBy = 'thailand admin'
@@ -1125,7 +1278,7 @@ export default function PowerCalculatorPage() {
                     createdBy = u?.name || u?.username || u?.userId || u?.email || createdBy
                   }
                 } catch (_) {}
-                const payload = {
+                const payload: any = {
                   title: title || null,
                   parameters: {
                     voltage,
@@ -1148,6 +1301,7 @@ export default function PowerCalculatorPage() {
                     paymentMonths,
                     emissionFactor,
                     companyName,
+                    customerName,
                     usageDataMonths,
                     monthlyKwh,
                     preInstallResults,
@@ -1160,9 +1314,17 @@ export default function PowerCalculatorPage() {
                   cusID: customer?.cusID || null,
                   usage_history: usageHistory,
                   pre_inst_id: importedPreInstID || null,
-                  created_by: createdBy
+                  created_by: createdBy,
+                  status: 'completed'
                 }
-                const res = await fetch('/api/power-calculations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+
+                // If editing existing record, include calcID and use PUT method
+                const method = editCalcID ? 'PUT' : 'POST'
+                if (editCalcID) {
+                  payload.calcID = editCalcID
+                }
+
+                const res = await fetch('/api/power-calculations', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                 const j = await res.json()
                 if (res.ok && j && j.success) {
                   // After save, go to list page
@@ -1177,7 +1339,80 @@ export default function PowerCalculatorPage() {
                 setLoadingSave(false)
               }
             }} className={`${styles.btn} ${styles.btnPrimary}`}>{loadingSave ? L('Saving...','กำลังบันทึก...') : L('Save Calculation','บันทึกการคำนวณ')}</button>
-            
+
+            <button type="button" onClick={async () => {
+              setLoadingSaveDraft(true)
+              try {
+                let createdBy = 'thailand admin'
+                try {
+                  const raw = typeof window !== 'undefined' ? localStorage.getItem('k_system_admin_user') : null
+                  if (raw) {
+                    const u = JSON.parse(raw)
+                    createdBy = u?.name || u?.username || u?.userId || u?.email || createdBy
+                  }
+                } catch (_) {}
+                const payload: any = {
+                  title: title || null,
+                  parameters: {
+                    voltage,
+                    current,
+                    pf,
+                    phase,
+                    appliances,
+                    usageHistory,
+                    unitPrice,
+                    expectedSavingsPercent,
+                    deviceCost,
+                    amortizeMonths,
+                    contractedCapacity,
+                    peakPower,
+                    avgMonthlyUsage,
+                    faucetMethod,
+                    powerSavingRate,
+                    deviceCapacity,
+                    productPrice,
+                    paymentMonths,
+                    emissionFactor,
+                    companyName,
+                    customerName,
+                    usageDataMonths,
+                    monthlyKwh,
+                    preInstallResults,
+                    importedPreInstID,
+                    show12MonthModal,
+                    twelveMonths
+                  },
+                  result: results,
+                  power_calcuNo: powerCalcuNo || null,
+                  cusID: customer?.cusID || null,
+                  usage_history: usageHistory,
+                  pre_inst_id: importedPreInstID || null,
+                  created_by: createdBy,
+                  status: 'draft'
+                }
+
+                // If editing existing record, include calcID and use PUT method
+                const method = editCalcID ? 'PUT' : 'POST'
+                if (editCalcID) {
+                  payload.calcID = editCalcID
+                }
+
+                const res = await fetch('/api/power-calculations', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                const j = await res.json()
+                if (res.ok && j && j.success) {
+                  alert(L('Draft saved successfully', 'บันทึกร่างสำเร็จ'))
+                  router.push('/Thailand/Admin-Login/power-calculator/list')
+                } else {
+                  alert(L('Save draft failed', 'บันทึกร่างไม่สำเร็จ') + ': ' + (j?.error || res.statusText))
+                }
+              } catch (err) {
+                console.error('Save draft error', err)
+                alert(L('Server error while saving draft', 'เกิดข้อผิดพลาดขณะบันทึกร่าง'))
+              } finally {
+                setLoadingSaveDraft(false)
+              }
+            }} className={`${styles.btn} ${styles.btnOutline}`}>{loadingSaveDraft ? L('Saving...','กำลังบันทึก...') : L('Save Draft','บันทึกร่าง')}</button>
+
             <button type="button" onClick={() => { setCustomer(null); setTitle('Power Calculation') }} className={`${styles.btn} ${styles.btnOutline}`} style={{ marginLeft: 8 }}>{L('Clear','ล้าง')}</button>
           </div>
 
