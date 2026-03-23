@@ -10,6 +10,8 @@ export default function CustomerAddPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', company: '', subject: '', message: '' })
   const [loading, setLoading] = useState(false)
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [saveHover, setSaveHover] = useState(false)
+  const [cancelHover, setCancelHover] = useState(false)
 
   // Start with default 'th' for SSR, then read from localStorage on client
   const [locale, setLocale] = useState<'en'|'th'>('th')
@@ -37,6 +39,15 @@ export default function CustomerAddPage() {
   }, [])
 
   const L = (en: string, th: string) => locale === 'th' ? th : en
+
+  // Prevent hydration mismatch by waiting for client-side mount
+  if (!mounted) {
+    return (
+      <AdminLayout title="Add Customer - Thailand Branch" titleTh="เพิ่มลูกค้า - สาขาประเทศไทย">
+        <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
+      </AdminLayout>
+    )
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -67,7 +78,7 @@ export default function CustomerAddPage() {
   }
 
   return (
-    <AdminLayout title="Add Customer" titleTh="เพิ่มลูกค้า">
+    <AdminLayout title="Add Customer - Thailand Branch" titleTh="เพิ่มลูกค้า - สาขาประเทศไทย">
       {messageBar && (
         <div style={{
           padding: '12px 16px',
@@ -96,7 +107,7 @@ export default function CustomerAddPage() {
               <line x1="20" y1="8" x2="20" y2="14"/>
               <line x1="23" y1="11" x2="17" y2="11"/>
             </svg>
-            {L('Add New Customer', 'เพิ่มลูกค้าใหม่')}
+            {L('Add New Customer - Thailand Branch', 'เพิ่มลูกค้าใหม่ - สาขาประเทศไทย')}
           </h2>
           <p className={styles.cardSubtitle}>
             {L('Enter customer information', 'กรอกข้อมูลลูกค้า')}
@@ -208,7 +219,33 @@ export default function CustomerAddPage() {
                 alignItems: 'center'
               }}>
                 <div>
-                  <button type="submit" disabled={loading} className={`${styles.btnPrimary} ${styles.btnLarge}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    onMouseEnter={() => setSaveHover(true)}
+                    onMouseLeave={() => setSaveHover(false)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 28px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      background: saveHover && !loading
+                        ? 'linear-gradient(135deg, #1d4ed8, #2563eb)'
+                        : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                      color: 'white',
+                      boxShadow: saveHover && !loading
+                        ? '0 4px 12px rgba(37, 99, 235, 0.4)'
+                        : '0 2px 8px rgba(37, 99, 235, 0.2)',
+                      transition: 'all 0.2s',
+                      opacity: loading ? 0.7 : 1,
+                      transform: saveHover && !loading ? 'translateY(-2px)' : 'translateY(0)'
+                    }}
+                  >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                       <polyline points="17 21 17 13 7 13 7 21"/>
@@ -218,8 +255,33 @@ export default function CustomerAddPage() {
                 </div>
 
                 <div>
-                  <button type="button" onClick={() => router.back()} className={`${styles.btnSecondary} ${styles.btnOutline}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <button
+                    type="button"
+                    onClick={() => router.back()}
+                    onMouseEnter={() => setCancelHover(true)}
+                    onMouseLeave={() => setCancelHover(false)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 28px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: cancelHover
+                        ? 'linear-gradient(135deg, #475569, #64748b)'
+                        : 'linear-gradient(135deg, #64748b, #94a3b8)',
+                      color: 'white',
+                      boxShadow: cancelHover
+                        ? '0 4px 12px rgba(100, 116, 139, 0.4)'
+                        : '0 2px 8px rgba(100, 116, 139, 0.2)',
+                      transition: 'all 0.2s',
+                      transform: cancelHover ? 'translateY(-2px)' : 'translateY(0)'
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>

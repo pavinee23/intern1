@@ -92,6 +92,19 @@ export default function ThailandAdminDashboard() {
 
   const quickActions = [
     {
+      title: 'All Lists',
+      titleTh: 'รายการทั้งหมด',
+      desc: 'Quick access to all lists',
+      descTh: 'เข้าถึงรายการทั้งหมดในที่เดียว',
+      href: '/Thailand/Admin-Login/all-lists',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 7h18M3 12h18M3 17h18"/>
+        </svg>
+      ),
+      color: '#0f172a'
+    },
+    {
       title: 'Quotation',
       titleTh: 'ใบเสนอราคา',
       desc: 'Create quotation',
@@ -337,18 +350,6 @@ export default function ThailandAdminDashboard() {
   const [activitiesError, setActivitiesError] = useState<string | null>(null)
   const [, forceUpdate] = useState(0)
 
-  function timeAgo(ts?: string) {
-    if (!ts) return ''
-    const d = new Date(ts)
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000)
-    if (diff < 60) return `${diff} sec ago`
-    const mins = Math.floor(diff / 60)
-    if (mins < 60) return `${mins} min${mins>1? 's':''} ago`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs} hr${hrs>1? 's':''} ago`
-    const days = Math.floor(hrs / 24)
-    return `${days} day${days>1? 's':''} ago`
-  }
 
   // Reload stats from API
   const refreshStats = async () => {
@@ -765,7 +766,17 @@ export default function ThailandAdminDashboard() {
                        L('Other','อื่นๆ')}
                     </span>
                   </td>
-                  <td style={{ color: '#94a3b8', fontSize: 13 }}>{timeAgo(activity.ts)}</td>
+                  <td style={{ color: '#94a3b8', fontSize: 13 }}>
+                    {activity.ts ? (() => {
+                      const d = new Date(activity.ts)
+                      const day = String(d.getDate()).padStart(2, '0')
+                      const month = String(d.getMonth() + 1).padStart(2, '0')
+                      const year = d.getFullYear()
+                      const hours = String(d.getHours()).padStart(2, '0')
+                      const minutes = String(d.getMinutes()).padStart(2, '0')
+                      return `${day}/${month}/${year} ${hours}:${minutes}`
+                    })() : '-'}
+                  </td>
                 </tr>
               ))
               )}

@@ -10,7 +10,7 @@ function getAuthHeaders() {
   try { const t = localStorage.getItem('k_system_admin_token') || ''; return t ? { Authorization: `Bearer ${t}` } : {} } catch { return {} }
 }
 
-function StatusCell({ current, apiPath, rowId, onUpdate, rowIdKey }: { current: string, apiPath: string, rowId: any, rowIdKey: string, onUpdate?: (val: string, followUp?: any) => void }) {
+function StatusCell({ current, apiPath, rowId, onUpdate, rowIdKey, editable = true }: { current: string, apiPath: string, rowId: any, rowIdKey: string, onUpdate?: (val: string, followUp?: any) => void, editable?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(current)
   const [code, setCode] = useState('')
@@ -75,11 +75,12 @@ function StatusCell({ current, apiPath, rowId, onUpdate, rowIdKey }: { current: 
 
   if (!editing) {
     const b = badgeFor(current)
+    const isDraft = current === 'draft' || current === 'Draft'
     return (
       <td>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600, color: b.color, background: b.bg }}>{b.label}</span>
-          <button onClick={() => setEditing(true)} style={{ padding: '6px 8px', borderRadius: 6, background: '#fff', border: '1px solid #e6eef0' }}>Edit</button>
+          {editable && !isDraft && <button onClick={() => setEditing(true)} style={{ padding: '6px 8px', borderRadius: 6, background: '#fff', border: '1px solid #e6eef0' }}>Edit</button>}
         </div>
       </td>
     )
@@ -99,25 +100,40 @@ function StatusCell({ current, apiPath, rowId, onUpdate, rowIdKey }: { current: 
   )
 }
 
-export default function ListPage({ title, apiPath, createPath, columns, link, print, selectable }: {
+export default function ListPage({ title, apiPath, createPath, columns, link, print, edit, selectable, statusEditable = true, onViewClick }: {
   title: string
   apiPath: string
   createPath?: string
   columns: Column[]
   link?: { columnKey: string; path: string; paramName?: string }
   , print?: { path: string; paramName?: string; idKey?: string; newTab?: boolean }
+  , edit?: { path: string; paramName?: string; idKey?: string }
   , selectable?: boolean
-  
+  , statusEditable?: boolean
+  , onViewClick?: (id: string | number) => void
+
 }) {
-  const [locale, setLocale] = useState<'en'|'th'>(() => {
-    try { const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang'); return l === 'th' ? 'th' : 'en' } catch { return 'en' }
-  })
+  const [locale, setLocale] = useState<'en'|'th'>('th')
+
+  useEffect(() => {
+    // Read locale from localStorage after hydration to avoid hydration mismatch
+    try {
+      const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
+      if (l === 'en' || l === 'th') setLocale(l)
+    } catch { }
+  }, [])
 
   useEffect(() => {
     const handler = (e: Event) => {
       const d = (e as any).detail
       const v = typeof d === 'string' ? d : d?.locale
-      if (v === 'en' || v === 'th') setLocale(v)
+      if (v === 'en' || v === 'th') {
+        setLocale(v)
+        try {
+          localStorage.setItem('locale', v)
+          localStorage.setItem('k_system_lang', v)
+        } catch { }
+      }
     }
     window.addEventListener('k-system-lang', handler)
     window.addEventListener('locale-changed', handler)
@@ -529,20 +545,6 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
               </Link>
             ) : <div />}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={handlePrintList}
-                className={styles.btnOutline}
-                disabled={loading || rows.length === 0}
-                title={T('Print Report', 'พิมพ์รายงาน')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9"/>
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                  <rect x="6" y="14" width="12" height="8"/>
-                </svg>
-                {T('Print', 'พิมพ์')}
-              </button>
               <button onClick={async () => {
                 // If this list is the invoices list, pre-generate an invoice number
                 try {
@@ -587,13 +589,17 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                   {columns.map(c => (
                     <th key={c.key}>{translateLabel(c.label || c.key)}</th>
                   ))}
-                  {(print || selectable) && <th>{T('Actions', 'การกระทำ')}</th>}
+                  {(print || edit || selectable) && <th>{T('Actions', 'การกระทำ')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, idx) => (
                   <tr key={r?.id ?? r?.[columns[0].key] ?? idx}>
                     {columns.map(c => {
+                      // Handle rowNumber column - use index + 1
+                      if (c.key === 'rowNumber') {
+                        return <td key={c.key}>{idx + 1}</td>
+                      }
                       const v = r?.[c.key]
                       if (link && link.columnKey === c.key) {
                         const param = link.paramName || c.key
@@ -602,7 +608,42 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                           return <td key={c.key}><button onClick={() => handleOpenWithSignatureCheck(r, c)} style={{ background: 'transparent', border: 'none', color: '#0b5394', textDecoration: 'underline', cursor: 'pointer' }}>{v ?? '-'}</button></td>
                         }
                         const href = `${link.path}?${param}=${encodeURIComponent(String(v ?? ''))}`
-                        return <td key={c.key}><Link href={href}>{v ?? '-'}</Link></td>
+                        // For power-calculations, format calcID as YYYYMMDD-XXXX
+                        let displayValue = v ?? '-'
+                        if (apiPath && apiPath.includes('/power-calculations') && c.key === 'calcID' && r?.created_at) {
+                          try {
+                            const date = new Date(r.created_at)
+                            const year = date.getFullYear()
+                            const month = String(date.getMonth() + 1).padStart(2, '0')
+                            const day = String(date.getDate()).padStart(2, '0')
+                            const calcNum = String(v).padStart(4, '0')
+                            displayValue = `${year}${month}${day}-${calcNum}`
+                          } catch (e) {
+                            displayValue = v ?? '-'
+                          }
+                        }
+                        return (
+                          <td key={c.key}>
+                            <Link
+                              href={href}
+                              style={{
+                                color: '#0b5394',
+                                transition: 'color 0.2s ease',
+                                fontWeight: 500
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = '#3b82f6'
+                                e.currentTarget.style.textDecoration = 'underline'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#0b5394'
+                                e.currentTarget.style.textDecoration = 'none'
+                              }}
+                            >
+                              {displayValue}
+                            </Link>
+                          </td>
+                        )
                       }
                       if (c.key === 'checklist') {
                         try {
@@ -658,7 +699,7 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                         const rowId = r?.[rowIdKey] ?? r?.id
                         const current = (r && (r.status ?? r[c.key])) || 'open'
                         return (
-                          <StatusCell key={c.key} current={current} apiPath={apiPath} rowId={rowId} rowIdKey={rowIdKey} onUpdate={(val, followUp) => {
+                          <StatusCell key={c.key} current={current} apiPath={apiPath} rowId={rowId} rowIdKey={rowIdKey} editable={statusEditable} onUpdate={(val, followUp) => {
                             setRows((prev: any[]) => prev.map(it => (it && (it[rowIdKey] === rowId || it.id === rowId)) ? { ...it, status: (followUp && followUp.status) || val, ...(followUp || {}) } : it))
                           }} />
                         )
@@ -694,6 +735,21 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                         }
                       }
 
+                      // Format date columns (created_at, updated_at, date, etc.)
+                      if (typeof v === 'string' && (c.key === 'created_at' || c.key === 'updated_at' || c.key === 'date' || /date/i.test(c.key))) {
+                        try {
+                          const date = new Date(v)
+                          if (!isNaN(date.getTime())) {
+                            const day = String(date.getDate()).padStart(2, '0')
+                            const month = String(date.getMonth() + 1).padStart(2, '0')
+                            const year = date.getFullYear()
+                            const hours = String(date.getHours()).padStart(2, '0')
+                            const minutes = String(date.getMinutes()).padStart(2, '0')
+                            return <td key={c.key}>{`${day}/${month}/${year} ${hours}:${minutes}`}</td>
+                          }
+                        } catch (_) { }
+                      }
+
                       if (typeof v === 'string' && v.length > 0) {
                         if (/id$/i.test(c.key)) {
                           const n = Number(v)
@@ -703,8 +759,36 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                       }
                       return <td key={c.key}>{v ?? '-'}</td>
                     })}
-                    {(print || selectable) && (
+                    {(print || edit || selectable) && (
                       <td>
+                        {edit && (() => {
+                          const e: any = edit
+                          const idKey = e?.idKey || e?.paramName || 'id'
+                          const paramName = e?.paramName || idKey
+                          const val = r?.[idKey] ?? r?.[paramName] ?? r?.[columns[0].key]
+                          if (!val) return null
+                          const editPath = String(e.path || '')
+                          const href = `${editPath}?${paramName}=${encodeURIComponent(String(val))}`
+                          return (
+                            <button
+                              onClick={() => {
+                                if (onViewClick) {
+                                  onViewClick(val)
+                                } else {
+                                  window.location.href = href
+                                }
+                              }}
+                              aria-label="View"
+                              title={T('View', 'ดูรายละเอียด')}
+                              style={{ padding: 4, width: 40, height: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                            >
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                              </svg>
+                            </button>
+                          )
+                        })()}
                         {print && (() => {
                           const p: any = print
                           const idKey = p?.idKey || p?.paramName || 'id'
@@ -719,10 +803,14 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                           const idKey2 = p?.idKey || p?.paramName || columns[0].key
                           const val2 = r?.[idKey2] ?? r?.[p?.paramName] ?? r?.[columns[0].key]
                           const already = val2 ? (invoiceHasReceipt[val2] || (r && (r.status === 'paid' || r.status === 'Paid'))) : false
+                          const isDraft = r && (r.status === 'draft' || r.status === 'Draft')
 
-                          if (already) {
+                          if (already || isDraft) {
+                            const disabledTitle = isDraft
+                              ? T('Cannot print draft - please complete first', 'ไม่สามารถพิมพ์ร่างได้ - กรุณาทำให้เสร็จก่อน')
+                              : T('Invoice already used to create receipt', 'ใบแจ้งหนี้ถูกใช้สร้างใบเสร็จแล้ว')
                             return (
-                              <button disabled title={T('Invoice already used to create receipt', 'ใบแจ้งหนี้ถูกใช้สร้างใบเสร็จแล้ว')} aria-label="Print disabled" style={{ padding: 4, width: 40, height: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', opacity: 0.4, cursor: 'not-allowed' }}>
+                              <button disabled title={disabledTitle} aria-label="Print disabled" style={{ padding: 4, width: 40, height: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', opacity: 0.4, cursor: 'not-allowed' }}>
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                               </button>
                             )

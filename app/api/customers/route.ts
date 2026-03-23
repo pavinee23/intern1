@@ -70,10 +70,11 @@ export async function POST(req: NextRequest) {
     const conn = await pool.getConnection()
     try {
         const createdBy = 'thailand admin'
+        const siteID = 2 // Thailand - ประเทศไทย
       try {
         const [result]: any = await conn.query(
-          `INSERT INTO cus_detail (fullname, email, phone, company, address, subject, message, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [name, email || null, phone || null, company || null, address || null, subject || null, message || null, createdBy]
+          `INSERT INTO cus_detail (siteID, fullname, email, phone, company, address, subject, message, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [siteID, name, email || null, phone || null, company || null, address || null, subject || null, message || null, createdBy]
         )
 
         const customerId = result.insertId

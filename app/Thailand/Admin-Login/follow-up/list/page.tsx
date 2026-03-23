@@ -16,6 +16,7 @@ export default function Page() {
         { key: 'created_at', label: 'Created' }
       ]}
       link={{ columnKey: 'followUpID', path: '/Thailand/Admin-Login/follow-up', paramName: 'followUpID' }}
+      print={{ path: '/Thailand/Admin-Login/follow-up/print', paramName: 'followUpID', idKey: 'followUpID', newTab: true }}
     />
   )
 }

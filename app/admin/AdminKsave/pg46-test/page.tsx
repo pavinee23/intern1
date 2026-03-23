@@ -3,14 +3,32 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 
+type ApiResult = {
+  success?: boolean
+  message?: string
+  error?: string
+  data?: Record<string, unknown>
+}
+
+type LiveRecord = {
+  record_time: string
+  device_id: number
+  before_kWh?: number
+  metrics_kWh?: number
+  before_P?: number
+  metrics_P?: number
+  energy_reduction?: number
+  co2_reduction?: number
+}
+
 export default function PG46TestPage() {
   const [deviceId, setDeviceId] = useState('1')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<ApiResult | null>(null)
   const [error, setError] = useState('')
 
   // Real-time data viewer
-  const [liveData, setLiveData] = useState<any[]>([])
+  const [liveData, setLiveData] = useState<LiveRecord[]>([])
   const [liveLoading, setLiveLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
@@ -90,7 +108,7 @@ export default function PG46TestPage() {
         body: JSON.stringify(payload)
       })
 
-      const result = await res.json()
+      const result = (await res.json()) as ApiResult
 
       if (res.ok && result.success) {
         setResult(result)
@@ -98,8 +116,8 @@ export default function PG46TestPage() {
       } else {
         setError(result.error || 'Failed to send data')
       }
-    } catch (err: any) {
-      setError(err.message || 'Network error')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setLoading(false)
     }
@@ -117,7 +135,7 @@ export default function PG46TestPage() {
           </Link>
         </div>
         <p style={{ color: '#6b7280', fontSize: 14 }}>
-          Test sending data from Progress PG46 RS485 to power_records table
+          ใช้หน้านี้ทดสอบ API รับข้อมูลเรียลไทม์จาก Progress PG46 RS485 และบันทึกลงตาราง power_records
         </p>
       </div>
 
@@ -315,7 +333,7 @@ export default function PG46TestPage() {
                   </td>
                 </tr>
               ) : (
-                liveData.map((record: any, idx: number) => (
+                liveData.map((record: LiveRecord, idx: number) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: 8, fontSize: 12 }}>
                       {new Date(record.record_time).toLocaleString()}
@@ -361,6 +379,7 @@ export default function PG46TestPage() {
         </div>
         <div style={{ fontSize: 14, color: '#1e3a8a', lineHeight: 1.8 }}>
           <p><strong>Endpoint:</strong> <code style={{ background: '#dbeafe', padding: '2px 6px', borderRadius: 4 }}>POST /api/pg46/data-receiver</code></p>
+          <p><strong>Latest Records:</strong> <code style={{ background: '#dbeafe', padding: '2px 6px', borderRadius: 4 }}>GET /api/pg46/latest-records?limit=10</code></p>
           <p><strong>Description:</strong> Receive data from Progress PG46 RS485 and save to power_records table</p>
           <p><strong>Required Fields:</strong></p>
           <ul style={{ paddingLeft: 24, marginBottom: 12 }}>

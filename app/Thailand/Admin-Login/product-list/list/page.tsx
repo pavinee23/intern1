@@ -14,6 +14,7 @@ export default function Page() {
         { key: 'price', label: 'Price' }
       ]}
       link={{ columnKey: 'id', path: '/Thailand/Admin-Login/product-add', paramName: 'id' }}
+      print={{ path: '/Thailand/Admin-Login/product-list/print', paramName: 'productID', idKey: 'productID', newTab: true }}
     />
   )
 }

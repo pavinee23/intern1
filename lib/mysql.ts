@@ -1,6 +1,10 @@
 import mysql from 'mysql2/promise'
 
 // Create a connection pool for MySQL
+// Connection pool settings can be configured via environment variables
+const connectionLimit = parseInt(process.env.MYSQL_CONNECTION_LIMIT || '10')
+const queueLimit = parseInt(process.env.MYSQL_QUEUE_LIMIT || '50')
+
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || '127.0.0.1',
   port: parseInt(process.env.MYSQL_PORT || '3306'),
@@ -8,19 +12,80 @@ const pool = mysql.createPool({
   user: process.env.MYSQL_USER || 'ksystem',
   password: process.env.MYSQL_PASSWORD || 'Ksave2025Admin',
   waitForConnections: true,
-  connectionLimit: 3,
-  queueLimit: 10,
+  connectionLimit,
+  queueLimit,
   connectTimeout: 10000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   timezone: '+00:00'
 })
 
+// Log pool configuration on startup
+console.log(`[MySQL Pool] Configured with connectionLimit=${connectionLimit}, queueLimit=${queueLimit}`)
+
+// Monitor connection pool usage every 30 seconds
+let lastWarningTime = 0
+setInterval(() => {
+  try {
+    const poolInfo = (pool as any).pool
+    if (poolInfo) {
+      const activeConnections = poolInfo._allConnections?.length || 0
+      const freeConnections = poolInfo._freeConnections?.length || 0
+      const queuedRequests = poolInfo._connectionQueue?.length || 0
+
+      // Log if usage is high (>80% of limit)
+      if (activeConnections > connectionLimit * 0.8) {
+        const now = Date.now()
+        // Only log warning once per minute to avoid spam
+        if (now - lastWarningTime > 60000) {
+          console.warn(`[MySQL Pool] High connection usage: ${activeConnections}/${connectionLimit} active, ${freeConnections} free, ${queuedRequests} queued`)
+          lastWarningTime = now
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore monitoring errors
+  }
+}, 30000)
+
 // Note: Pool error handling removed - mysql2/promise handles errors internally
 // Errors will be caught and thrown in the query function below
 
 // Note: Connection test removed for serverless compatibility
 // Connections are created on-demand when needed
+
+/**
+ * Get connection pool statistics
+ * @returns Pool statistics object
+ */
+export function getPoolStats() {
+  try {
+    const poolInfo = (pool as any).pool
+    if (poolInfo) {
+      const activeConnections = poolInfo._allConnections?.length || 0
+      const freeConnections = poolInfo._freeConnections?.length || 0
+      const queuedRequests = poolInfo._connectionQueue?.length || 0
+      return {
+        connectionLimit,
+        queueLimit,
+        activeConnections,
+        freeConnections,
+        queuedRequests,
+        usagePercent: Math.round((activeConnections / connectionLimit) * 100)
+      }
+    }
+  } catch (e) {
+    console.error('Error getting pool stats:', e)
+  }
+  return {
+    connectionLimit,
+    queueLimit,
+    activeConnections: 0,
+    freeConnections: 0,
+    queuedRequests: 0,
+    usagePercent: 0
+  }
+}
 
 /**
  * Convert PostgreSQL parameterized query ($1, $2, etc.) to MySQL (?) syntax

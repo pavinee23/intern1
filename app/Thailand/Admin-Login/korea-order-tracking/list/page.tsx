@@ -16,6 +16,7 @@ export default function Page() {
         { key: 'created_at', label: 'Created' }
       ]}
       link={{ columnKey: 'trackNo', path: '/Thailand/Admin-Login/korea-order-tracking', paramName: 'trackNo' }}
+      print={{ path: '/Thailand/Admin-Login/korea-order-tracking/print', paramName: 'trackID', idKey: 'trackID', newTab: true }}
     />
   )
 }

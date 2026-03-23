@@ -113,6 +113,9 @@ const menuGroups: MenuGroup[] = [
   {
     group: 'Branch Manager', groupTh: 'แผนกผู้จัดการสาขา', color: '#0f172a',
     items: [
+      { label: 'All Lists', labelTh: 'รายการทั้งหมด', href: '/Thailand/Admin-Login/all-lists', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      ) },
       { label: 'Sales Report', labelTh: 'รายงานการขาย', href: '/Thailand/Admin-Login/quotation/list', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
       ) },
@@ -127,6 +130,9 @@ const menuGroups: MenuGroup[] = [
       ) },
       { label: 'Customer Testing', labelTh: 'ทดสอบลูกค้า', href: '/Thailand/Admin-Login/customer-testing', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><circle cx="12" cy="19" r="1"/></svg>
+      ) },
+      { label: 'Customer Status Tracking', labelTh: 'ติดตามงานอัพเดตสถานะลูกค้า', href: '/Thailand/Admin-Login/customer-status-tracking', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="M8 12h4"/><path d="M8 16h3"/></svg>
       ) },
       { label: 'Document Management', labelTh: 'จัดการเอกสาร', href: '/Thailand/Admin-Login/documents', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>

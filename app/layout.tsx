@@ -10,10 +10,11 @@ export const metadata: Metadata = {
   description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์จี เซฟ จำกัด | K Energy Save Co., Ltd.',
   icons: {
     icon: [
-      { url: '/k-energy-save-logo.png', sizes: 'any' },
-      { url: '/k-energy-save-logo.jpg', type: 'image/jpeg' }
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/k-energy-save-logo.png', sizes: '192x192', type: 'image/png' }
     ],
     apple: '/k-energy-save-logo.png',
+    shortcut: '/favicon.ico',
   },
   openGraph: {
     title: 'K Energy Save | ระบบบริหารจัดการ',
@@ -46,6 +47,8 @@ export default function RootLayout({
     <html lang="ko">
       <head>
         <meta charSet="utf-8" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
       </head>
       <body>
         <SiteProvider>
