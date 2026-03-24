@@ -6,21 +6,12 @@ import AdminLayout from '../components/AdminLayout'
 import styles from '../admin-theme.module.css'
 import { Eye, EyeOff } from 'lucide-react'
 
-type User = {
-  username?: string
-  fullname?: string
-  name?: string
-  typeID?: number
-  site?: string
-}
-
 export default function AccountingLoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [locale, setLocale] = useState<'en' | 'th'>('en')
   const [mounted, setMounted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -35,23 +26,12 @@ export default function AccountingLoginPage() {
       if (l === 'en' || l === 'th') setLocale(l)
     } catch {}
 
-    // Load user
-    try {
-      const raw = localStorage.getItem('k_system_admin_user')
-      if (raw) {
-        const user = JSON.parse(raw)
-        setCurrentUser(user)
-      }
-    } catch (e) {
-      console.error('Failed to load user:', e)
-    }
-
     // Listen for language changes
-    const handleLangChange = (e: any) => {
+    const handleLangChange = (e: CustomEvent<string>) => {
       const newLang = e.detail
       if (newLang === 'en' || newLang === 'th') setLocale(newLang)
     }
-    const handleLocaleChange = (e: any) => {
+    const handleLocaleChange = (e: CustomEvent<{ locale?: string }>) => {
       if (e.detail?.locale === 'en' || e.detail?.locale === 'th') {
         setLocale(e.detail.locale)
       }
@@ -71,8 +51,6 @@ export default function AccountingLoginPage() {
 
     // Check credentials
     if (username === 'ksystem' && password === 'Ksave2025Admin') {
-      // Redirect to phpMyAdmin
-      window.open('http://127.0.0.1:8081/phpmyadmin/', '_blank')
       router.back()
     } else {
       setError('invalid_credentials')

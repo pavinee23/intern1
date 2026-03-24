@@ -22,6 +22,8 @@ function getPool() {
       waitForConnections: true,
       connectionLimit: 3,
       queueLimit: 10,
+      maxIdle: 2, // Keep only 2 idle connections
+      idleTimeout: 30000, // Close idle connections after 30 seconds
       timezone: '+00:00',
       connectTimeout: 10000, // 10 second timeout for Vercel
       enableKeepAlive: true,

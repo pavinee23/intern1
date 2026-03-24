@@ -1,11 +1,29 @@
 import mysql from 'mysql2/promise'
 
+declare global {
+  interface GlobalThis {
+    __ksystem_mysql_pool__?: mysql.Pool
+    __ksystem_mysql_monitor_started__?: boolean
+  }
+}
+
+type InternalPoolInfo = {
+  _allConnections?: Array<unknown>
+  _freeConnections?: Array<unknown>
+  _connectionQueue?: Array<unknown>
+}
+
+type PoolWithInternalState = mysql.Pool & {
+  pool?: InternalPoolInfo
+}
+
 // Create a connection pool for MySQL
 // Connection pool settings can be configured via environment variables
-const connectionLimit = parseInt(process.env.MYSQL_CONNECTION_LIMIT || '10')
-const queueLimit = parseInt(process.env.MYSQL_QUEUE_LIMIT || '50')
+// Reduced limits to prevent "Too many connections" errors
+const connectionLimit = parseInt(process.env.MYSQL_CONNECTION_LIMIT || '5')
+const queueLimit = parseInt(process.env.MYSQL_QUEUE_LIMIT || '20')
 
-const pool = mysql.createPool({
+const pool = globalThis.__ksystem_mysql_pool__ ?? mysql.createPool({
   host: process.env.MYSQL_HOST || '127.0.0.1',
   port: parseInt(process.env.MYSQL_PORT || '3306'),
   database: process.env.MYSQL_DATABASE || 'ksystem',
@@ -14,39 +32,46 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit,
   queueLimit,
+  maxIdle: 2, // Keep only 2 idle connections
+  idleTimeout: 30000, // Close idle connections after 30 seconds
   connectTimeout: 10000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   timezone: '+00:00'
 })
 
+globalThis.__ksystem_mysql_pool__ = pool
+
 // Log pool configuration on startup
 console.log(`[MySQL Pool] Configured with connectionLimit=${connectionLimit}, queueLimit=${queueLimit}`)
 
 // Monitor connection pool usage every 30 seconds
 let lastWarningTime = 0
-setInterval(() => {
-  try {
-    const poolInfo = (pool as any).pool
-    if (poolInfo) {
-      const activeConnections = poolInfo._allConnections?.length || 0
-      const freeConnections = poolInfo._freeConnections?.length || 0
-      const queuedRequests = poolInfo._connectionQueue?.length || 0
+if (!globalThis.__ksystem_mysql_monitor_started__) {
+  globalThis.__ksystem_mysql_monitor_started__ = true
+  setInterval(() => {
+    try {
+      const poolInfo = (pool as PoolWithInternalState).pool
+      if (poolInfo) {
+        const activeConnections = poolInfo._allConnections?.length || 0
+        const freeConnections = poolInfo._freeConnections?.length || 0
+        const queuedRequests = poolInfo._connectionQueue?.length || 0
 
-      // Log if usage is high (>80% of limit)
-      if (activeConnections > connectionLimit * 0.8) {
-        const now = Date.now()
-        // Only log warning once per minute to avoid spam
-        if (now - lastWarningTime > 60000) {
-          console.warn(`[MySQL Pool] High connection usage: ${activeConnections}/${connectionLimit} active, ${freeConnections} free, ${queuedRequests} queued`)
-          lastWarningTime = now
+        // Log if usage is high (>80% of limit)
+        if (activeConnections > connectionLimit * 0.8) {
+          const now = Date.now()
+          // Only log warning once per minute to avoid spam
+          if (now - lastWarningTime > 60000) {
+            console.warn(`[MySQL Pool] High connection usage: ${activeConnections}/${connectionLimit} active, ${freeConnections} free, ${queuedRequests} queued`)
+            lastWarningTime = now
+          }
         }
       }
+    } catch {
+      // Ignore monitoring errors
     }
-  } catch (e) {
-    // Ignore monitoring errors
-  }
-}, 30000)
+  }, 30000)
+}
 
 // Note: Pool error handling removed - mysql2/promise handles errors internally
 // Errors will be caught and thrown in the query function below
@@ -60,7 +85,7 @@ setInterval(() => {
  */
 export function getPoolStats() {
   try {
-    const poolInfo = (pool as any).pool
+    const poolInfo = (pool as PoolWithInternalState).pool
     if (poolInfo) {
       const activeConnections = poolInfo._allConnections?.length || 0
       const freeConnections = poolInfo._freeConnections?.length || 0
@@ -102,13 +127,13 @@ function convertPostgresToMysql(sql: string): string {
  * @param retries Number of retry attempts (default: 2)
  * @returns Query results
  */
-export async function query(sql: string, values?: any[], retries = 2): Promise<any[]> {
+export async function query(sql: string, values?: unknown[], retries = 2): Promise<unknown[]> {
   // Convert PostgreSQL syntax to MySQL if needed
   const convertedSql = convertPostgresToMysql(sql)
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    let connection: any = null
+    let connection: mysql.PoolConnection | null = null
 
     try {
       // Get connection from pool
@@ -133,7 +158,7 @@ export async function query(sql: string, values?: any[], retries = 2): Promise<a
       if (connection) {
         try {
           connection.release()
-        } catch (releaseError) {
+        } catch (releaseError: unknown) {
           console.error('Error releasing connection:', releaseError)
         }
       }

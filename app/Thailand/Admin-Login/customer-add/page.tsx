@@ -71,7 +71,24 @@ export default function CustomerAddPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      // Get current user from localStorage
+      let currentUser = null
+      try {
+        const userData = localStorage.getItem('k_system_admin_user')
+        if (userData) currentUser = JSON.parse(userData)
+      } catch (e) {
+        console.error('Failed to get user data:', e)
+      }
+
+      // Include user info in the request
+      const payload = {
+        ...form,
+        currentUserId: currentUser?.userId,
+        currentUserName: currentUser?.name,
+        currentUserUsername: currentUser?.username
+      }
+
+      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await res.json()
 
       if (res.ok && j && j.success) {

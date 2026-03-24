@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/mysql'
+import type mysql from 'mysql2/promise'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,27 +26,27 @@ const QUERIES = [
 ]
 
 async function fetchStats(): Promise<Record<string, number>> {
-  let conn: any = null
+  let conn: mysql.PoolConnection | null = null
   try {
     conn = await pool.getConnection()
-    const results = await Promise.all(
-      QUERIES.map(item =>
-        conn.query(item.q)
-          .then((r: any) => ({ key: item.key, val: r[0][0]?.cnt ?? 0 }))
-          .catch((err: any) => {
-            console.error('stats stream query error for', item.key, err?.code)
-            return { key: item.key, val: 0 }
-          })
-      )
-    )
     const stats: Record<string, number> = {}
-    for (const r of results) stats[r.key] = Number(r.val || 0)
+    for (const item of QUERIES) {
+      try {
+        const [rows] = await conn.query(item.q)
+        const firstRow = Array.isArray(rows) ? rows[0] as { cnt?: number } : undefined
+        stats[item.key] = Number(firstRow?.cnt || 0)
+      } catch (err: unknown) {
+        const errCode = err && typeof err === 'object' && 'code' in err ? String(err.code) : 'unknown'
+        console.error('stats stream query error for', item.key, errCode)
+        stats[item.key] = 0
+      }
+    }
     return stats
   } catch (err) {
     console.error('stats stream fetchStats error:', err)
     return {}
   } finally {
-    try { if (conn) conn.release() } catch (_) {}
+    try { if (conn) conn.release() } catch {}
   }
 }
 
@@ -60,7 +61,7 @@ export async function GET() {
         if (closed) return
         try {
           controller.enqueue(encoder.encode(data))
-        } catch (_) {
+        } catch {
           closed = true
         }
       }
@@ -108,7 +109,7 @@ export async function GET() {
         closed = true
         clearInterval(interval)
         clearInterval(heartbeat)
-        try { controller.close() } catch (_) {}
+        try { controller.close() } catch {}
       }, 10 * 60 * 1000)
     }
   })

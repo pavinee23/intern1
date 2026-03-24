@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Globe } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function AccountingLoginPage() {
   const router = useRouter()
@@ -25,11 +25,11 @@ export default function AccountingLoginPage() {
     } catch {}
 
     // Listen for language changes
-    const handleLangChange = (e: any) => {
+    const handleLangChange = (e: CustomEvent<string>) => {
       const newLang = e.detail
       if (newLang === 'en' || newLang === 'th') setLocale(newLang)
     }
-    const handleLocaleChange = (e: any) => {
+    const handleLocaleChange = (e: CustomEvent<{ locale?: string }>) => {
       if (e.detail?.locale === 'en' || e.detail?.locale === 'th') {
         setLocale(e.detail.locale)
       }
@@ -60,7 +60,6 @@ export default function AccountingLoginPage() {
     try {
       // Superadmin shortcut
       if (username === 'ksystem' && password === 'Ksave2025Admin') {
-        window.open('http://127.0.0.1:8081/phpmyadmin/', '_blank')
         router.push('/Thailand/Accounting-Login/dashboard')
         setLoading(false)
         return
@@ -98,10 +97,10 @@ export default function AccountingLoginPage() {
         localStorage.setItem('site', data.site || 'thailand')
         localStorage.setItem('token', data.token || '')
         localStorage.setItem('locale', locale)
-      } catch (_) {}
+      } catch {}
 
       router.push('/Thailand/Accounting-Login/dashboard')
-    } catch (_) {
+    } catch {
       setError('invalid_credentials')
     }
     setLoading(false)

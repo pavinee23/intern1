@@ -41,6 +41,16 @@ type CustomerDetailed = {
   created_at: string
 }
 
+type ExistingCustomer = {
+  id?: number
+  cusID?: number
+  code?: string
+  name_th?: string
+  name_en?: string
+  phone?: string
+  contact_name?: string
+}
+
 const reactionColors: Record<string, { color: string; bg: string }> = {
   'Positive': { color: '#065f46', bg: '#d1fae5' },
   'Neutral': { color: '#92400e', bg: '#fef3c7' },
@@ -73,8 +83,7 @@ export default function CustomerStatusTrackingPage() {
   const [editCustomerID, setEditCustomerID] = useState<number | null>(null)
 
   // Existing customers from acc_customers and cus_detail
-  const [existingCustomers, setExistingCustomers] = useState<any[]>([])
-  const [cusDetailCustomers, setCusDetailCustomers] = useState<any[]>([])
+  const [existingCustomers, setExistingCustomers] = useState<ExistingCustomer[]>([])
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
   const [searchSource, setSearchSource] = useState<'acc' | 'cus'>('cus')
 
@@ -114,14 +123,37 @@ export default function CustomerStatusTrackingPage() {
   })
 
   const L = (en: string, th: string) => lang === 'th' ? th : en
+  const dateLocale = lang === 'th' ? 'th-TH' : 'en-GB'
+  const formatDate = (value?: string) => {
+    if (!value) return '-'
+    return new Date(value).toLocaleDateString(dateLocale, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  }
+  const reactionLabel = (value?: string) => {
+    switch (value) {
+      case 'Positive':
+        return L('Positive', 'เชิงบวก')
+      case 'Negative':
+        return L('Negative', 'เชิงลบ')
+      case 'Neutral':
+      default:
+        return L('Neutral', 'กลางๆ')
+    }
+  }
+  const hqSupportLabel = (value?: string) => {
+    return value === 'Yes' ? L('Yes', 'ใช่') : L('No', 'ไม่')
+  }
 
   useEffect(() => {
     setMounted(true)
     try {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'en' || l === 'th') setLang(l)
-    } catch (_) {}
-    const handler = (e: any) => {
+    } catch {}
+    const handler = (e: CustomEvent<string | { locale?: string }>) => {
       const v = e.detail?.locale || e.detail
       if (v === 'en' || v === 'th') setLang(v)
     }
@@ -175,28 +207,11 @@ export default function CustomerStatusTrackingPage() {
     }
   }, [])
 
-  // Fetch customers from cus_detail
-  const fetchCusDetailCustomers = useCallback(async (search?: string) => {
-    try {
-      const url = search
-        ? `/api/cus-detail?q=${encodeURIComponent(search)}`
-        : '/api/cus-detail'
-      const res = await fetch(url)
-      const j = await res.json()
-      if (j.ok) {
-        setCusDetailCustomers(j.data || [])
-      }
-    } catch (e) {
-      console.error('Failed to fetch cus_detail customers:', e)
-    }
-  }, [])
-
   useEffect(() => {
     fetchActivities()
     fetchCustomers()
     fetchExistingCustomers()
-    fetchCusDetailCustomers()
-  }, [fetchActivities, fetchCustomers, fetchExistingCustomers, fetchCusDetailCustomers])
+  }, [fetchActivities, fetchCustomers, fetchExistingCustomers])
 
   // Activity handlers
   const handleActivitySubmit = async (e: React.FormEvent) => {
@@ -388,7 +403,7 @@ export default function CustomerStatusTrackingPage() {
         title="Customer Status Tracking"
         titleTh="ติดตามงานอัพเดตสถานะลูกค้า"
       >
-        <div style={{ padding: '24px 32px', textAlign: 'center', paddingTop: 60 }}>
+        <div style={{ padding: '20px 24px 32px', textAlign: 'center', paddingTop: 60, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' }}>
           <div style={{ color: '#94a3b8' }}>{L('Loading...', 'กำลังโหลด...')}</div>
         </div>
       </AdminLayout>
@@ -400,7 +415,7 @@ export default function CustomerStatusTrackingPage() {
       title="Customer Status Tracking"
       titleTh="ติดตามงานอัพเดตสถานะลูกค้า"
     >
-      <div style={{ padding: '24px 32px' }}>
+      <div style={{ padding: '20px 24px 32px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' }}>
 
         {/* Header */}
         <div style={{
@@ -473,10 +488,11 @@ export default function CustomerStatusTrackingPage() {
             {/* Activity Controls */}
             <div style={{
               background: 'white',
-              borderRadius: 12,
+              borderRadius: 10,
               padding: 16,
               marginBottom: 20,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none'
             }}>
               <div style={{
                 display: 'flex',
@@ -580,44 +596,46 @@ export default function CustomerStatusTrackingPage() {
             ) : (
               <div style={{
                 background: 'white',
-                borderRadius: 12,
-                overflow: 'hidden',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                borderRadius: 10,
+                border: '1px solid #e2e8f0',
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                boxShadow: 'none'
               }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <table style={{ width: '100%', minWidth: 1500, borderCollapse: 'collapse', tableLayout: 'auto' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 90 }}>
                         {L('Date', 'วันที่')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '8%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 120 }}>
                         {L('Sales Staff', 'พนักงานขาย')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '10%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 140 }}>
                         {L('Customer Name', 'ชื่อลูกค้า')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '8%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 110 }}>
                         {L('Activity Type', 'ประเภท')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '18%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 240 }}>
                         {L('Key Discussion Summary', 'สรุปการสนทนา')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 110 }}>
                         {L('Reaction', 'ปฏิกิริยา')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '12%' }}>
-                        {L('Technical Q.', 'คำถามเทคนิค')}
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 190 }}>
+                        {L('Technical Questions', 'คำถามเทคนิค')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '10%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 180 }}>
                         {L('Next Action', 'ขั้นตอนถัดไป')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>
-                        {L('Next Date', 'วันนัดหมาย')}
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 115 }}>
+                        {L('Appointment Date', 'วันนัดหมาย')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, width: '6%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 70 }}>
                         {L('HQ', 'HQ')}
                       </th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 90 }}>
                         {L('Actions', 'จัดการ')}
                       </th>
                     </tr>
@@ -643,26 +661,22 @@ export default function CustomerStatusTrackingPage() {
                           onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                           onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                         >
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#1e293b' }}>
-                            {activity.activityDate ? new Date(activity.activityDate).toLocaleDateString('th-TH', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit'
-                            }) : '-'}
+                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                            {formatDate(activity.activityDate)}
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
+                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#0f172a', fontWeight: 500, verticalAlign: 'top' }}>
                             {activity.salesStaffName || '-'}
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 600 }}>
+                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#0f172a', fontWeight: 600, verticalAlign: 'top' }}>
                             {activity.customerName || '-'}
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>
+                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#475569', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                             {activity.activityType || '-'}
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: 12, color: '#475569', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'top' }}>
                             {activity.keyDiscussionSummary || '-'}
                           </td>
-                          <td style={{ padding: '12px' }}>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                             <span style={{
                               padding: '4px 10px',
                               borderRadius: 6,
@@ -672,26 +686,22 @@ export default function CustomerStatusTrackingPage() {
                               background: reactionStyle.bg,
                               display: 'inline-block'
                             }}>
-                              {activity.customerReaction || 'Neutral'}
+                              {reactionLabel(activity.customerReaction)}
                             </span>
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: 12, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'top' }}>
                             {activity.technicalQuestionsRaised || '-'}
                           </td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>
+                          <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'top' }}>
                             {activity.nextAction || '-'}
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#1e293b' }}>
-                            {activity.nextActionDate ? new Date(activity.nextActionDate).toLocaleDateString('th-TH', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit'
-                            }) : '-'}
+                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                            {formatDate(activity.nextActionDate)}
                           </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: activity.hqSupportNeeded === 'Yes' ? '#991b1b' : '#059669' }}>
-                            {activity.hqSupportNeeded || 'No'}
+                          <td style={{ padding: '12px 10px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: activity.hqSupportNeeded === 'Yes' ? '#991b1b' : '#059669', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                            {hqSupportLabel(activity.hqSupportNeeded)}
                           </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                          <td style={{ padding: '8px 6px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                             <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
                               <button
                                 onClick={() => handleActivityEdit(activity)}

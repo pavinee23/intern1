@@ -66,7 +66,7 @@ VALUES
 ('Susco', 'Energy', 'Bangkok', 'K.Yotsapa', 'Procurement Manager', '024086065', '', 0, 0, 0, 'Gundhi P.', '2026-01-10', 'Lead', 40, '', 'Low', ''),
 ('Lotus Go Fresh', 'Shopping Mall', 'Bangkok', 'Mr. Chatusith', 'Energy Strategy Development', '0979000041838', '', 0, 0, 0, 'Gundhi P.', '2026-01-10', 'Proposal', 50, '', 'Medium', ''),
 ('J&E Lighting', 'Manufacturing', 'Bangkok', 'K.Graiukk', 'Head of Lighting Procurement Depart', '081-6475249', '', 0, 0, 0, 'Gundhi P.', '2026-01-10', 'Meter Installation', 70, '', 'High', ''),
-('PTG Energy', 'Energy', 'Bangkok', 'Mr.Jansouk', 'Engineering Manager', '02-1683377, 02-1683388', '', 0, 0, 0, 'Gundhi P./Paranya J.', 'Meter Installation', 70, '', 'High', '');
+('PTG Energy', 'Energy', 'Bangkok', 'Mr.Jansouk', 'Engineering Manager', '02-1683377, 02-1683388', '', 0, 0, 0, 'Gundhi P./Paranya J.', '2026-01-10', 'Meter Installation', 70, '', 'High', '');
 
 -- Sample data for customer_activities
 INSERT INTO customer_activities

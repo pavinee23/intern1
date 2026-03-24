@@ -10,7 +10,18 @@ type Customer = {
   email?: string
   phone?: string
   company?: string
+  tax_id?: string
+  province?: string
   address?: string
+  house_number?: string
+  moo?: string
+  tambon?: string
+  amphoe?: string
+  postcode?: string
+  created_by?: string
+  created_by_user_id?: number
+  created_by_name?: string
+  created_by_username?: string
   created_at?: string
 }
 
@@ -115,30 +126,45 @@ export default function Page() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Company</th>
-                  <th>Address</th>
-                  <th>Created</th>
+                  <th>รหัส</th>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th>อีเมล</th>
+                  <th>โทรศัพท์</th>
+                  <th>บริษัท</th>
+                  <th>เลขผู้เสียภาษี</th>
+                  <th>ที่อยู่</th>
+                  <th>จังหวัด</th>
+                  <th>สร้างโดย</th>
+                  <th>วันที่สร้าง</th>
                 </tr>
               </thead>
               <tbody>
-                {customers.map(c => (
-                  <tr key={c.cusID} onClick={() => handleSelect(c)} style={{ cursor: selectMode ? 'pointer' : 'auto' }}>
-                    <td style={{ fontWeight: 600 }}>{c.cusID}</td>
-                    <td>{c.fullname}</td>
-                    <td>{c.email || '-'}</td>
-                    <td>{c.phone || '-'}</td>
-                    <td>{c.company || '-'}</td>
-                    <td style={{ maxWidth: 240 }}>{c.address || '-'}</td>
-                    <td style={{ fontSize: 13, color: '#666' }}>{c.created_at || '-'}</td>
-                  </tr>
-                ))}
+                {customers.map(c => {
+                  // Build full address from parts if available
+                  const fullAddr = c.house_number || c.tambon || c.amphoe || c.province || c.postcode
+                    ? [c.house_number, c.moo ? `หมู่ ${c.moo}` : '', c.tambon, c.amphoe, c.province, c.postcode].filter(Boolean).join(' ')
+                    : (c.address || '-')
+
+                  return (
+                    <tr key={c.cusID} onClick={() => handleSelect(c)} style={{ cursor: selectMode ? 'pointer' : 'auto' }}>
+                      <td style={{ fontWeight: 600 }}>#{c.cusID}</td>
+                      <td>{c.fullname}</td>
+                      <td>{c.email || '---'}</td>
+                      <td>{c.phone || '-'}</td>
+                      <td>{c.company || '-'}</td>
+                      <td>{c.tax_id || '-'}</td>
+                      <td style={{ maxWidth: 300, fontSize: 13 }}>{fullAddr}</td>
+                      <td>{c.province || '-'}</td>
+                      <td style={{ fontSize: 13, color: '#666' }}>{c.created_by_name || c.created_by || '-'}</td>
+                      <td style={{ fontSize: 13, color: '#666' }}>
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString('th-TH') : '-'}
+                      </td>
+                    </tr>
+                  )
+                })}
                 {customers.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#999' }}>No customers found</td>
+                    <td colSpan={10} style={{ textAlign: 'center', padding: 40, color: '#999' }}>ไม่พบข้อมูลลูกค้า</td>
                   </tr>
                 )}
               </tbody>
