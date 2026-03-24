@@ -35,18 +35,65 @@ export default function AccountingDashboardPage() {
   const [fullname, setFullname] = useState('')
   const [hover, setHover] = useState<number | null>(null)
   const [quickHover, setQuickHover] = useState<number | null>(null)
+  const [pendingPRCount, setPendingPRCount] = useState(0)
+  const [mounted, setMounted] = useState(false)
+  const [showPendingPRModal, setShowPendingPRModal] = useState(false)
+  const [pendingPRList, setPendingPRList] = useState<any[]>([])
   const router = useRouter()
   const { L } = useLang()
 
   useEffect(() => {
+    setMounted(true)
     try {
       setUsername(localStorage.getItem('username') || '')
       setFullname(localStorage.getItem('fullname') || '')
     } catch (_) {}
+
+    // Fetch pending purchase requests count
+    fetchPendingPRCount()
   }, [])
+
+  async function fetchPendingPRCount() {
+    try {
+      // Fetch all purchase requests and filter by pending status
+      const res = await fetch('/api/purchase-requests')
+      const data = await res.json()
+      console.log('PR API Response:', data)
+
+      if (data.success && data.rows) {
+        const pending = data.rows.filter((pr: any) =>
+          pr.status === 'pending' || pr.status === 'submitted' || pr.status === 'draft'
+        )
+        console.log('Pending PR Count:', pending.length)
+        setPendingPRCount(pending.length)
+        setPendingPRList(pending)
+      }
+    } catch (err) {
+      console.error('Failed to fetch pending PR count:', err)
+    }
+  }
+
+  function handleShowPendingPR() {
+    setShowPendingPRModal(true)
+    // Refresh the list when opening modal
+    fetchPendingPRCount()
+  }
 
   const dateLong = new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const dateShort = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  // Prevent hydration errors
+  if (!mounted) {
+    return (
+      <AccWindow title="บริษัท เค เอ็นเนอร์จี เซฟ จำกัด">
+        <div style={{ padding: 20, minHeight: '100%' }}>
+          <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
+            Loading...
+          </div>
+        </div>
+      </AccWindow>
+    )
+  }
 
   return (
     <AccWindow title="บริษัท เค เอ็นเนอร์จี เซฟ จำกัด">
@@ -82,6 +129,70 @@ export default function AccountingDashboardPage() {
         <div style={{ fontSize: 15, fontWeight: 700, color: '#1f2937', marginBottom: 12, letterSpacing: '0.01em' }}>
           {L('Main Modules', 'เมนูหลัก')}
         </div>
+
+        {/* Purchase Request Notification - Always show for testing */}
+        {mounted && (
+          <div
+            onClick={handleShowPendingPR}
+            style={{
+              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+              borderRadius: 12,
+              padding: '14px 20px',
+              marginBottom: 16,
+              color: '#fff',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(220, 38, 38, 0.5)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: 'rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 20,
+              }}>
+                🔔
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
+                  {L('Purchase Requests Pending Approval', 'คำขอซื้อรออนุมัติ')}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>
+                  {L('Click to view details', 'คลิกเพื่อดูรายละเอียด')}
+                </div>
+              </div>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.25)',
+              borderRadius: 10,
+              padding: '8px 16px',
+              fontSize: 22,
+              fontWeight: 800,
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              minWidth: 60,
+              textAlign: 'center',
+            }}>
+              {pendingPRCount}
+            </div>
+          </div>
+        )}
 
         {/* Module grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 12, marginBottom: 24 }}>
@@ -186,6 +297,203 @@ export default function AccountingDashboardPage() {
             <div style={{ marginTop: 3 }}>{L('User: ', 'ผู้ใช้: ')}<span style={{ fontWeight: 600, color: '#4b5563' }}>{fullname || username || 'USER'}</span></div>
           </div>
         </div>
+
+        {/* Pending Purchase Requests Modal */}
+        {showPendingPRModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: 16,
+              maxWidth: 1200,
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px 24px',
+                borderBottom: '2px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                borderRadius: '16px 16px 0 0',
+                color: '#fff'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: 'rgba(255,255,255,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 20
+                  }}>🔔</div>
+                  <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
+                    {L('Purchase Requests Pending Approval', 'คำขอซื้อรออนุมัติ')} ({pendingPRList.length})
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowPendingPRModal(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: 28,
+                    cursor: 'pointer',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                >×</button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+                {pendingPRList.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                    <div style={{ fontSize: 18, fontWeight: 600 }}>
+                      {L('No pending purchase requests', 'ไม่มีคำขอซื้อที่รออนุมัติ')}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      fontSize: 14
+                    }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#1f2937' }}>{L('PR No.', 'เลขที่ PR')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#1f2937' }}>{L('Date', 'วันที่')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#1f2937' }}>{L('Requester', 'ผู้ขอซื้อ')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#1f2937' }}>{L('Department', 'แผนก')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#1f2937' }}>{L('Purpose', 'วัตถุประสงค์')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('Items', 'รายการ')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('Status', 'สถานะ')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('Action', 'ดำเนินการ')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingPRList.map((pr: any, idx: number) => (
+                          <tr
+                            key={pr.prID || idx}
+                            style={{
+                              borderBottom: '1px solid #e5e7eb',
+                              background: idx % 2 === 0 ? '#fff' : '#fafafa',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#fafafa'}
+                          >
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0ea5e9' }}>{pr.prNo || '-'}</td>
+                            <td style={{ padding: '12px 16px', color: '#4b5563' }}>
+                              {pr.prDate ? new Date(pr.prDate).toLocaleDateString('th-TH') : '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', color: '#1f2937' }}>{pr.requester_name || pr.requested_by || '-'}</td>
+                            <td style={{ padding: '12px 16px', color: '#1f2937' }}>{pr.department || '-'}</td>
+                            <td style={{ padding: '12px 16px', color: '#6b7280', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {pr.purpose || '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{pr.item_count || 0}</td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <span style={{
+                                padding: '4px 12px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                background: pr.status === 'pending' ? '#fef3c7' : pr.status === 'submitted' ? '#dbeafe' : '#f3f4f6',
+                                color: pr.status === 'pending' ? '#92400e' : pr.status === 'submitted' ? '#1e40af' : '#4b5563'
+                              }}>
+                                {pr.status || 'draft'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  setShowPendingPRModal(false)
+                                  router.push(`/Thailand/Admin-Login/documents/purchase-requests?id=${pr.prID}`)
+                                }}
+                                style={{
+                                  padding: '6px 16px',
+                                  background: '#0ea5e9',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#0284c7'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = '#0ea5e9'}
+                              >
+                                {L('View', 'ดู')}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f9fafb'
+              }}>
+                <div style={{ fontSize: 14, color: '#6b7280' }}>
+                  {L('Total:', 'ทั้งหมด:')} <span style={{ fontWeight: 700, color: '#1f2937' }}>{pendingPRList.length}</span> {L('items', 'รายการ')}
+                </div>
+                <button
+                  onClick={() => setShowPendingPRModal(false)}
+                  style={{
+                    padding: '10px 24px',
+                    background: '#6b7280',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#4b5563'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#6b7280'}
+                >
+                  {L('Close', 'ปิด')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </AccWindow>

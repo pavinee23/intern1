@@ -18,6 +18,7 @@ export default function CreatePurchaseRequestPage() {
 
   const [prNo, setPrNo] = useState('')
   const [prDate, setPrDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [generatingPrNo, setGeneratingPrNo] = useState(false)
   const [requesterName, setRequesterName] = useState('')
   const [department, setDepartment] = useState('')
   const [purpose, setPurpose] = useState('')
@@ -32,6 +33,17 @@ export default function CreatePurchaseRequestPage() {
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const [locale, setLocale] = useState<'en'|'th'>('th')
+  const [mounted, setMounted] = useState(false)
+
+  // Supplier and product selection
+  const [supplierId, setSupplierId] = useState<number | undefined>()
+  const [supplierName, setSupplierName] = useState('')
+  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [showSupplierList, setShowSupplierList] = useState(false)
+  const [showProductDialog, setShowProductDialog] = useState(false)
+  const [availableProducts, setAvailableProducts] = useState<any[]>([])
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
 
   useEffect(() => {
     try {
@@ -59,6 +71,65 @@ export default function CreatePurchaseRequestPage() {
     setTotalCost(total)
   }, [items])
 
+  // Generate PR number
+  const generatePRNumber = async () => {
+    setGeneratingPrNo(true)
+    try {
+      const res = await fetch('/api/documents/generate-pr-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (data.success && data.prNo) {
+        setPrNo(data.prNo)
+        console.log('✅ Generated PR number:', data.prNo)
+      } else {
+        const errorMsg = L('Failed to generate PR number: ', 'ไม่สามารถสร้างเลขที่ PR: ') + (data.error || 'Unknown error')
+        console.error(errorMsg)
+        alert(errorMsg)
+        // ลองสร้างรูปแบบที่ถูกต้องด้วย Date
+        const now = new Date()
+        const yyyy = now.getFullYear()
+        const mm = String(now.getMonth() + 1).padStart(2, '0')
+        const dd = String(now.getDate()).padStart(2, '0')
+        const fallbackNo = `PR-${yyyy}${mm}${dd}-TEMP`
+        setPrNo(fallbackNo)
+      }
+    } catch (err: any) {
+      const errorMsg = L('Error generating PR number: ', 'เกิดข้อผิดพลาดในการสร้างเลขที่ PR: ') + (err.message || String(err))
+      console.error(errorMsg, err)
+      alert(errorMsg)
+      // ลองสร้างรูปแบบที่ถูกต้องด้วย Date
+      const now = new Date()
+      const yyyy = now.getFullYear()
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const dd = String(now.getDate()).padStart(2, '0')
+      const fallbackNo = `PR-${yyyy}${mm}${dd}-TEMP`
+      setPrNo(fallbackNo)
+    } finally {
+      setGeneratingPrNo(false)
+    }
+  }
+
+  // Load all suppliers on mount and generate PR number
+  useEffect(() => {
+    setMounted(true)
+
+    async function loadAllSuppliers() {
+      try {
+        const res = await fetch('/api/accounting/suppliers')
+        const data = await res.json()
+        if (data.ok && data.data) {
+          setSuppliers(data.data)
+        }
+      } catch (err) {
+        console.error('Failed to load suppliers:', err)
+      }
+    }
+    loadAllSuppliers()
+    generatePRNumber()
+  }, [])
+
   function addItem() {
     setItems([...items, { product_code: '', product_name: '', quantity: 1, unit: 'pcs', estimated_price: 0 }])
   }
@@ -76,6 +147,65 @@ export default function CreatePurchaseRequestPage() {
   function removeItem(i: number) {
     if (items.length === 1) return
     setItems(items.filter((_, idx) => idx !== i))
+  }
+
+  // Load products from supplier
+  async function handleLoadProducts() {
+    if (!supplierId) {
+      alert(L('Please select a supplier first', 'กรุณาเลือกซัพพลายเออร์ก่อน'))
+      return
+    }
+
+    setLoadingProducts(true)
+    try {
+      const res = await fetch(`/api/accounting/products?supplier_id=${supplierId}`)
+      const data = await res.json()
+
+      if (data.ok && data.products) {
+        setAvailableProducts(data.products)
+        setShowProductDialog(true)
+        setSelectedProducts([])
+      } else {
+        alert(L('Failed to load products', 'โหลดสินค้าไม่สำเร็จ'))
+      }
+    } catch (err) {
+      console.error(err)
+      alert(L('Error loading products', 'เกิดข้อผิดพลาดในการโหลดสินค้า'))
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  // Add selected products to items list
+  function handleAddSelectedProducts() {
+    const productsToAdd = availableProducts.filter((_, idx) => selectedProducts.includes(idx))
+
+    const newItems = productsToAdd.map(product => ({
+      product_code: product.code || '',
+      product_name: product.name_th || product.name_en || '',
+      quantity: 1,
+      unit: product.unit || 'pcs',
+      estimated_price: product.cost_price || 0
+    }))
+
+    // Replace first empty item or append
+    if (items.length === 1 && !items[0].product_name) {
+      setItems(newItems)
+    } else {
+      setItems([...items, ...newItems])
+    }
+
+    setShowProductDialog(false)
+    setSelectedProducts([])
+  }
+
+  // Toggle product selection
+  function toggleProductSelection(idx: number) {
+    if (selectedProducts.includes(idx)) {
+      setSelectedProducts(selectedProducts.filter(i => i !== idx))
+    } else {
+      setSelectedProducts([...selectedProducts, idx])
+    }
   }
 
   function validate() {
@@ -149,6 +279,17 @@ export default function CreatePurchaseRequestPage() {
     }
   }
 
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <AdminLayout title="Create Purchase Request" titleTh="สร้างใบขอซื้อ">
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <div style={{ fontSize: 16, color: '#6b7280' }}>กำลังโหลด...</div>
+        </div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout title="Create Purchase Request" titleTh="สร้างใบขอซื้อ">
       {messageBar && (
@@ -182,7 +323,44 @@ export default function CreatePurchaseRequestPage() {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('PR No.', 'เลขที่ PR')}</label>
-                <input type="text" value={prNo || L('Auto-generated', 'สร้างอัตโนมัติ')} disabled className={styles.formInput} style={{ background: '#f5f5f5' }} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={generatingPrNo ? L('Generating...', 'กำลังสร้าง...') : (prNo || L('Loading...', 'กำลังโหลด...'))}
+                    disabled
+                    className={styles.formInput}
+                    style={{ background: '#f5f5f5', flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={generatePRNumber}
+                    disabled={generatingPrNo}
+                    style={{
+                      padding: '8px 16px',
+                      background: generatingPrNo ? '#9ca3af' : '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: generatingPrNo ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!generatingPrNo) e.currentTarget.style.background = '#2563eb'
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!generatingPrNo) e.currentTarget.style.background = '#3b82f6'
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>{generatingPrNo ? '⏳' : '🔄'}</span>
+                    <span>{L('Refresh', 'รันใหม่')}</span>
+                  </button>
+                </div>
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Date', 'วันที่')}</label>
@@ -208,6 +386,123 @@ export default function CreatePurchaseRequestPage() {
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>{L('Purpose', 'วัตถุประสงค์')}</label>
               <textarea value={purpose} onChange={e => setPurpose(e.target.value)} className={styles.formInput} rows={2} placeholder={L('Why is this needed...', 'เหตุผลที่ต้องการ...')} />
+            </div>
+
+            {/* Supplier Selection */}
+            <div style={{ marginTop: 20, padding: 16, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 300px', position: 'relative' }}>
+                  <label className={styles.formLabel} style={{ marginBottom: 6 }}>{L('Supplier', 'ซัพพลายเออร์')}</label>
+                  <input
+                    type="text"
+                    value={supplierName}
+                    onChange={(e) => {
+                      const search = e.target.value
+                      setSupplierName(search)
+
+                      // Clear selection if input is cleared
+                      if (!search) {
+                        setSupplierId(undefined)
+                      }
+
+                      // Show list when typing
+                      setShowSupplierList(true)
+                    }}
+                    onFocus={() => {
+                      // Show supplier list immediately when focused
+                      setShowSupplierList(true)
+                    }}
+                    onBlur={() => {
+                      // Delay hiding to allow click on dropdown
+                      setTimeout(() => setShowSupplierList(false), 200)
+                    }}
+                    className={styles.formInput}
+                    placeholder={L('Click to select supplier...', 'คลิกเพื่อเลือกซัพพลายเออร์...')}
+                  />
+
+                  {/* Supplier Dropdown */}
+                  {showSupplierList && (() => {
+                    // Filter suppliers based on search text
+                    const filtered = suppliers.filter(s => {
+                      if (!supplierName) return true
+                      const searchLower = supplierName.toLowerCase()
+                      const nameTh = (s.name_th || '').toLowerCase()
+                      const nameEn = (s.name_en || '').toLowerCase()
+                      const taxId = (s.tax_id || '').toLowerCase()
+                      const code = (s.code || '').toLowerCase()
+                      return nameTh.includes(searchLower) ||
+                             nameEn.includes(searchLower) ||
+                             taxId.includes(searchLower) ||
+                             code.includes(searchLower)
+                    }).slice(0, 15) // Limit to 15 results
+
+                    if (filtered.length === 0) return null
+
+                    return (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: '#fff',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 8,
+                        marginTop: 4,
+                        maxHeight: 300,
+                        overflowY: 'auto',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                        zIndex: 100
+                      }}>
+                        {filtered.map((supplier) => (
+                          <div
+                            key={supplier.id}
+                            onClick={() => {
+                              setSupplierId(supplier.id)
+                              setSupplierName(supplier.name_th || supplier.name_en || '')
+                              setShowSupplierList(false)
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f3f4f6',
+                              fontSize: 14
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                          >
+                            <div style={{ fontWeight: 600 }}>{supplier.name_th || supplier.name_en}</div>
+                            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2, display: 'flex', gap: 12 }}>
+                              {supplier.code && <span>{L('Code:', 'รหัส:')} {supplier.code}</span>}
+                              {supplier.tax_id && <span>{L('Tax ID:', 'เลขผู้เสียภาษี:')} {supplier.tax_id}</span>}
+                            </div>
+                            {supplier.product_type && (
+                              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                                {supplier.product_type}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLoadProducts}
+                  disabled={!supplierId || loadingProducts}
+                  className={styles.btnPrimary}
+                  style={{
+                    padding: '10px 20px',
+                    opacity: (!supplierId || loadingProducts) ? 0.5 : 1,
+                    cursor: (!supplierId || loadingProducts) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {loadingProducts ? L('Loading...', 'กำลังโหลด...') : L('🔍 Load Products', '🔍 ดึงข้อมูลสินค้า')}
+                </button>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 13, color: '#0369a1' }}>
+                💡 {L('Select a supplier to load their products', 'เลือกซัพพลายเออร์เพื่อดึงรายการสินค้า')}
+              </div>
             </div>
 
             <h3 style={{ marginTop: 30, marginBottom: 15, fontSize: 16, fontWeight: 600 }}>{L('Items', 'รายการสินค้า')}</h3>
@@ -271,6 +566,131 @@ export default function CreatePurchaseRequestPage() {
           </form>
         </div>
       </div>
+
+      {/* Product Selection Dialog */}
+      {showProductDialog && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 20
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 12,
+            maxWidth: 900,
+            width: '100%',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.3)'
+          }}>
+            {/* Dialog Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+              borderRadius: '12px 12px 0 0',
+              color: '#fff'
+            }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+                {L('Select Products', 'เลือกสินค้า')} ({availableProducts.length} {L('items', 'รายการ')})
+              </h3>
+              <button
+                onClick={() => setShowProductDialog(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 24,
+                  cursor: 'pointer',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >×</button>
+            </div>
+
+            {/* Dialog Body */}
+            <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+              {availableProducts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
+                  {L('No products found', 'ไม่พบสินค้า')}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {availableProducts.map((product, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => toggleProductSelection(idx)}
+                      style={{
+                        padding: 12,
+                        border: selectedProducts.includes(idx) ? '2px solid #0ea5e9' : '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        background: selectedProducts.includes(idx) ? '#f0f9ff' : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(idx)}
+                        onChange={() => {}}
+                        style={{ width: 18, height: 18, cursor: 'pointer' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                          {product.name_th || product.name_en}
+                        </div>
+                        <div style={{ fontSize: 13, color: '#6b7280' }}>
+                          {L('Code:', 'รหัส:')} {product.code} | {L('Unit:', 'หน่วย:')} {product.unit} | {L('Price:', 'ราคา:')} {product.cost_price?.toFixed(2) || '0.00'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Dialog Footer */}
+            <div style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 12
+            }}>
+              <button
+                onClick={() => setShowProductDialog(false)}
+                className={styles.btnOutline}
+              >
+                {L('Cancel', 'ยกเลิก')}
+              </button>
+              <button
+                onClick={handleAddSelectedProducts}
+                disabled={selectedProducts.length === 0}
+                className={styles.btnPrimary}
+                style={{ opacity: selectedProducts.length === 0 ? 0.5 : 1 }}
+              >
+                {L('Add Selected', 'เพิ่มที่เลือก')} ({selectedProducts.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }

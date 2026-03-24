@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/mysql'
+import { generateDocumentNumber } from '@/lib/document-number'
 
 export async function GET(req: NextRequest) {
   try {
@@ -29,9 +30,31 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const b = await req.json()
-    const year = new Date().getFullYear()
-    const [cnt]: any = await pool.query("SELECT COUNT(*) as c FROM acc_purchase_orders WHERE doc_no LIKE ?", [`PO-${year}-%`])
-    const docNo = b.doc_no || `PO-${year}-${String((cnt[0].c || 0) + 1).padStart(4, '0')}`
+
+    // Auto-generate document number based on doc_type
+    let docNo = b.doc_no
+    if (!docNo) {
+      const docType = b.doc_type || 'order'
+      let prefix = 'PO'
+
+      // Determine prefix based on document type
+      switch (docType) {
+        case 'cash':
+          prefix = 'CASH'
+          break
+        case 'credit':
+          prefix = 'CREDIT'
+          break
+        case 'order':
+          prefix = 'PO'
+          break
+        default:
+          prefix = 'PO'
+      }
+
+      docNo = await generateDocumentNumber(prefix, 'acc_purchase_orders', 'doc_no')
+    }
+
     const [r]: any = await pool.query(
       `INSERT INTO acc_purchase_orders (doc_no,doc_date,supplier_id,status,subtotal,discount,vat_amount,total,note,created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,

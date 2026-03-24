@@ -7,7 +7,7 @@ type Row = { id?: number; doc_no?: string; doc_date?: string; supplier_id?: numb
 const empty: Row = { doc_date: new Date().toISOString().slice(0, 10), supplier_name: '', subtotal: 0, vat: 0, total: 0, status: 'draft', note: '' }
 const th: any = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
 const td: any = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
-const inp: any = { width: '100%', padding: '3px 6px', border: '1px solid', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, boxSizing: 'border-box' }
+const inp: any = { width: '100%', padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, boxSizing: 'border-box' }
 const btn = (bg: string, c = '#1f2937'): any => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
 const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -81,7 +81,13 @@ export default function CashPurchasePage() {
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('VAT 7%','VAT 7%')}</div><input style={inp} readOnly value={fmt(form.vat||0)} /></div>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Total','รวมทั้งสิ้น')}</div><input style={inp} readOnly value={fmt(form.total||0)} /></div>
               <div><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Status','สถานะ')}</div>
-                <select style={inp} value={form.status||'draft'} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}><option value="draft">{L('Draft','ร่าง')}</option><option value="approved">{L('Approved','อนุมัติ')}</option><option value="paid">{L('Paid','ชำระแล้ว')}</option></select></div>
+                <select style={inp} value={form.status||'draft'} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                  <option value="draft">{L('Draft','ร่าง')}</option>
+                  <option value="approved">{L('Approved','อนุมัติ')}</option>
+                  <option value="confirmed">{L('Confirmed/Received','ยืนยันรับสินค้า')}</option>
+                  <option value="paid">{L('Paid','ชำระแล้ว')}</option>
+                  <option value="completed">{L('Completed','เสร็จสิ้น')}</option>
+                </select></div>
               <div style={{ gridColumn: 'span 2' }}><div style={{ fontSize: 12, marginBottom: 2 }}>{L('Note','หมายเหตุ')}</div><textarea style={{ ...inp, height: 50, resize: 'vertical' }} value={form.note||''} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
             </div>
             <div style={{ padding: '8px 16px 12px', display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: '1px solid #999' }}>

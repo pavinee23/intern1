@@ -5,12 +5,35 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const q = searchParams.get('q')
-    let sql = 'SELECT * FROM acc_products'
+    const supplierId = searchParams.get('supplier_id')
+    const id = searchParams.get('id')
+
+    // Get single product by ID
+    if (id) {
+      const [rows]: any = await pool.query('SELECT * FROM acc_products WHERE id = ?', [id])
+      return NextResponse.json({ ok: true, product: rows[0] || null })
+    }
+
+    let sql = 'SELECT * FROM acc_products WHERE is_active = 1'
     const params: any[] = []
-    if (q) { sql += ' WHERE name_th LIKE ? OR code LIKE ?'; const like = `%${q}%`; params.push(like, like) }
-    sql += ' ORDER BY name_th'
+
+    // Filter by supplier (if supplier_id is provided)
+    if (supplierId) {
+      // Note: Currently acc_products doesn't have supplier_id column
+      // If you want to filter by supplier, you need to add that relationship
+      // For now, we'll just return all products
+    }
+
+    // Search by name or code
+    if (q) {
+      sql += ' AND (name_th LIKE ? OR name_en LIKE ? OR code LIKE ?)'
+      const like = `%${q}%`
+      params.push(like, like, like)
+    }
+
+    sql += ' ORDER BY name_th LIMIT 200'
     const [rows]: any = await pool.query(sql, params)
-    return NextResponse.json({ ok: true, data: rows })
+    return NextResponse.json({ ok: true, data: rows, products: rows })
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 })
   }

@@ -9,24 +9,29 @@ export default function SupplierAddPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [suppliers, setSuppliers] = useState<any[]>([])
-  const [lang, setLang] = useState<'en' | 'th'>(() => {
-    try {
-      const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
-      return l === 'th' ? 'th' : 'en'
-    } catch { return 'en' }
-  })
+  const [mounted, setMounted] = useState(false)
+  const [lang, setLang] = useState<'en' | 'th'>('th')
 
   const [form, setForm] = useState({
     name: '',
     company: '',
+    tax_id: '',
     email: '',
     phone: '',
     address: '',
-    expected_delivery: '',
+    product_type: '',
     notes: ''
   })
 
   useEffect(() => {
+    setMounted(true)
+
+    // Load language preference
+    try {
+      const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
+      if (l === 'en' || l === 'th') setLang(l as 'en' | 'th')
+    } catch {}
+
     const handler = (e: Event) => {
       const d = (e as any).detail
       const v = typeof d === 'string' ? d : d?.locale
@@ -77,7 +82,7 @@ export default function SupplierAddPage() {
         alert(L('Failed to save: ', 'บันทึกล้มเหลว: ') + (j?.error || 'Unknown error'))
       } else {
         alert(L('Supplier saved successfully', 'บันทึกผู้จัดจำหน่ายเรียบร้อย'))
-        setForm({ name: '', company: '', email: '', phone: '', address: '', expected_delivery: '', notes: '' })
+        setForm({ name: '', company: '', tax_id: '', email: '', phone: '', address: '', product_type: '', notes: '' })
         loadSuppliers()
       }
     } catch (err: any) {
@@ -91,8 +96,8 @@ export default function SupplierAddPage() {
     <AdminLayout title="Supplier" titleTh="ผู้จัดจำหน่าย">
       <div className={styles.contentCard}>
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>{L('Add Supplier', 'เพิ่มผู้จัดจำหน่าย')}</h2>
-          <p className={styles.cardSubtitle}>{L('Register new supplier', 'ลงทะเบียนผู้จัดจำหน่ายใหม่')}</p>
+          <h2 className={styles.cardTitle}>{mounted ? L('Add Supplier', 'เพิ่มผู้จัดจำหน่าย') : 'Add Supplier'}</h2>
+          <p className={styles.cardSubtitle}>{mounted ? L('Register new supplier', 'ลงทะเบียนผู้จัดจำหน่ายใหม่') : 'Register new supplier'}</p>
         </div>
 
         <div className={styles.cardBody}>
@@ -123,6 +128,28 @@ export default function SupplierAddPage() {
 
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
+                <label className={styles.formLabel}>{L('Tax ID', 'เลขผู้เสียภาษี')}</label>
+                <input
+                  value={form.tax_id}
+                  onChange={e => handleChange('tax_id', e.target.value)}
+                  className={styles.formInput}
+                  placeholder={L('Tax identification number', 'เลขประจำตัวผู้เสียภาษี 13 หลัก')}
+                  maxLength={13}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>{L('Product Type', 'ประเภทสินค้าที่จำหน่าย')}</label>
+                <input
+                  value={form.product_type}
+                  onChange={e => handleChange('product_type', e.target.value)}
+                  className={styles.formInput}
+                  placeholder={L('e.g., Electronics, Food', 'เช่น อิเล็กทรอนิกส์, อาหาร')}
+                />
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Email', 'อีเมล')}</label>
                 <input
                   type="email"
@@ -143,25 +170,14 @@ export default function SupplierAddPage() {
               </div>
             </div>
 
-            <div className={styles.formRow}>
-              <div className={styles.formGroup} style={{ flex: 2 }}>
-                <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
-                <input
-                  value={form.address}
-                  onChange={e => handleChange('address', e.target.value)}
-                  className={styles.formInput}
-                  placeholder={L('Full address', 'ที่อยู่เต็ม')}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>{L('Expected Delivery', 'กำหนดส่งสินค้า')}</label>
-                <input
-                  type="date"
-                  value={form.expected_delivery}
-                  onChange={e => handleChange('expected_delivery', e.target.value)}
-                  className={styles.formInput}
-                />
-              </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
+              <input
+                value={form.address}
+                onChange={e => handleChange('address', e.target.value)}
+                className={styles.formInput}
+                placeholder={L('Full address', 'ที่อยู่เต็ม')}
+              />
             </div>
 
             <div className={styles.formGroup}>
@@ -200,23 +216,25 @@ export default function SupplierAddPage() {
                   <th>ID</th>
                   <th>{L('Name', 'ชื่อ')}</th>
                   <th>{L('Company', 'บริษัท')}</th>
+                  <th>{L('Tax ID', 'เลขผู้เสียภาษี')}</th>
                   <th>{L('Email', 'อีเมล')}</th>
                   <th>{L('Phone', 'โทรศัพท์')}</th>
-                  <th>{L('Delivery', 'กำหนดส่ง')}</th>
+                  <th>{L('Product Type', 'ประเภทสินค้า')}</th>
                 </tr>
               </thead>
               <tbody>
                 {suppliers.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 30, color: '#999' }}>{L('No suppliers yet', 'ยังไม่มีผู้จัดจำหน่าย')}</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 30, color: '#999' }}>{L('No suppliers yet', 'ยังไม่มีผู้จัดจำหน่าย')}</td></tr>
                 )}
                 {suppliers.map((s: any) => (
                   <tr key={s.supplier_id}>
                     <td>{s.supplier_id}</td>
                     <td style={{ fontWeight: 600 }}>{s.name}</td>
                     <td>{s.company || '-'}</td>
+                    <td>{s.tax_id || '-'}</td>
                     <td>{s.email || '-'}</td>
                     <td>{s.phone || '-'}</td>
-                    <td>{s.expected_delivery ? new Date(s.expected_delivery).toLocaleDateString() : '-'}</td>
+                    <td>{s.product_type || '-'}</td>
                   </tr>
                 ))}
               </tbody>

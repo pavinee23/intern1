@@ -50,6 +50,8 @@ export default function DocumentsPage() {
     exports: 0,
     fieldWorkLogs: 0
   })
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generateResult, setGenerateResult] = useState<string>('')
 
   useEffect(() => {
     // Load language preference
@@ -127,6 +129,64 @@ export default function DocumentsPage() {
       })
     } catch (e) {
       console.error('Failed to load document stats:', e)
+    }
+  }
+
+  const handleGenerateNumbers = async () => {
+    if (!confirm(lang === 'th'
+      ? 'สร้างเลขที่เอกสารอัตโนมัติสำหรับรายการที่ยังไม่มีเลขที่?\n\n⚠️ เลขที่จะไม่ซ้ำกัน'
+      : 'Generate document numbers for items without numbers?\n\n⚠️ Numbers will be unique'
+    )) return
+
+    setIsGenerating(true)
+    setGenerateResult('')
+
+    try {
+      const res = await fetch('/api/documents/generate-numbers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        const totalGenerated = data.generated.reduce((sum: number, item: any) => sum + item.count, 0)
+
+        let message = lang === 'th'
+          ? `✅ สร้างเลขที่เอกสารสำเร็จ ${totalGenerated} รายการ\n\n`
+          : `✅ Generated ${totalGenerated} document numbers\n\n`
+
+        if (data.generated.length > 0) {
+          message += (lang === 'th' ? 'รายละเอียด:\n' : 'Details:\n')
+          data.generated.forEach((item: any) => {
+            message += `${item.prefix}: ${item.count} ${lang === 'th' ? 'รายการ' : 'items'}\n`
+          })
+        }
+
+        if (data.errors.length > 0) {
+          message += `\n⚠️ ${lang === 'th' ? 'มีข้อผิดพลาด' : 'Errors'}: ${data.errors.length}`
+        }
+
+        setGenerateResult(message)
+        alert(message)
+
+        // Reload stats
+        loadStats()
+      } else {
+        const errMsg = lang === 'th'
+          ? `❌ เกิดข้อผิดพลาด: ${data.error}`
+          : `❌ Error: ${data.error}`
+        setGenerateResult(errMsg)
+        alert(errMsg)
+      }
+    } catch (error: any) {
+      const errMsg = lang === 'th'
+        ? `❌ เกิดข้อผิดพลาด: ${error.message}`
+        : `❌ Error: ${error.message}`
+      setGenerateResult(errMsg)
+      alert(errMsg)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -413,13 +473,87 @@ export default function DocumentsPage() {
     <AdminLayout>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>{lang === 'en' ? 'Document Management' : 'จัดการเอกสาร'}</h1>
-          <p className={styles.subtitle}>
-            {lang === 'en'
-              ? 'Organized by categories for easy access'
-              : 'จัดหมวดหมู่เพื่อหาง่าย เข้าถึงสะดวก'}
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
+            <div>
+              <h1>{lang === 'en' ? 'Document Management' : 'จัดการเอกสาร'}</h1>
+              <p className={styles.subtitle}>
+                {lang === 'en'
+                  ? 'Organized by categories for easy access'
+                  : 'จัดหมวดหมู่เพื่อหาง่าย เข้าถึงสะดวก'}
+              </p>
+            </div>
+            <button
+              onClick={handleGenerateNumbers}
+              disabled={isGenerating}
+              style={{
+                padding: '12px 24px',
+                background: isGenerating ? '#6c757d' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseEnter={(e) => {
+                if (!isGenerating) {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{isGenerating ? '⏳' : '🔄'}</span>
+              <span>
+                {isGenerating
+                  ? (lang === 'en' ? 'Generating...' : 'กำลังสร้าง...')
+                  : (lang === 'en' ? 'Refresh Doc Numbers' : 'รันเลขที่บิล')
+                }
+              </span>
+            </button>
+          </div>
         </div>
+
+        {generateResult && (
+          <div style={{
+            marginBottom: '24px',
+            padding: '16px',
+            background: generateResult.includes('✅') ? '#d1f4e0' : '#f8d7da',
+            border: `1px solid ${generateResult.includes('✅') ? '#28a745' : '#dc3545'}`,
+            borderRadius: '8px',
+            color: '#333',
+            fontSize: '13px',
+            whiteSpace: 'pre-line',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setGenerateResult('')}
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                background: 'transparent',
+                border: 'none',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: '#666',
+                padding: '4px 8px'
+              }}
+            >
+              ✕
+            </button>
+            {generateResult}
+          </div>
+        )}
 
         {documentCategories.map((category) => (
           <div key={category.category} style={{ marginBottom: '48px' }}>

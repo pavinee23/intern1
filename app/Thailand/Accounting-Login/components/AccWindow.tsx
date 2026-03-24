@@ -62,13 +62,15 @@ export const ACC_MENU: AccMenuDef[] = [
   {
     label_th: '3.การเงิน', label_en: '3.Finance',
     submenu: [
-      { label_th: '1. รับชำระหนี้', label_en: '1. Receive Payment', href: '/Thailand/Accounting-Login/finance/receive' },
-      { label_th: '2. จ่ายชำระหนี้', label_en: '2. Make Payment', href: '/Thailand/Accounting-Login/finance/pay' },
-      { label_th: '3. รับเงินอื่น ๆ', label_en: '3. Other Income', href: '/Thailand/Accounting-Login/finance/receive-other' },
-      { label_th: '4. จ่ายเงินอื่น ๆ', label_en: '4. Other Payments', href: '/Thailand/Accounting-Login/finance/pay-other' },
+      { label_th: '1. รับเงิน', label_en: '1. Receive Money', href: '/Thailand/Accounting-Login/finance/receive' },
+      { label_th: '2. จ่ายเงิน', label_en: '2. Pay Money', href: '/Thailand/Accounting-Login/finance/pay' },
+      { label_th: '3. ธนาคาร', label_en: '3. Bank', href: '/Thailand/Accounting-Login/finance/bank' },
       { divider: true, label_th: '', label_en: '' },
-      { label_th: '5. โอนเงิน', label_en: '5. Fund Transfer', href: '/Thailand/Accounting-Login/finance/transfer' },
-      { label_th: '6. กระทบยอดเงินฝาก', label_en: '6. Bank Reconciliation', href: '/Thailand/Accounting-Login/finance/reconcile' },
+      { label_th: '4. ภาษีมูลค่าเพิ่ม', label_en: '4. VAT', href: '/Thailand/Accounting-Login/finance/vat' },
+      { label_th: '   - แฟ้มภาษีซื้อ', label_en: '   - Purchase VAT', href: '/Thailand/Accounting-Login/finance/vat-purchase' },
+      { label_th: '   - แฟ้มภาษีขาย', label_en: '   - Sales VAT', href: '/Thailand/Accounting-Login/finance/vat-sales' },
+      { divider: true, label_th: '', label_en: '' },
+      { label_th: '5. ภาษีหัก ณ ที่จ่าย', label_en: '5. Withholding Tax', href: '/Thailand/Accounting-Login/finance/withholding-tax' },
     ],
   },
   {

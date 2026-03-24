@@ -7,7 +7,20 @@ import styles from '../admin-theme.module.css'
 
 export default function CustomerAddPage() {
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', company: '', subject: '', message: '' })
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    house_number: '',
+    moo: '',
+    tambon: '',
+    amphoe: '',
+    province: '',
+    postcode: '',
+    company: '',
+    tax_id: '',
+    message: ''
+  })
   const [loading, setLoading] = useState(false)
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [saveHover, setSaveHover] = useState(false)
@@ -63,7 +76,20 @@ export default function CustomerAddPage() {
 
       if (res.ok && j && j.success) {
         setMessageBar({ type: 'success', text: L('Customer added successfully', 'เพิ่มลูกค้าสำเร็จ') })
-        setForm({ name: '', email: '', phone: '', address: '', company: '', subject: '', message: '' })
+        setForm({
+          name: '',
+          email: '',
+          phone: '',
+          house_number: '',
+          moo: '',
+          tambon: '',
+          amphoe: '',
+          province: '',
+          postcode: '',
+          company: '',
+          tax_id: '',
+          message: ''
+        })
         setTimeout(() => router.push('/Thailand/Admin-Login/customers'), 900)
       } else {
         const serverMsg = (j && j.error) ? j.error : res.statusText || 'Unknown error'
@@ -168,26 +194,88 @@ export default function CustomerAddPage() {
               </div>
             </div>
 
-            <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
-              <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
-              <textarea
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                className={styles.formTextarea}
-                rows={3}
-                placeholder={L('Enter address', 'กรอกที่อยู่')}
-              />
+            {/* Address Section - Thai Format */}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', color: '#374151' }}>
+                {L('Address', 'ที่อยู่')}
+              </h3>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('House No.', 'เลขที่')}</label>
+                  <input
+                    name="house_number"
+                    value={form.house_number}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                    placeholder={L('123', '123')}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('Moo', 'หมู่ที่')}</label>
+                  <input
+                    name="moo"
+                    value={form.moo}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                    placeholder={L('1', '1')}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('Sub-district', 'แขวง/ตำบล')}</label>
+                  <input
+                    name="tambon"
+                    value={form.tambon}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                    placeholder={L('Tambon', 'ตำบล')}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('District', 'เขต/อำเภอ')}</label>
+                  <input
+                    name="amphoe"
+                    value={form.amphoe}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                    placeholder={L('District', 'อำเภอ')}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('Province', 'จังหวัด')}</label>
+                  <input
+                    name="province"
+                    value={form.province}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                    placeholder={L('Province', 'จังหวัด')}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('Postal Code', 'รหัสไปรษณีย์')}</label>
+                  <input
+                    name="postcode"
+                    value={form.postcode}
+                    onChange={handleChange}
+                    className={styles.formInput}
+                    placeholder={L('10100', '10100')}
+                    maxLength={5}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
-              <label className={styles.formLabel}>{L('Subject', 'หัวข้อ')}</label>
+              <label className={styles.formLabel}>{L('Tax ID', 'เลขผู้เสียภาษีอากร')}</label>
               <input
-                name="subject"
-                value={form.subject}
+                name="tax_id"
+                value={form.tax_id}
                 onChange={handleChange}
                 className={styles.formInput}
-                placeholder={L('Subject or topic', 'หัวข้อหรือเรื่อง')}
+                placeholder={L('Tax identification number (13 digits)', 'เลขประจำตัวผู้เสียภาษี (13 หลัก)')}
               />
             </div>
 

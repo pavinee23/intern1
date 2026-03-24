@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       // ถ้ามี id ให้ดึงข้อมูลลูกค้าตาม id
       if (id) {
         const [rows]: any = await conn.query(
-          `SELECT cusID, fullname, email, phone, company, address, subject, message, created_by, created_at
+          `SELECT cusID, fullname, email, phone, company, address, house_number, moo, tambon, amphoe, province, postcode, tax_id, message, created_by, created_at
            FROM cus_detail WHERE cusID = ?`,
           [id]
         )
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       // If no search query provided, return a default list (recent 100 customers)
       if (q.length < 1) {
         const [rows]: any = await conn.query(
-          `SELECT cusID, fullname, email, phone, company, address, subject, message, created_by, created_at
+          `SELECT cusID, fullname, email, phone, company, address, house_number, moo, tambon, amphoe, province, postcode, tax_id, message, created_by, created_at
            FROM cus_detail
            ORDER BY fullname ASC
            LIMIT 100`
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
       const searchTerm = `%${q}%`
       const [rows]: any = await conn.query(
-        `SELECT cusID, fullname, email, phone, company, address, subject, message, created_by, created_at
+        `SELECT cusID, fullname, email, phone, company, address, house_number, moo, tambon, amphoe, province, postcode, tax_id, message, created_by, created_at
          FROM cus_detail
          WHERE fullname LIKE ? OR email LIKE ? OR phone LIKE ? OR company LIKE ?
          ORDER BY fullname ASC
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
       const body = await req.json()
-      const { name, email, phone, company, address, subject, message } = body
+      const { name, email, phone, company, house_number, moo, tambon, amphoe, province, postcode, tax_id, message } = body
 
       if (!name) {
         return NextResponse.json({ success: false, error: 'name_required' }, { status: 400 })
@@ -71,16 +71,24 @@ export async function POST(req: NextRequest) {
     try {
         const createdBy = 'thailand admin'
         const siteID = 2 // Thailand - ประเทศไทย
+
+        // Build full address from parts for backward compatibility
+        const addressParts = [house_number, moo ? `หมู่ ${moo}` : '', tambon, amphoe, province, postcode].filter(Boolean)
+        const fullAddress = addressParts.join(' ')
+
       try {
         const [result]: any = await conn.query(
-          `INSERT INTO cus_detail (siteID, fullname, email, phone, company, address, subject, message, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [siteID, name, email || null, phone || null, company || null, address || null, subject || null, message || null, createdBy]
+          `INSERT INTO cus_detail (siteID, fullname, email, phone, company, address, house_number, moo, tambon, amphoe, province, postcode, tax_id, message, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [siteID, name, email || null, phone || null, company || null, fullAddress || null,
+           house_number || null, moo || null, tambon || null, amphoe || null, province || null, postcode || null,
+           tax_id || null, message || null, createdBy]
         )
 
         const customerId = result.insertId
         // Fetch the inserted row to return full columns including created_at
         const [rows]: any = await conn.query(
-          `SELECT cusID, fullname, email, phone, company, address, subject, message, created_by, created_at FROM cus_detail WHERE cusID = ?`,
+          `SELECT cusID, fullname, email, phone, company, address, house_number, moo, tambon, amphoe, province, postcode, tax_id, message, created_by, created_at FROM cus_detail WHERE cusID = ?`,
           [customerId]
         )
         const customerRow = rows && rows[0] ? rows[0] : null

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/LocaleContext'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import CountryFlag from '@/components/CountryFlag'
 
 export default function AdminMainPage() {
   const router = useRouter()
@@ -61,6 +62,7 @@ export default function AdminMainPage() {
       color: '#2563eb',
       bg: '#eff6ff',
       border: '#dbeafe',
+      country: 'KR' as const,
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.5">
           <rect x="2" y="7" width="20" height="10" rx="2" fill="#dbeafe"/><circle cx="8" cy="12" r="1.8" fill="#2563eb"/><circle cx="16" cy="12" r="1.8" fill="#2563eb"/>
@@ -74,6 +76,7 @@ export default function AdminMainPage() {
       color: '#059669',
       bg: '#ecfdf5',
       border: '#d1fae5',
+      country: 'TH' as const,
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.5">
           <rect x="3" y="6" width="18" height="12" rx="2" fill="#d1fae5"/><path d="M7 10h10" strokeLinecap="round"/><path d="M7 14h6" strokeLinecap="round"/>
@@ -87,6 +90,7 @@ export default function AdminMainPage() {
       color: '#b45309',
       bg: '#fffbeb',
       border: '#fef3c7',
+      country: 'KR' as const,
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="1.5">
           <circle cx="12" cy="12" r="10" fill="#fef3c7"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -100,6 +104,7 @@ export default function AdminMainPage() {
       color: '#6366f1',
       bg: '#eef2ff',
       border: '#e0e7ff',
+      country: 'KR' as const,
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5">
           <rect x="3" y="3" width="18" height="18" rx="2" fill="#e0e7ff"/><path d="M7 14h3v3H7zM11 10h3v7h-3zM15 7h3v10h-3z" fill="#6366f1"/>
@@ -113,9 +118,24 @@ export default function AdminMainPage() {
       color: '#16a34a',
       bg: '#f0fdf4',
       border: '#bbf7d0',
+      country: 'TH' as const,
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5">
           <rect x="4" y="8" width="16" height="12" rx="2" fill="#bbf7d0"/><path d="M8 8V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2" strokeLinecap="round"/><circle cx="12" cy="14" r="2" fill="#16a34a"/><path d="M9 14h6M12 12v4" strokeLinecap="round"/>
+        </svg>
+      )
+    },
+    {
+      title: L('MARKETING', '마케팅'),
+      desc: L('Marketing System', '마케팅 시스템'),
+      href: '/admin/main/marketing-login',
+      color: '#dc2626',
+      bg: '#fef2f2',
+      border: '#fecaca',
+      country: 'KR' as const,
+      icon: (
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5">
+          <path d="M11 5L6 9H2v6h4l5 4V5z" fill="#fecaca" strokeLinejoin="round"/><path d="M15.54 8.46a5 5 0 010 7.07M18.07 5.93a9 9 0 010 12.73" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     }
@@ -180,15 +200,17 @@ export default function AdminMainPage() {
             <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>
               Zera co.,ltd {L('(Korea Headquarters)', '(한국 본사)')}
             </h1>
-            <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 700 }}>
-              🇰🇷 1114,27 Dunchon-daero 457beon-gil, Jungwon-gu, Seongnam-si, Gyeonggi-do, Republic of Korea
-            </p>
+            <div style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CountryFlag country="KR" size="sm" />
+              <span>1114,27 Dunchon-daero 457beon-gil, Jungwon-gu, Seongnam-si, Gyeonggi-do, Republic of Korea</span>
+            </div>
             <h2 style={{ margin: '16px 0 0', fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em', opacity: 0.9 }}>
               K Energy Save Co., Ltd. {L('(Thailand Branch)', '(태국 지사)')}
             </h2>
-            <p style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 700 }}>
-              🇹🇭 84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250, Thailand
-            </p>
+            <div style={{ margin: '8px 0 0', fontSize: 14, opacity: 0.75, maxWidth: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CountryFlag country="TH" size="sm" />
+              <span>84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250, Thailand</span>
+            </div>
           </div>
         </div>
 
