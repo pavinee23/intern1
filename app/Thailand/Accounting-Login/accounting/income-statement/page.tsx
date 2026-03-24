@@ -74,7 +74,7 @@ export default function IncomeStatementPage() {
           <div style={{ fontWeight: 800, fontSize: 18, color: '#1f2937', letterSpacing: '0.01em' }}>
             {L('Income Statement', 'งบกำไรขาดทุน')}
           </div>
-          <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด</div>
+          <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด</div>
         </div>
 
         <Section title="Revenue" titleTh="รายได้" rows={income} isIncome={true} />

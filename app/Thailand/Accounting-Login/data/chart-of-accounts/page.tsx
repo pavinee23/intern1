@@ -439,7 +439,7 @@ export default function ChartOfAccountsPage() {
         </head>
         <body>
           <div class="header">
-            <div class="company-name">บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด</div>
+            <div class="company-name">บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด</div>
             <div class="report-title">รายงาน : ผังบัญชี</div>
             <div class="filter-info">
               <span>รหัสบัญชีจาก  ${printDateFrom.replace(/-/g, '/')}  ถึง  ${printDateTo.replace(/-/g, '/')}</span>
@@ -579,7 +579,7 @@ export default function ChartOfAccountsPage() {
   }
 
   return (
-    <AccWindow title="บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด">
+    <AccWindow title="บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด">
       <div style={{
         padding: 20,
         background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%)',

@@ -991,7 +991,7 @@ export default function PowerCalculatorPrintPage() {
           {/* Footer */}
           <div className="report-footer">
             <div>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</div>
-            <div style={{ marginTop: '4px' }}>{L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด')}</div>
+            <div style={{ marginTop: '4px' }}>{L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}</div>
           </div>
         </div>
       </body>

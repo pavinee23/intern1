@@ -52,7 +52,7 @@ const DEFAULT_APPROVED_BY: Record<Lang, string> = {
 }
 
 const COMPANY_NAME: Record<Lang, string> = {
-  th: 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด',
+  th: 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด',
   en: 'K Energy Save Co., Ltd.'
 }
 
@@ -474,14 +474,14 @@ export default function CalculatePayrollPage() {
 
   if (!mounted) {
     return (
-      <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด')}>
+      <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}>
         <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>{L('Loading...', 'กำลังโหลด...')}</div>
       </AccWindow>
     )
   }
 
   return (
-    <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด')}>
+    <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}>
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
         {!showResult ? (
           <>

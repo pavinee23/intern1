@@ -7,7 +7,7 @@ import { SiteProvider } from '@/lib/SiteContext'
 
 export const metadata: Metadata = {
   title: 'K Energy Save | ระบบบริหารจัดการ',
-  description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด | K Energy Save Co., Ltd.',
+  description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด | K Energy Save Co., Ltd.',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'K Energy Save | ระบบบริหารจัดการ',
-    description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด',
+    description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด',
     images: ['/k-energy-save-logo.jpg'],
     siteName: 'K Energy Save',
     type: 'website',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'K Energy Save | ระบบบริหารจัดการ',
-    description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด',
+    description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด',
     images: ['/k-energy-save-logo.jpg'],
   },
 }

@@ -30,7 +30,7 @@ export default function CashFlowStatementPage() {
           <div style={{ fontWeight: 800, fontSize: 18, color: '#1f2937', letterSpacing: '0.01em' }}>
             {L('Cash Flow Statement', 'งบกระแสเงินสด')}
           </div>
-          <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด</div>
+          <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด</div>
         </div>
 
         {/* Data Table */}

@@ -7,7 +7,7 @@ export default function PayslipPage() {
   const { L } = useLang()
 
   return (
-    <AccWindow title={L('บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
+    <AccWindow title={L('บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
       <div style={{ padding: 30 }}>
         <div style={{
           background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',

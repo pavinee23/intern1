@@ -225,7 +225,7 @@ export default function AccountingDashboardPage() {
   // Prevent hydration errors
   if (!mounted) {
     return (
-      <AccWindow title="บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด">
+      <AccWindow title="บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด">
         <div style={{ padding: 20, minHeight: '100%' }}>
           <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
             Loading...
@@ -236,7 +236,7 @@ export default function AccountingDashboardPage() {
   }
 
   return (
-    <AccWindow title="บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด">
+    <AccWindow title="บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด">
       <div style={{ padding: 20, minHeight: '100%' }}>
 
         {/* Welcome card */}
@@ -257,7 +257,7 @@ export default function AccountingDashboardPage() {
               {L('Welcome back', 'ยินดีต้อนรับ')}, {fullname || username || 'User'}
             </div>
             <div style={{ fontSize: 14, opacity: 0.85, fontWeight: 500 }}>
-              {L('Company: ', 'บริษัท: ')}เค เอ็นเนอร์ยี เซฟ จำกัด
+              {L('Company: ', 'บริษัท: ')}เค เอ็นเนอร์ยี่ เซฟ จำกัด
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>

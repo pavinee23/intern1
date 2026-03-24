@@ -7,7 +7,7 @@ export default function SupportPage() {
   const { L } = useLang()
 
   return (
-    <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด')}>
+    <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}>
       <div style={{ padding: 30 }}>
         
         {/* Header */}
