@@ -462,7 +462,7 @@ export default function CustomerStatusTrackingPage() {
               marginBottom: -2
             }}
           >
-            {L('Activity Tracking', 'ติดตามกิจกรรม')}
+            {L('Sales Activities', 'กิจกรรมการขาย')}
           </button>
           <button
             onClick={() => setActiveTab('customers')}
@@ -478,7 +478,7 @@ export default function CustomerStatusTrackingPage() {
               marginBottom: -2
             }}
           >
-            {L('Customer Database', 'ฐานข้อมูลลูกค้า')}
+            {L('Customer Information', 'ข้อมูลลูกค้า')}
           </button>
         </div>
 
@@ -1005,24 +1005,24 @@ export default function CustomerStatusTrackingPage() {
                 overflow: 'hidden',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
               }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '3%' }}>ID</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '12%' }}>{L('Company Name', 'ชื่อบริษัท')}</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '8%' }}>{L('Industry', 'อุตสาหกรรม')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '6%' }}>{L('Location', 'สถานที่')}</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '9%' }}>{L('Contact', 'ผู้ติดต่อ')}</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '8%' }}>{L('Position', 'ตำแหน่ง')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>{L('Phone', 'เบอร์โทร')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, width: '5%' }}>{L('kW', 'kW')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, width: '6%' }}>{L('Saving', 'ประหยัด')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>{L('Owner', 'เซลล์')} </th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '7%' }}>{L('Contact Date', 'วันติดต่อ')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, width: '8%' }}>{L('Stage', 'สถานะ')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, width: '4%' }}>{L('%', '%')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, width: '6%' }}>{L('Imp.', 'สำคัญ')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, width: '4%' }}>{L('Act', 'จัดการ')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>ID</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Company Name', 'ชื่อบริษัท')}</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Industry', 'อุตสาหกรรม')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Location', 'สถานที่')}</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Contact', 'ผู้ติดต่อ')}</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Position', 'ตำแหน่ง')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Phone', 'เบอร์โทร')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('kW', 'kW')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Saving', 'ประหยัด')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Owner', 'เซลล์')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Contact Date', 'วันติดต่อ')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Stage', 'สถานะ')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('%', '%')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Imp.', 'สำคัญ')}</th>
+                      <th style={{ padding: '12px 6px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Act', 'จัดการ')}</th>
                     </tr>
                   </thead>
                   <tbody>

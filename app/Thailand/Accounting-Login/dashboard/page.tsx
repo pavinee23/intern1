@@ -29,6 +29,98 @@ const QUICK = [
   { th: 'สแกนบิล',      en: 'Scan Bill',     href: '/Thailand/Accounting-Login/purchase/scan-bill',icon: '\uD83D\uDCF7' },
 ]
 
+const ACCOUNTING_FLOW_MENU = [
+  {
+    ledgerTh: 'สมุดรายวันทั่วไป',
+    ledgerEn: 'General Journal',
+    rowSpan: 1,
+    postingTh: 'สินทรัพย์/ค่าเสื่อม',
+    postingEn: 'Assets/Depreciation',
+    postingHref: '/Thailand/Accounting-Login/accounting/journal',
+    documentTh: 'บันทึกรายการบัญชี',
+    documentEn: 'Journal Entry',
+    documentHref: '/Thailand/Accounting-Login/accounting/journal',
+  },
+  {
+    ledgerTh: 'สมุดรายวันจ่าย',
+    ledgerEn: 'Cash Disbursements Journal',
+    rowSpan: 1,
+    postingTh: 'จ่ายชำระหนี้',
+    postingEn: 'Pay Debt',
+    postingHref: '/Thailand/Accounting-Login/finance/pay',
+    documentTh: 'ใบเสร็จรับเงิน',
+    documentEn: 'Receipt',
+    documentHref: '/Thailand/Accounting-Login/finance/pay',
+  },
+  {
+    ledgerTh: 'สมุดรายวันรับ',
+    ledgerEn: 'Cash Receipts Journal',
+    rowSpan: 1,
+    postingTh: 'รับชำระหนี้',
+    postingEn: 'Receive Debt Payment',
+    postingHref: '/Thailand/Accounting-Login/finance/receive',
+    documentTh: 'ใบเสร็จรับเงิน',
+    documentEn: 'Receipt',
+    documentHref: '/Thailand/Accounting-Login/finance/receive',
+  },
+  {
+    ledgerTh: 'สมุดรายวันขาย',
+    ledgerEn: 'Sales Journal',
+    rowSpan: 2,
+    postingTh: 'ขายสด',
+    postingEn: 'Cash Sale',
+    postingHref: '/Thailand/Accounting-Login/sales/cash',
+    documentTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน',
+    documentEn: 'Tax Invoice/Receipt',
+    documentHref: '/Thailand/Accounting-Login/sales/cash',
+  },
+  {
+    ledgerTh: 'สมุดรายวันขาย',
+    ledgerEn: 'Sales Journal',
+    rowSpan: 0,
+    postingTh: 'ขายเชื่อ',
+    postingEn: 'Credit Sale',
+    postingHref: '/Thailand/Accounting-Login/sales/credit',
+    documentTh: 'ใบแจ้งหนี้/ใบกำกับภาษี',
+    documentEn: 'Invoice/Tax Invoice',
+    documentHref: '/Thailand/Accounting-Login/sales/credit',
+  },
+  {
+    ledgerTh: 'สมุดรายวันซื้อ',
+    ledgerEn: 'Purchase Journal',
+    rowSpan: 2,
+    postingTh: 'ซื้อสด',
+    postingEn: 'Cash Purchase',
+    postingHref: '/Thailand/Accounting-Login/purchase/cash',
+    documentTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน',
+    documentEn: 'Tax Invoice/Receipt',
+    documentHref: '/Thailand/Accounting-Login/purchase/cash',
+  },
+  {
+    ledgerTh: 'สมุดรายวันซื้อ',
+    ledgerEn: 'Purchase Journal',
+    rowSpan: 0,
+    postingTh: 'ซื้อเชื่อ',
+    postingEn: 'Credit Purchase',
+    postingHref: '/Thailand/Accounting-Login/purchase/credit',
+    documentTh: 'ใบแจ้งหนี้/ใบกำกับภาษี',
+    documentEn: 'Invoice/Tax Invoice',
+    documentHref: '/Thailand/Accounting-Login/purchase/credit',
+  },
+]
+
+type PendingPurchaseRequest = {
+  prID?: number
+  prNo?: string
+  prDate?: string
+  requester_name?: string
+  requested_by?: string
+  department?: string
+  purpose?: string
+  item_count?: number
+  status?: string
+}
+
 /* ── Dashboard page ───────────────────────────────────────────── */
 export default function AccountingDashboardPage() {
   const [username, setUsername] = useState('')
@@ -38,7 +130,7 @@ export default function AccountingDashboardPage() {
   const [pendingPRCount, setPendingPRCount] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [showPendingPRModal, setShowPendingPRModal] = useState(false)
-  const [pendingPRList, setPendingPRList] = useState<any[]>([])
+  const [pendingPRList, setPendingPRList] = useState<PendingPurchaseRequest[]>([])
   const router = useRouter()
   const { L } = useLang()
 
@@ -47,7 +139,7 @@ export default function AccountingDashboardPage() {
     try {
       setUsername(localStorage.getItem('username') || '')
       setFullname(localStorage.getItem('fullname') || '')
-    } catch (_) {}
+    } catch {}
 
     // Fetch pending purchase requests count
     fetchPendingPRCount()
@@ -61,7 +153,7 @@ export default function AccountingDashboardPage() {
       console.log('PR API Response:', data)
 
       if (data.success && data.rows) {
-        const pending = data.rows.filter((pr: any) =>
+        const pending = (data.rows as PendingPurchaseRequest[]).filter((pr) =>
           pr.status === 'pending' || pr.status === 'submitted' || pr.status === 'draft'
         )
         console.log('Pending PR Count:', pending.length)
@@ -274,6 +366,132 @@ export default function AccountingDashboardPage() {
           </div>
         </div>
 
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#1f2937', marginBottom: 12, letterSpacing: '0.01em' }}>
+          {L('Accounting Flow Menu', 'เมนูสมุดบัญชีและรูปแบบเอกสาร')}
+        </div>
+
+        <div style={{
+          background: '#fff',
+          borderRadius: 12,
+          marginBottom: 20,
+          boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+          border: '1px solid #d1d5db',
+          overflow: 'hidden',
+        }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{
+              width: '100%',
+              minWidth: 760,
+              borderCollapse: 'collapse',
+              tableLayout: 'fixed',
+              fontSize: 15,
+            }}>
+              <thead>
+                <tr style={{ background: '#f3f4f6' }}>
+                  <th style={{ border: '1px solid #9ca3af', padding: '14px 12px', fontWeight: 700, textAlign: 'center', color: '#111827' }}>
+                    {L('Account Book', 'สมุดบัญชี')}
+                  </th>
+                  <th style={{ border: '1px solid #9ca3af', padding: '14px 12px', fontWeight: 700, textAlign: 'center', color: '#111827' }}>
+                    {L('Accounting Posting', 'การผูกบัญชี')}
+                  </th>
+                  <th style={{ border: '1px solid #9ca3af', padding: '14px 12px', fontWeight: 700, textAlign: 'center', color: '#111827' }}>
+                    {L('Document Format', 'รูปแบบของเอกสาร')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ACCOUNTING_FLOW_MENU.map((item, index) => (
+                  <tr key={`${item.ledgerTh}-${item.postingTh}-${index}`}>
+                    {item.rowSpan > 0 && (
+                      <td
+                        rowSpan={item.rowSpan}
+                        onClick={() => router.push(item.postingHref)}
+                        style={{
+                          border: '1px solid #9ca3af',
+                          padding: '16px 14px',
+                          textAlign: 'center',
+                          verticalAlign: 'middle',
+                          fontWeight: 700,
+                          color: '#111827',
+                          cursor: 'pointer',
+                          background: '#fff',
+                        }}
+                        title={L(item.ledgerEn, item.ledgerTh)}
+                      >
+                        {L(item.ledgerEn, item.ledgerTh)}
+                      </td>
+                    )}
+                    <td
+                      style={{
+                        border: '1px solid #9ca3af',
+                        padding: '10px 12px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        background: '#fff',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => router.push(item.postingHref)}
+                        title={L(item.postingEn, item.postingTh)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: 10,
+                          border: '1px solid #cbd5e1',
+                          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                          color: '#111827',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
+                          fontFamily: '"Sarabun","Tahoma",sans-serif',
+                        }}
+                      >
+                        {L(item.postingEn, item.postingTh)}
+                      </button>
+                    </td>
+                    <td
+                      style={{
+                        border: '1px solid #9ca3af',
+                        padding: '10px 12px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        background: '#fff',
+                      }}
+                    >
+                      {item.documentTh ? (
+                        <button
+                          type="button"
+                          onClick={() => item.documentHref && router.push(item.documentHref)}
+                          title={L(item.documentEn, item.documentTh)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            border: '1px solid #bfdbfe',
+                            background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
+                            color: '#1d4ed8',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(37,99,235,0.12)',
+                            fontFamily: '"Sarabun","Tahoma",sans-serif',
+                          }}
+                        >
+                          {L(item.documentEn, item.documentTh)}
+                        </button>
+                      ) : (
+                        <span style={{ color: '#9ca3af', fontWeight: 600 }}>-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Info footer */}
         <div style={{
           background: '#fff',
@@ -396,7 +614,7 @@ export default function AccountingDashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {pendingPRList.map((pr: any, idx: number) => (
+                        {pendingPRList.map((pr, idx: number) => (
                           <tr
                             key={pr.prID || idx}
                             style={{

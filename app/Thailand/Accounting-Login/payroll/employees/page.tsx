@@ -15,11 +15,17 @@ type Employee = {
   site: string
   phoneNumber?: string
   address?: string
+  salary?: number
+  hourlyRate?: number
+  dailyRate?: number
+  startDate?: string
+  endDate?: string
+  terminationReason?: string
+  terminationType?: string
+  taxId?: string
 }
 
 type NewEmployee = {
-  username: string
-  password: string
   name: string
   name_th: string
   email: string
@@ -29,6 +35,11 @@ type NewEmployee = {
   salary: number
   hourlyRate: number
   dailyRate: number
+  startDate: string
+  endDate: string
+  terminationReason: string
+  terminationType: string
+  taxId: string
 }
 
 export default function EmployeesPage() {
@@ -41,8 +52,6 @@ export default function EmployeesPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [newEmployee, setNewEmployee] = useState<NewEmployee>({
-    username: '',
-    password: '',
     name: '',
     name_th: '',
     email: '',
@@ -51,7 +60,12 @@ export default function EmployeesPage() {
     address: '',
     salary: 0,
     hourlyRate: 0,
-    dailyRate: 0
+    dailyRate: 0,
+    startDate: '',
+    endDate: '',
+    terminationReason: '',
+    terminationType: '',
+    taxId: ''
   })
 
   useEffect(() => {
@@ -71,8 +85,8 @@ export default function EmployeesPage() {
       } else {
         setError(data.error || 'Unknown error')
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
@@ -97,7 +111,10 @@ export default function EmployeesPage() {
           name_th: selectedEmployee.name_th,
           email: selectedEmployee.email,
           phoneNumber: selectedEmployee.phoneNumber,
-          address: selectedEmployee.address
+          address: selectedEmployee.address,
+          salary: selectedEmployee.salary || 0,
+          hourlyRate: selectedEmployee.hourlyRate || 0,
+          dailyRate: selectedEmployee.dailyRate || 0
         })
       })
 
@@ -111,16 +128,16 @@ export default function EmployeesPage() {
       } else {
         alert('❌ ' + data.error)
       }
-    } catch (err: any) {
-      alert('❌ ' + err.message)
+    } catch (err: unknown) {
+      alert('❌ ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setSaving(false)
     }
   }
 
   const handleAddEmployee = async () => {
-    if (!newEmployee.username || !newEmployee.password || !newEmployee.name) {
-      alert('❌ กรุณากรอกข้อมูลที่จำเป็น (ชื่อผู้ใช้, รหัสผ่าน, ชื่อ-นามสกุล)')
+    if (!newEmployee.name) {
+      alert('❌ กรุณากรอกข้อมูลที่จำเป็น (ชื่อ-นามสกุล)')
       return
     }
 
@@ -140,8 +157,6 @@ export default function EmployeesPage() {
       if (data.ok) {
         setShowAddModal(false)
         setNewEmployee({
-          username: '',
-          password: '',
           name: '',
           name_th: '',
           email: '',
@@ -150,15 +165,20 @@ export default function EmployeesPage() {
           address: '',
           salary: 0,
           hourlyRate: 0,
-          dailyRate: 0
+          dailyRate: 0,
+          startDate: '',
+          endDate: '',
+          terminationReason: '',
+          terminationType: '',
+          taxId: ''
         })
         loadEmployees()
-        alert('✅ เพิ่มพนักงานสำเร็จ!')
+        alert(`✅ เพิ่มพนักงานสำเร็จ!\n${L('Generated Username', 'ชื่อผู้ใช้ที่ระบบสร้าง')}: ${data.employee?.username || '-'}\n${L('Temporary Password', 'รหัสผ่านชั่วคราว')}: ${data.employee?.temporaryPassword || '-'}`)
       } else {
         alert('❌ ' + data.error)
       }
-    } catch (err: any) {
-      alert('❌ ' + err.message)
+    } catch (err: unknown) {
+      alert('❌ ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setSaving(false)
     }
@@ -515,6 +535,194 @@ export default function EmployeesPage() {
                     />
                   </div>
 
+                  <div style={{
+                    background: '#f3f4f6',
+                    padding: 16,
+                    borderRadius: 8,
+                    border: '2px solid #d1d5db'
+                  }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#374151', marginBottom: 12 }}>
+                      💰 {L('Salary & Wage Information', 'ข้อมูลเงินเดือนและค่าแรง')}
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Monthly Salary (Baht/Month)', 'เงินเดือน (บาท/เดือน)')}
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedEmployee.salary || ''}
+                        onChange={e => setSelectedEmployee({ ...selectedEmployee, salary: parseFloat(e.target.value) || 0 })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Hourly Rate (Baht/Hour)', 'ค่าแรงรายชั่วโมง (บาท/ชม.)')}
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedEmployee.hourlyRate || ''}
+                        onChange={e => setSelectedEmployee({ ...selectedEmployee, hourlyRate: parseFloat(e.target.value) || 0 })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Daily Rate (Baht/Day)', 'ค่าแรงรายวัน (บาท/วัน)')}
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedEmployee.dailyRate || ''}
+                        onChange={e => setSelectedEmployee({ ...selectedEmployee, dailyRate: parseFloat(e.target.value) || 0 })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Employment & Tax Information */}
+                  <div style={{
+                    background: '#fef3c7',
+                    padding: 16,
+                    borderRadius: 8,
+                    border: '2px solid #fbbf24',
+                    marginTop: 16
+                  }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#92400e', marginBottom: 12 }}>
+                      📋 {L('Employment & Tax Information', 'ข้อมูลการจ้างงานและภาษี')}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                          {L('Start Date', 'วันที่เริ่มงาน')}
+                        </label>
+                        <input
+                          type="date"
+                          value={selectedEmployee.startDate || ''}
+                          onChange={e => setSelectedEmployee({ ...selectedEmployee, startDate: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: 8,
+                            fontSize: 14,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                          {L('End Date', 'วันที่สิ้นสุด')}
+                        </label>
+                        <input
+                          type="date"
+                          value={selectedEmployee.endDate || ''}
+                          onChange={e => setSelectedEmployee({ ...selectedEmployee, endDate: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: 8,
+                            fontSize: 14,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Termination Type', 'ประเภทการสิ้นสุดการจ้าง')}
+                      </label>
+                      <select
+                        value={selectedEmployee.terminationType || ''}
+                        onChange={e => setSelectedEmployee({ ...selectedEmployee, terminationType: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">{L('-- Active Employee --', '-- พนักงานปัจจุบัน --')}</option>
+                        <option value="resignation">{L('Resignation', 'ลาออก')}</option>
+                        <option value="termination">{L('Termination', 'เลิกจ้าง')}</option>
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Reason', 'สาเหตุ')}
+                      </label>
+                      <textarea
+                        value={selectedEmployee.terminationReason || ''}
+                        onChange={e => setSelectedEmployee({ ...selectedEmployee, terminationReason: e.target.value })}
+                        rows={2}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none',
+                          resize: 'vertical'
+                        }}
+                        placeholder={L('Enter termination reason (if applicable)', 'กรอกสาเหตุการสิ้นสุดการจ้าง (ถ้ามี)')}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Tax ID', 'TAX ID')}
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedEmployee.taxId || ''}
+                        onChange={e => setSelectedEmployee({ ...selectedEmployee, taxId: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                        placeholder={L('Enter Tax ID', 'กรอก TAX ID')}
+                        maxLength={13}
+                      />
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
@@ -609,48 +817,6 @@ export default function EmployeesPage() {
               {/* Modal Body */}
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'grid', gap: 16 }}>
-
-                  {/* Username */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
-                      {L('Username', 'ชื่อผู้ใช้')} <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newEmployee.username}
-                      onChange={e => setNewEmployee({ ...newEmployee, username: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: 8,
-                        fontSize: 14,
-                        outline: 'none'
-                      }}
-                      placeholder={L('Enter username', 'กรอกชื่อผู้ใช้')}
-                    />
-                  </div>
-
-                  {/* Password */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
-                      {L('Password', 'รหัสผ่าน')} <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={newEmployee.password}
-                      onChange={e => setNewEmployee({ ...newEmployee, password: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: 8,
-                        fontSize: 14,
-                        outline: 'none'
-                      }}
-                      placeholder={L('Enter password', 'กรอกรหัสผ่าน')}
-                    />
-                  </div>
 
                   {/* Name (English) */}
                   <div>
@@ -862,6 +1028,123 @@ export default function EmployeesPage() {
                           outline: 'none'
                         }}
                         placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Employment & Tax Information */}
+                  <div style={{
+                    background: '#fef3c7',
+                    padding: 16,
+                    borderRadius: 8,
+                    border: '2px solid #fbbf24',
+                    marginTop: 16
+                  }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#92400e', marginBottom: 12 }}>
+                      📋 {L('Employment & Tax Information', 'ข้อมูลการจ้างงานและภาษี')}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                          {L('Start Date', 'วันที่เริ่มงาน')}
+                        </label>
+                        <input
+                          type="date"
+                          value={newEmployee.startDate || ''}
+                          onChange={e => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: 8,
+                            fontSize: 14,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                          {L('End Date', 'วันที่สิ้นสุด')}
+                        </label>
+                        <input
+                          type="date"
+                          value={newEmployee.endDate || ''}
+                          onChange={e => setNewEmployee({ ...newEmployee, endDate: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: 8,
+                            fontSize: 14,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Termination Type', 'ประเภทการสิ้นสุดการจ้าง')}
+                      </label>
+                      <select
+                        value={newEmployee.terminationType || ''}
+                        onChange={e => setNewEmployee({ ...newEmployee, terminationType: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">{L('-- Active Employee --', '-- พนักงานปัจจุบัน --')}</option>
+                        <option value="resignation">{L('Resignation', 'ลาออก')}</option>
+                        <option value="termination">{L('Termination', 'เลิกจ้าง')}</option>
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Reason', 'สาเหตุ')}
+                      </label>
+                      <textarea
+                        value={newEmployee.terminationReason || ''}
+                        onChange={e => setNewEmployee({ ...newEmployee, terminationReason: e.target.value })}
+                        rows={2}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none',
+                          resize: 'vertical'
+                        }}
+                        placeholder={L('Enter termination reason (if applicable)', 'กรอกสาเหตุการสิ้นสุดการจ้าง (ถ้ามี)')}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#4b5563' }}>
+                        {L('Tax ID', 'TAX ID')}
+                      </label>
+                      <input
+                        type="text"
+                        value={newEmployee.taxId || ''}
+                        onChange={e => setNewEmployee({ ...newEmployee, taxId: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '2px solid #d1d5db',
+                          borderRadius: 8,
+                          fontSize: 14,
+                          outline: 'none'
+                        }}
+                        placeholder={L('Enter Tax ID', 'กรอก TAX ID')}
+                        maxLength={13}
                       />
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import AccWindow from '../../components/AccWindow'
 
 interface Account {
@@ -15,6 +15,7 @@ interface Account {
   is_sub_account?: number
   is_active?: number
   department_split?: string
+  created_at?: string
   children?: Account[]
 }
 
@@ -39,6 +40,7 @@ export default function ChartOfAccountsPage() {
   const [showReportDialog, setShowReportDialog] = useState(false)
   const [printDateFrom, setPrintDateFrom] = useState('')
   const [printDateTo, setPrintDateTo] = useState('')
+  const [isImportingDefault, setIsImportingDefault] = useState(false)
 
   // Labels สำหรับแต่ละภาษา
   const labels = {
@@ -113,11 +115,7 @@ export default function ChartOfAccountsPage() {
   }
 
   // โหลดข้อมูล
-  useEffect(() => {
-    loadAccounts()
-  }, [])
-
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
       const res = await fetch('/api/accounting/chart-of-accounts')
       const json = await res.json()
@@ -127,7 +125,11 @@ export default function ChartOfAccountsPage() {
     } catch (err) {
       console.error('Error loading accounts:', err)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadAccounts()
+  }, [loadAccounts])
 
   // สร้าง Tree Structure
   const buildTree = (data: Account[]): Account[] => {
@@ -149,6 +151,43 @@ export default function ChartOfAccountsPage() {
     })
 
     return roots
+  }
+
+  const flattenAccounts = (nodes: Account[], level = 0): Array<Account & { level: number }> => {
+    return nodes.flatMap(node => {
+      const current = { ...node, level }
+      const children = node.children && node.children.length > 0
+        ? flattenAccounts(node.children, level + 1)
+        : []
+      return [current, ...children]
+    })
+  }
+
+  const flatAccounts = flattenAccounts(accounts)
+
+  const getAccountTypeLabel = (type: string) => {
+    const typeMap: Record<string, { th: string; en: string }> = {
+      asset: { th: 'สินทรัพย์', en: 'Asset' },
+      liability: { th: 'หนี้สิน', en: 'Liability' },
+      equity: { th: 'ส่วนของผู้ถือหุ้น', en: 'Equity' },
+      income: { th: 'รายได้', en: 'Income' },
+      expense: { th: 'ค่าใช้จ่าย', en: 'Expense' }
+    }
+
+    const label = typeMap[type]
+    return label ? (language === 'th' ? label.th : label.en) : type
+  }
+
+  const getAccountTypeColors = (type: string) => {
+    const colorMap: Record<string, { bg: string; text: string }> = {
+      asset: { bg: '#dbeafe', text: '#1d4ed8' },
+      liability: { bg: '#fee2e2', text: '#b91c1c' },
+      equity: { bg: '#dcfce7', text: '#15803d' },
+      income: { bg: '#ede9fe', text: '#6d28d9' },
+      expense: { bg: '#ffedd5', text: '#c2410c' }
+    }
+
+    return colorMap[type] || { bg: '#e5e7eb', text: '#374151' }
   }
 
   // Toggle expand/collapse
@@ -217,6 +256,29 @@ export default function ChartOfAccountsPage() {
     }
   }
 
+  const handleSeedDefaultAccounts = async () => {
+    try {
+      setIsImportingDefault(true)
+      const res = await fetch('/api/accounting/chart-of-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'seed-default' })
+      })
+
+      const json = await res.json()
+      if (json.ok) {
+        alert(json.message)
+        await loadAccounts()
+      } else {
+        alert('Error: ' + json.error)
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาด: ' + err)
+    } finally {
+      setIsImportingDefault(false)
+    }
+  }
+
   // ลบ
   const handleDelete = async () => {
     if (!selectedAccount?.id) {
@@ -265,7 +327,7 @@ export default function ChartOfAccountsPage() {
       }
 
       // กรองข้อมูลตามวันที่
-      const filteredAccounts = json.data.filter((acc: any) => {
+      const filteredAccounts = (json.data as Account[]).filter((acc) => {
         if (!acc.created_at) return true
         const accDate = new Date(acc.created_at).toISOString().split('T')[0]
         return accDate >= printDateFrom && accDate <= printDateTo
@@ -396,9 +458,9 @@ export default function ChartOfAccountsPage() {
           </div>
 
           <div class="data-container">
-            ${filteredAccounts.map((acc: any) => {
+            ${filteredAccounts.map((acc) => {
               const level = acc.parent_code ? 1 : 0
-              const typeMap: any = {
+              const typeMap: Record<string, string> = {
                 'asset': 'ครท.',
                 'liability': 'หนสน.',
                 'equity': 'ส.ผถห.',
@@ -539,6 +601,43 @@ export default function ChartOfAccountsPage() {
           border: '1px solid rgba(255,255,255,0.1)'
         }}>
           📊 {language === 'th' ? 'ระบบบัญชีรหัสผังบัญชี' : 'Chart of Accounts System'}
+        </div>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 16
+        }}>
+          <div style={{ fontSize: 13, color: '#334155', fontFamily: 'Tahoma, sans-serif', fontWeight: 600 }}>
+            {language === 'th'
+              ? `รายการผังบัญชีในฐานข้อมูล ${flatAccounts.length} รายการ`
+              : `Chart of accounts in database: ${flatAccounts.length} records`}
+          </div>
+          <button
+            onClick={handleSeedDefaultAccounts}
+            disabled={isImportingDefault}
+            style={{
+              padding: '10px 16px',
+              background: isImportingDefault
+                ? '#94a3b8'
+                : 'linear-gradient(135deg, #0f766e 0%, #0f766e 40%, #14b8a6 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: isImportingDefault ? 'not-allowed' : 'pointer',
+              fontFamily: 'Tahoma, sans-serif',
+              boxShadow: '0 6px 18px rgba(15,118,110,0.25)'
+            }}
+          >
+            {isImportingDefault
+              ? (language === 'th' ? 'กำลังนำเข้าผังบัญชี...' : 'Importing chart of accounts...')
+              : (language === 'th' ? 'นำเข้าผังบัญชีมาตรฐานลงฐานข้อมูล' : 'Import default chart of accounts')}
+          </button>
         </div>
 
         {/* Main Container */}
@@ -972,6 +1071,40 @@ export default function ChartOfAccountsPage() {
                 <span>{language === 'th' ? 'พิมพ์' : 'Print'}</span>
               </button>
               <button
+                onClick={handleSeedDefaultAccounts}
+                disabled={isImportingDefault}
+                style={{
+                  padding: '8px 16px',
+                  background: 'white',
+                  color: '#2d3748',
+                  border: '2px solid #cbd5e0',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: isImportingDefault ? 'not-allowed' : 'pointer',
+                  fontFamily: 'Tahoma, sans-serif',
+                  boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
+                  transition: 'all 0.3s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  opacity: isImportingDefault ? 0.7 : 1
+                }}
+              >
+                <span style={{
+                  fontSize: 18,
+                  background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 3px 8px rgba(20,184,166,0.4)'
+                }}>⬇️</span>
+                <span>{isImportingDefault ? (language === 'th' ? 'กำลังนำเข้า' : 'Importing') : (language === 'th' ? 'นำเข้าผังบัญชี' : 'Import COA')}</span>
+              </button>
+              <button
                 onClick={handleReport}
                 style={{
                   padding: '8px 16px',
@@ -1016,6 +1149,101 @@ export default function ChartOfAccountsPage() {
             </div>
           </div>
 
+        </div>
+
+        <div style={{
+          marginTop: 20,
+          background: '#fff',
+          borderRadius: 12,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+          border: '1px solid rgba(148,163,184,0.3)'
+        }}>
+          <div style={{
+            padding: '14px 18px',
+            background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+            borderBottom: '1px solid #cbd5e1',
+            fontFamily: 'Tahoma, sans-serif',
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#1e293b'
+          }}>
+            {language === 'th' ? 'รายการผังบัญชีทั้งหมดจากฐานข้อมูล' : 'All chart of accounts from database'}
+          </div>
+          <div style={{ overflow: 'auto', maxHeight: 420 }}>
+            <table style={{
+              width: '100%',
+              minWidth: 980,
+              borderCollapse: 'collapse',
+              fontFamily: 'Tahoma, sans-serif',
+              fontSize: 13
+            }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                <tr style={{ background: '#f8fafc' }}>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>{language === 'th' ? 'รหัสบัญชี' : 'Account Code'}</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>{language === 'th' ? 'ชื่อบัญชี' : 'Account Name'}</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>{language === 'th' ? 'หมวดบัญชี' : 'Type'}</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>{language === 'th' ? 'ระดับ' : 'Level'}</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>{language === 'th' ? 'บัญชีคุม' : 'Parent Code'}</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>{language === 'th' ? 'แยกแผนก' : 'Dept.'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {flatAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '32px 16px', textAlign: 'center', color: '#64748b' }}>
+                      {language === 'th'
+                        ? 'ยังไม่มีผังบัญชีในฐานข้อมูล กดปุ่ม "นำเข้าผังบัญชีมาตรฐานลงฐานข้อมูล" เพื่อเริ่มต้น'
+                        : 'No chart of accounts found. Click "Import default chart of accounts" to get started.'}
+                    </td>
+                  </tr>
+                ) : flatAccounts.map((account, index) => {
+                  const colors = getAccountTypeColors(account.account_type)
+
+                  return (
+                    <tr
+                      key={account.code}
+                      onClick={() => selectAccount(account)}
+                      style={{
+                        background: index % 2 === 0 ? '#ffffff' : '#f8fafc',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <td style={{ padding: '10px', borderBottom: '1px solid #f1f5f9', fontWeight: account.level === 0 ? 700 : 500 }}>
+                        {account.code}
+                      </td>
+                      <td style={{ padding: '10px', paddingLeft: `${10 + account.level * 18}px`, borderBottom: '1px solid #f1f5f9', color: '#0f172a' }}>
+                        {language === 'th' ? account.name_th : (account.name_en || account.name_th)}
+                      </td>
+                      <td style={{ padding: '10px', borderBottom: '1px solid #f1f5f9' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '4px 10px',
+                          borderRadius: 999,
+                          background: colors.bg,
+                          color: colors.text,
+                          fontWeight: 700,
+                          fontSize: 12
+                        }}>
+                          {getAccountTypeLabel(account.account_type)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                        {account.is_sub_account || account.level + 1}
+                      </td>
+                      <td style={{ padding: '10px', borderBottom: '1px solid #f1f5f9', color: '#475569' }}>
+                        {account.parent_code || '-'}
+                      </td>
+                      <td style={{ padding: '10px', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                        {account.department_split || 'N'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Print Date Range Dialog */}
@@ -1179,18 +1407,7 @@ export default function ChartOfAccountsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {accounts.flatMap(acc => {
-                      const flatten = (a: Account, level = 0): any[] => {
-                        const result = [{ ...a, level }]
-                        if (a.children && a.children.length > 0) {
-                          a.children.forEach(child => {
-                            result.push(...flatten(child, level + 1))
-                          })
-                        }
-                        return result
-                      }
-                      return flatten(acc)
-                    }).map((acc, idx) => (
+                    {flatAccounts.map((acc, idx) => (
                       <tr key={acc.code} style={{
                         background: idx % 2 === 0 ? '#f8f9fa' : 'white',
                         borderBottom: '1px solid #e2e8f0'
