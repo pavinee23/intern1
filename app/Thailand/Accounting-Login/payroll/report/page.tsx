@@ -7,7 +7,7 @@ export default function PayrollReportPage() {
   const { L } = useLang()
 
   return (
-    <AccWindow title={L('บริษัท เค เอ็นเนอร์จี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
+    <AccWindow title={L('บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
       <div style={{ padding: 30 }}>
         <div style={{
           background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',

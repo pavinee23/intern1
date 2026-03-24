@@ -104,7 +104,7 @@ export default function EmployeesPage() {
   )
 
   return (
-    <AccWindow title={L('บริษัท เค เอ็นเนอร์จี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
+    <AccWindow title={L('บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
       <div style={{ padding: 30 }}>
 
         {/* Header */}

@@ -149,7 +149,7 @@ export default function BalanceSheetPage() {
   }
 
   return (
-    <AccWindow title={L('Balance Sheet', 'งบดุล') + ' — บริษัท เค เอ็นเนอร์จี เซฟ จำกัด'}>
+    <AccWindow title={L('Balance Sheet', 'งบดุล') + ' — บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด'}>
       <div style={{ padding: 20, minHeight: '100%' }}>
 
         {/* ── Title bar ── */}
@@ -164,7 +164,7 @@ export default function BalanceSheetPage() {
             <div style={{ fontWeight: 800, fontSize: 18, color: '#1f2937', letterSpacing: '0.01em' }}>
               {L('Balance Sheet', 'งบดุล')}
             </div>
-            <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>บริษัท เค เอ็นเนอร์จี เซฟ จำกัด</div>
+            <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13.5, fontWeight: 600, color: '#4b5563' }}>{L('As of:', 'ณ วันที่:')}</span>

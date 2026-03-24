@@ -10,10 +10,10 @@ export default function Page() {
           padding: '28px 40px', display: 'inline-block', minWidth: 380, textAlign: 'center'
         }}>
           <div style={{ fontSize: 20, fontWeight: 900, color: '#4b5563', marginBottom: 4 }}>ระบบบัญชีสาขาประเทศไทย</div>
-          <div style={{ fontSize: 14, color: '#444', marginBottom: 16 }}>บริษัท เค เอ็นเนอร์จี เซฟ จำกัด</div>
+          <div style={{ fontSize: 14, color: '#444', marginBottom: 16 }}>บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด</div>
           <div style={{ borderTop: '1px solid #9ca3af', borderBottom: '1px solid #fff', marginBottom: 16 }} />
           <div style={{ fontSize: 13, lineHeight: 2, color: '#333' }}>
-            <div><b>บริษัท:</b> เค เอ็นเนอร์จี เซฟ จำกัด</div>
+            <div><b>บริษัท:</b> เค เอ็นเนอร์ยี เซฟ จำกัด</div>
             <div><b>เวอร์ชั่น:</b> 1.0.0 (Internal)</div>
             <div><b>Platform:</b> Next.js + MySQL</div>
             <div><b>ปีที่พัฒนา:</b> 2026</div>

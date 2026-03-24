@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
 
 type EmployeeOption = {
@@ -43,7 +43,14 @@ type PayrollForm = {
   documentDate: string
 }
 
-const defaultForm = (): PayrollForm => ({
+type Lang = 'th' | 'en'
+
+const DEFAULT_APPROVED_BY: Record<Lang, string> = {
+  th: 'กรรมการและผู้จัดการฝ่ายบริหาร',
+  en: 'Managing Director and Executive Director'
+}
+
+const defaultForm = (lang: Lang = 'th'): PayrollForm => ({
   employeeCode: '',
   employeeName: '',
   position: '',
@@ -66,7 +73,7 @@ const defaultForm = (): PayrollForm => ({
   uniformDeduction: 0,
   advanceDeduction: 0,
   preparedBy: '',
-  approvedBy: 'กรรมการและผู้จัดการฝ่ายบริหาร',
+  approvedBy: DEFAULT_APPROVED_BY[lang],
   documentDate: new Date().toISOString().split('T')[0]
 })
 
@@ -144,18 +151,147 @@ function numberToThaiText(amount: number) {
   return `${bahtText}${convertInteger(decimalPart)}สตางค์`
 }
 
+function numberToEnglishText(amount: number) {
+  if (!Number.isFinite(amount) || amount === 0) return 'Zero baht only'
+
+  const units = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+  const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+  const scales = ['', 'thousand', 'million', 'billion', 'trillion']
+
+  const convertHundreds = (value: number) => {
+    let result = ''
+    const hundred = Math.floor(value / 100)
+    const remainder = value % 100
+
+    if (hundred > 0) {
+      result += `${units[hundred]} hundred`
+      if (remainder > 0) result += ' '
+    }
+
+    if (remainder >= 20) {
+      result += tens[Math.floor(remainder / 10)]
+      if (remainder % 10 > 0) result += `-${units[remainder % 10]}`
+    } else if (remainder >= 10) {
+      result += teens[remainder - 10]
+    } else if (remainder > 0) {
+      result += units[remainder]
+    }
+
+    return result
+  }
+
+  const convertInteger = (value: number) => {
+    if (value === 0) return 'zero'
+
+    const parts: string[] = []
+    let remaining = value
+    let scaleIndex = 0
+
+    while (remaining > 0) {
+      const chunk = remaining % 1000
+      if (chunk > 0) {
+        const chunkText = convertHundreds(chunk)
+        parts.unshift([chunkText, scales[scaleIndex]].filter(Boolean).join(' '))
+      }
+      remaining = Math.floor(remaining / 1000)
+      scaleIndex += 1
+    }
+
+    return parts.join(' ')
+  }
+
+  const roundedAmount = Math.round(amount * 100) / 100
+  const integerPart = Math.floor(roundedAmount)
+  const decimalPart = Math.round((roundedAmount - integerPart) * 100)
+  const bahtText = `${convertInteger(integerPart)} baht`
+
+  if (decimalPart === 0) return `${bahtText} only`
+
+  return `${bahtText} and ${convertInteger(decimalPart)} satang`
+}
+
+const numberToCurrencyText = (amount: number, lang: Lang) =>
+  lang === 'th' ? numberToThaiText(amount) : numberToEnglishText(amount)
+
+const calculateSocialSecurity = (salary: number) => Math.min(salary * 0.05, 750)
+
+const calculateProvidentFund = (salary: number) => salary * 0.03
+
+const calculateIncomeTax = (salary: number) => {
+  const yearlyIncome = salary * 12
+  const taxableIncome = Math.max(yearlyIncome - 90000, 0)
+
+  if (taxableIncome <= 150000) return 0
+  if (taxableIncome <= 300000) return ((taxableIncome - 150000) * 0.05) / 12
+  if (taxableIncome <= 500000) return (7500 + (taxableIncome - 300000) * 0.1) / 12
+  if (taxableIncome <= 750000) return (27500 + (taxableIncome - 500000) * 0.15) / 12
+  return (65000 + (taxableIncome - 750000) * 0.2) / 12
+}
+
+const getDefaultPositionAllowance = (typeID?: number) => {
+  const allowanceByType: Record<number, number> = {
+    2: 8000,
+    3: 3000,
+    6: 2500,
+    8: 3500,
+    10: 10000,
+    11: 6000
+  }
+  return allowanceByType[typeID || 0] || 0
+}
+
+const createEmployeeForm = (employee: EmployeeOption, previousForm: PayrollForm, lang: Lang): PayrollForm => {
+  const baseSalary = Number(employee.salary || 0)
+  const socialSecurity = calculateSocialSecurity(baseSalary)
+  const providentFund = calculateProvidentFund(baseSalary)
+  const incomeTax = calculateIncomeTax(baseSalary)
+
+  return {
+    ...defaultForm(lang),
+    period: previousForm.period,
+    documentDate: previousForm.documentDate,
+    preparedBy: previousForm.preparedBy,
+    approvedBy: previousForm.approvedBy || defaultForm(lang).approvedBy,
+    employeeCode: `EMP-${String(employee.id).padStart(4, '0')}`,
+    employeeName: employee.name_th || employee.name || '',
+    position: employee.position || '',
+    department: employee.department || '',
+    salary: baseSalary,
+    positionAllowance: getDefaultPositionAllowance(employee.typeID),
+    socialSecurity,
+    providentFund,
+    incomeTax
+  }
+}
+
 export default function CalculatePayrollPage() {
-  const { L } = useLang()
+  const { L, lang } = useLang()
   const [mounted, setMounted] = useState(false)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState('')
   const [showResult, setShowResult] = useState(false)
-  const [form, setForm] = useState<PayrollForm>(defaultForm())
+  const [form, setForm] = useState<PayrollForm>(() => defaultForm(lang))
+  const [saving, setSaving] = useState(false)
+  const [loadingPayslip, setLoadingPayslip] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     void loadEmployees()
   }, [])
+
+  useEffect(() => {
+    setForm(prev => {
+      const shouldUpdateApprovedBy =
+        !prev.approvedBy ||
+        prev.approvedBy === DEFAULT_APPROVED_BY.th ||
+        prev.approvedBy === DEFAULT_APPROVED_BY.en
+
+      if (!shouldUpdateApprovedBy) return prev
+
+      return { ...prev, approvedBy: DEFAULT_APPROVED_BY[lang] }
+    })
+  }, [lang])
 
   const loadEmployees = async () => {
     try {
@@ -173,54 +309,69 @@ export default function CalculatePayrollPage() {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const calculateSocialSecurity = (salary: number) => Math.min(salary * 0.05, 750)
-  const calculateProvidentFund = (salary: number) => salary * 0.03
+  const loadSavedPayslip = useCallback(async (employeeId: string, period: string) => {
+    try {
+      setLoadingPayslip(true)
+      const res = await fetch(`/api/payroll/payslips?employeeId=${encodeURIComponent(employeeId)}&period=${encodeURIComponent(period)}&lang=${lang}`)
+      const data = await res.json()
+      const employee = employees.find(item => item.id === Number(employeeId))
 
-  const calculateIncomeTax = (salary: number) => {
-    const yearlyIncome = salary * 12
-    const taxableIncome = Math.max(yearlyIncome - 90000, 0)
+      if (!data.ok || !data.payslip) {
+        if (employee) {
+          setForm(prev => createEmployeeForm(employee, { ...prev, period }, lang))
+        }
+        return
+      }
 
-    if (taxableIncome <= 150000) return 0
-    if (taxableIncome <= 300000) return ((taxableIncome - 150000) * 0.05) / 12
-    if (taxableIncome <= 500000) return (7500 + (taxableIncome - 300000) * 0.1) / 12
-    if (taxableIncome <= 750000) return (27500 + (taxableIncome - 500000) * 0.15) / 12
-    return (65000 + (taxableIncome - 750000) * 0.2) / 12
-  }
-
-  const getDefaultPositionAllowance = (typeID?: number) => {
-    const allowanceByType: Record<number, number> = {
-      2: 8000,
-      3: 3000,
-      6: 2500,
-      8: 3500,
-      10: 10000,
-      11: 6000
+      const payslip = data.payslip
+      setForm(prev => ({
+        ...(employee ? createEmployeeForm(employee, { ...prev, period }, lang) : prev),
+        employeeCode: payslip.employee_code || prev.employeeCode,
+        employeeName: payslip.employee_name || prev.employeeName,
+        position: payslip.position_name || prev.position,
+        department: payslip.department_name || prev.department,
+        period: payslip.payroll_period || prev.period,
+        accumulatedIncome: Number(payslip.accumulated_income || 0),
+        accumulatedSocialSecurity: Number(payslip.accumulated_social_security || 0),
+        accumulatedTax: Number(payslip.accumulated_tax || 0),
+        accumulatedProvidentFund: Number(payslip.accumulated_provident_fund || 0),
+        salary: Number(payslip.salary || 0),
+        bonus: Number(payslip.bonus || 0),
+        positionAllowance: Number(payslip.position_allowance || 0),
+        overtime: Number(payslip.overtime_pay || 0),
+        commission: Number(payslip.commission || 0),
+        healthInsurance: Number(payslip.health_insurance || 0),
+        incomeTax: Number(payslip.income_tax || 0),
+        socialSecurity: Number(payslip.social_security || 0),
+        providentFund: Number(payslip.provident_fund || 0),
+        absentLateDeduction: Number(payslip.absent_late_deduction || 0),
+        uniformDeduction: Number(payslip.uniform_deduction || 0),
+        advanceDeduction: Number(payslip.advance_deduction || 0),
+        preparedBy: payslip.prepared_by || prev.preparedBy,
+        approvedBy: payslip.approved_by || prev.approvedBy,
+        documentDate: payslip.document_date ? String(payslip.document_date).split('T')[0] : prev.documentDate
+      }))
+    } catch (err) {
+      console.error('Failed to load saved payslip:', err)
+    } finally {
+      setLoadingPayslip(false)
     }
-    return allowanceByType[typeID || 0] || 0
-  }
+  }, [employees, lang])
+
+  useEffect(() => {
+    if (!selectedEmployee || !form.period) return
+    void loadSavedPayslip(selectedEmployee, form.period)
+  }, [selectedEmployee, form.period, loadSavedPayslip])
 
   const handleEmployeeChange = (employeeId: string) => {
     setSelectedEmployee(employeeId)
     const employee = employees.find(item => item.id === Number(employeeId))
-    if (!employee) return
+    if (!employee) {
+      setForm(prev => ({ ...defaultForm(lang), period: prev.period, documentDate: prev.documentDate }))
+      return
+    }
 
-    const baseSalary = Number(employee.salary || 0)
-    const socialSecurity = calculateSocialSecurity(baseSalary)
-    const providentFund = calculateProvidentFund(baseSalary)
-    const incomeTax = calculateIncomeTax(baseSalary)
-
-    setForm(prev => ({
-      ...prev,
-      employeeCode: `EMP-${String(employee.id).padStart(4, '0')}`,
-      employeeName: employee.name_th || employee.name || '',
-      position: employee.position || '',
-      department: employee.department || '',
-      salary: baseSalary,
-      positionAllowance: getDefaultPositionAllowance(employee.typeID),
-      socialSecurity,
-      providentFund,
-      incomeTax
-    }))
+    setForm(prev => createEmployeeForm(employee, prev, lang))
   }
 
   const totalIncome =
@@ -241,16 +392,69 @@ export default function CalculatePayrollPage() {
 
   const netIncome = totalIncome - totalDeductions
 
+  const netIncomeText = numberToCurrencyText(netIncome, lang)
   const formattedPeriod = form.period
-    ? new Date(`${form.period}-01`).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })
+    ? new Date(`${form.period}-01`).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', { month: 'long', year: 'numeric' })
     : '-'
 
-  const handleGenerateSlip = () => {
+  const savePayslip = async () => {
+    const res = await fetch('/api/payroll/payslips', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: Number(selectedEmployee),
+        employeeCode: form.employeeCode,
+        employeeName: form.employeeName,
+        position: form.position,
+        department: form.department,
+        period: form.period,
+        accumulatedIncome: form.accumulatedIncome,
+        accumulatedSocialSecurity: form.accumulatedSocialSecurity,
+        accumulatedTax: form.accumulatedTax,
+        accumulatedProvidentFund: form.accumulatedProvidentFund,
+        salary: form.salary,
+        bonus: form.bonus,
+        positionAllowance: form.positionAllowance,
+        overtime: form.overtime,
+        commission: form.commission,
+        healthInsurance: form.healthInsurance,
+        incomeTax: form.incomeTax,
+        socialSecurity: form.socialSecurity,
+        providentFund: form.providentFund,
+        absentLateDeduction: form.absentLateDeduction,
+        uniformDeduction: form.uniformDeduction,
+        advanceDeduction: form.advanceDeduction,
+        totalIncome,
+        totalDeductions,
+        netIncome,
+        netIncomeText,
+        preparedBy: form.preparedBy,
+        approvedBy: form.approvedBy,
+        documentDate: form.documentDate,
+        lang
+      })
+    })
+
+    const data = await res.json()
+    if (!data.ok) {
+      throw new Error(data.error || 'Failed to save payslip')
+    }
+  }
+
+  const handleGenerateSlip = async () => {
     if (!form.employeeCode || !form.employeeName || !form.period) {
       alert(L('Please complete employee and period information', 'กรุณากรอกข้อมูลพนักงานและงวดสลิปเงินเดือนให้ครบ'))
       return
     }
-    setShowResult(true)
+    try {
+      setSaving(true)
+      await savePayslip()
+      setShowResult(true)
+    } catch (err) {
+      alert(`❌ ${err instanceof Error ? err.message : 'Failed to save payslip'}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handlePrint = () => {
@@ -258,18 +462,18 @@ export default function CalculatePayrollPage() {
   }
 
   const formatMoney = (amount: number) =>
-    amount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    amount.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   if (!mounted) {
     return (
-      <AccWindow title={L('บริษัท เค เอ็นเนอร์จี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
-        <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>กำลังโหลด...</div>
+      <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด')}>
+        <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>{L('Loading...', 'กำลังโหลด...')}</div>
       </AccWindow>
     )
   }
 
   return (
-    <AccWindow title={L('บริษัท เค เอ็นเนอร์จี เซฟ จำกัด', 'K Energy Save Co., Ltd.')}>
+    <AccWindow title={L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด')}>
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
         {!showResult ? (
           <>
@@ -349,6 +553,13 @@ export default function CalculatePayrollPage() {
                     <input value={form.preparedBy} onChange={e => updateForm('preparedBy', e.target.value)} style={textInputStyle} />
                   </div>
                 </div>
+                {(loadingPayslip || saving) && (
+                  <div style={{ marginTop: 12, fontSize: 13, color: '#475569', fontWeight: 600 }}>
+                    {loadingPayslip
+                      ? L('Loading saved payslip data...', 'กำลังโหลดข้อมูลสลิปเงินเดือนที่เคยบันทึก...')
+                      : L('Saving payslip to database...', 'กำลังบันทึกสลิปเงินเดือนลงฐานข้อมูล...')}
+                  </div>
+                )}
               </div>
 
               <div style={{ background: '#fff', borderRadius: 14, padding: 22, border: '1px solid #dbe4ee' }}>
@@ -455,7 +666,7 @@ export default function CalculatePayrollPage() {
                   <div>
                     <label style={fieldLabelStyle}>{L('Net Income in Words', 'รวมตัวอักษร')}</label>
                     <div style={{ ...textInputStyle, minHeight: 46, background: '#f8fafc' }}>
-                      {numberToThaiText(netIncome)}
+                      {netIncomeText}
                     </div>
                   </div>
                 </div>
@@ -464,19 +675,20 @@ export default function CalculatePayrollPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={handleGenerateSlip}
+                  disabled={saving}
                   style={{
                     padding: '14px 28px',
-                    background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
+                    background: saving ? '#94a3b8' : 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 10,
                     fontSize: 15,
                     fontWeight: 800,
-                    cursor: 'pointer',
+                    cursor: saving ? 'not-allowed' : 'pointer',
                     boxShadow: '0 10px 22px rgba(20,184,166,0.24)'
                   }}
                 >
-                  {L('Generate Payslip', 'สร้างสลิปเงินเดือน')}
+                  {saving ? L('Saving...', 'กำลังบันทึก...') : L('Save and Generate Payslip', 'บันทึกและสร้างสลิปเงินเดือน')}
                 </button>
               </div>
             </div>
@@ -491,21 +703,21 @@ export default function CalculatePayrollPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: 13 }}>
               <tbody>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700, width: '18%' }}>รหัสพนักงาน</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700, width: '18%' }}>{L('Employee Code', 'รหัสพนักงาน')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{form.employeeCode || '-'}</td>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700, width: '18%' }}>สลิปเงินเดือน ประจำเดือน</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700, width: '18%' }}>{L('Payslip Month', 'สลิปเงินเดือน ประจำเดือน')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{formattedPeriod}</td>
                 </tr>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>ชื่อ-นามสกุล</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Full Name', 'ชื่อ-นามสกุล')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{form.employeeName || '-'}</td>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>ตำแหน่ง</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Position', 'ตำแหน่ง')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{form.position || '-'}</td>
                 </tr>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>ฝ่าย</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Department', 'ฝ่าย')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{form.department || '-'}</td>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>วันที่</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Date', 'วันที่')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{form.documentDate || '-'}</td>
                 </tr>
               </tbody>
@@ -514,15 +726,15 @@ export default function CalculatePayrollPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: 13 }}>
               <tbody>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>เงินได้สะสม</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Accumulated Income', 'เงินได้สะสม')}</td>
                   <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right' }}>{formatMoney(form.accumulatedIncome)}</td>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>ประกันสังคมสะสม</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Accumulated Social Security', 'ประกันสังคมสะสม')}</td>
                   <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right' }}>{formatMoney(form.accumulatedSocialSecurity)}</td>
                 </tr>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>ภาษีสะสม</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Accumulated Tax', 'ภาษีสะสม')}</td>
                   <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right' }}>{formatMoney(form.accumulatedTax)}</td>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>กองทุนสะสม</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Accumulated Provident Fund', 'กองทุนสะสม')}</td>
                   <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right' }}>{formatMoney(form.accumulatedProvidentFund)}</td>
                 </tr>
               </tbody>
@@ -532,22 +744,22 @@ export default function CalculatePayrollPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
-                    <th colSpan={2} style={{ border: '1px solid #000', padding: 10, background: '#dcfce7', fontWeight: 800 }}>รายการรับ</th>
+                    <th colSpan={2} style={{ border: '1px solid #000', padding: 10, background: '#dcfce7', fontWeight: 800 }}>{L('Income Items', 'รายการรับ')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ['เงินเดือน', form.salary],
-                    ['โบนัส', form.bonus],
-                    ['ค่าตำแหน่ง', form.positionAllowance],
-                    ['ค่าล่วงเวลา', form.overtime],
-                    ['ค่าคอมมิชชั่น', form.commission],
-                    ['ประกันสุขภาพ', form.healthInsurance],
-                    ['รวมรายรับ', totalIncome]
+                    [L('Salary', 'เงินเดือน'), form.salary],
+                    [L('Bonus', 'โบนัส'), form.bonus],
+                    [L('Position Allowance', 'ค่าตำแหน่ง'), form.positionAllowance],
+                    [L('Overtime', 'ค่าล่วงเวลา'), form.overtime],
+                    [L('Commission', 'ค่าคอมมิชชั่น'), form.commission],
+                    [L('Health Insurance', 'ประกันสุขภาพ'), form.healthInsurance],
+                    [L('Total Income', 'รวมรายรับ'), totalIncome]
                   ].map(([label, value], index) => (
                     <tr key={label}>
-                      <td style={{ border: '1px solid #000', padding: 10, fontWeight: label === 'รวมรายรับ' ? 800 : 600 }}>{label}</td>
-                      <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right', background: index === 6 ? '#f0fdf4' : '#fff', fontWeight: label === 'รวมรายรับ' ? 800 : 500 }}>
+                      <td style={{ border: '1px solid #000', padding: 10, fontWeight: index === 6 ? 800 : 600 }}>{label}</td>
+                      <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right', background: index === 6 ? '#f0fdf4' : '#fff', fontWeight: index === 6 ? 800 : 500 }}>
                         {formatMoney(Number(value))}
                       </td>
                     </tr>
@@ -558,22 +770,22 @@ export default function CalculatePayrollPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
-                    <th colSpan={2} style={{ border: '1px solid #000', padding: 10, background: '#fee2e2', fontWeight: 800 }}>รายการหัก</th>
+                    <th colSpan={2} style={{ border: '1px solid #000', padding: 10, background: '#fee2e2', fontWeight: 800 }}>{L('Deduction Items', 'รายการหัก')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ['ภาษีเงินได้', form.incomeTax],
-                    ['เงินประกันสังคม', form.socialSecurity],
-                    ['กองทุนสำรองเลี้ยงชีพ', form.providentFund],
-                    ['หักขาด/ลา/มาสาย', form.absentLateDeduction],
-                    ['หักชุดฟอร์ม', form.uniformDeduction],
-                    ['เบิกล่วงหน้า', form.advanceDeduction],
-                    ['รวมรายการหัก', totalDeductions]
+                    [L('Income Tax', 'ภาษีเงินได้'), form.incomeTax],
+                    [L('Social Security', 'เงินประกันสังคม'), form.socialSecurity],
+                    [L('Provident Fund', 'กองทุนสำรองเลี้ยงชีพ'), form.providentFund],
+                    [L('Absent / Leave / Late Deduction', 'หักขาด/ลา/มาสาย'), form.absentLateDeduction],
+                    [L('Uniform Deduction', 'หักชุดฟอร์ม'), form.uniformDeduction],
+                    [L('Advance Deduction', 'เบิกล่วงหน้า'), form.advanceDeduction],
+                    [L('Total Deductions', 'รวมรายการหัก'), totalDeductions]
                   ].map(([label, value], index) => (
                     <tr key={label}>
-                      <td style={{ border: '1px solid #000', padding: 10, fontWeight: label === 'รวมรายการหัก' ? 800 : 600 }}>{label}</td>
-                      <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right', background: index === 6 ? '#fff1f2' : '#fff', fontWeight: label === 'รวมรายการหัก' ? 800 : 500 }}>
+                      <td style={{ border: '1px solid #000', padding: 10, fontWeight: index === 6 ? 800 : 600 }}>{label}</td>
+                      <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right', background: index === 6 ? '#fff1f2' : '#fff', fontWeight: index === 6 ? 800 : 500 }}>
                         {formatMoney(Number(value))}
                       </td>
                     </tr>
@@ -585,14 +797,14 @@ export default function CalculatePayrollPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 13 }}>
               <tbody>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 800, width: '24%' }}>รวมเงินได้สุทธิ</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 800, width: '24%' }}>{L('Net Income', 'รวมเงินได้สุทธิ')}</td>
                   <td style={{ border: '1px solid #000', padding: 10, textAlign: 'right', fontWeight: 800, color: '#166534' }}>
-                    {formatMoney(netIncome)} บาท
+                    {formatMoney(netIncome)} {L('Baht', 'บาท')}
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 800 }}>รวม ตัวอักษร</td>
-                  <td style={{ border: '1px solid #000', padding: 10 }}>{numberToThaiText(netIncome)}</td>
+                  <td style={{ border: '1px solid #000', padding: 10, fontWeight: 800 }}>{L('Net Income in Words', 'รวมตัวอักษร')}</td>
+                  <td style={{ border: '1px solid #000', padding: 10 }}>{netIncomeText}</td>
                 </tr>
               </tbody>
             </table>
@@ -600,13 +812,13 @@ export default function CalculatePayrollPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <tbody>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700, width: '25%' }}>จัดทำโดย</td>
+                  <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700, width: '25%' }}>{L('Prepared By', 'จัดทำโดย')}</td>
                   <td style={{ border: '1px solid #000', padding: 12 }}>{form.preparedBy || '-'}</td>
-                  <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700, width: '30%' }}>กรรมการและผู้จัดการฝ่ายบริหาร</td>
+                  <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700, width: '30%' }}>{L('Approved By', 'ผู้อนุมัติ')}</td>
                   <td style={{ border: '1px solid #000', padding: 12 }}>{form.approvedBy || '-'}</td>
                 </tr>
                 <tr>
-                  <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700 }}>วันที่</td>
+                  <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700 }}>{L('Date', 'วันที่')}</td>
                   <td style={{ border: '1px solid #000', padding: 12 }}>{form.documentDate || '-'}</td>
                   <td style={{ border: '1px solid #000', padding: 12 }}></td>
                   <td style={{ border: '1px solid #000', padding: 12 }}></td>

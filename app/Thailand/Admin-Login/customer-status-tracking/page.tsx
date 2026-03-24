@@ -63,6 +63,89 @@ const importanceColors: Record<string, { color: string; bg: string }> = {
   'Low': { color: '#059669', bg: '#d1fae5' },
 }
 
+const stageColors: Record<string, { color: string; bg: string }> = {
+  Lead: { color: '#1d4ed8', bg: '#dbeafe' },
+  Prospect: { color: '#7c3aed', bg: '#ede9fe' },
+  Qualified: { color: '#0f766e', bg: '#ccfbf1' },
+  Proposal: { color: '#b45309', bg: '#fef3c7' },
+  Negotiation: { color: '#c2410c', bg: '#ffedd5' },
+  Won: { color: '#166534', bg: '#dcfce7' },
+  Lost: { color: '#991b1b', bg: '#fee2e2' }
+}
+
+const tableShellStyle: React.CSSProperties = {
+  background: 'linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)',
+  borderRadius: 16,
+  border: '1px solid #dbe4ee',
+  overflow: 'hidden',
+  boxShadow: '0 14px 34px rgba(15,23,42,0.06)'
+}
+
+const scrollWrapStyle: React.CSSProperties = {
+  overflowX: 'auto',
+  overflowY: 'hidden'
+}
+
+const tableStyle: React.CSSProperties = {
+  width: '100%',
+  borderCollapse: 'separate',
+  borderSpacing: 0,
+  tableLayout: 'fixed'
+}
+
+const stickyHeadStyle: React.CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+  background: '#f8fbff'
+}
+
+const headerCellStyle: React.CSSProperties = {
+  padding: '14px 12px',
+  textAlign: 'left',
+  fontWeight: 700,
+  color: '#475569',
+  fontSize: 12,
+  letterSpacing: 0.2,
+  lineHeight: 1.45,
+  borderBottom: '1px solid #dbe4ee',
+  whiteSpace: 'normal'
+}
+
+const bodyCellStyle: React.CSSProperties = {
+  padding: '14px 12px',
+  fontSize: 13,
+  color: '#334155',
+  verticalAlign: 'top',
+  borderBottom: '1px solid #eef2f7'
+}
+
+const subtleTextCellStyle: React.CSSProperties = {
+  ...bodyCellStyle,
+  color: '#64748b'
+}
+
+const clampTwoLineStyle: React.CSSProperties = {
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+  lineHeight: 1.55
+}
+
+const badgeStyle = (color: string, bg: string): React.CSSProperties => ({
+  padding: '5px 10px',
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 700,
+  color,
+  background: bg,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 24
+})
+
 export default function CustomerStatusTrackingPage() {
   const [lang, setLang] = useState<'en' | 'th'>('th')
   const [activeTab, setActiveTab] = useState<'activities' | 'customers'>('activities')
@@ -594,48 +677,50 @@ export default function CustomerStatusTrackingPage() {
                 {L('Loading...', 'กำลังโหลด...')}
               </div>
             ) : (
-              <div style={{
-                background: 'white',
-                borderRadius: 10,
-                border: '1px solid #e2e8f0',
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                boxShadow: 'none'
-              }}>
-                <table style={{ width: '100%', minWidth: 1500, borderCollapse: 'collapse', tableLayout: 'auto' }}>
+              <div style={tableShellStyle}>
+                <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)' }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                    {L('Sales Activity Timeline', 'ไทม์ไลน์กิจกรรมการขาย')}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 13, color: '#64748b' }}>
+                    {L(`Showing ${filteredActivities.length} records`, `แสดง ${filteredActivities.length} รายการ`)}
+                  </div>
+                </div>
+                <div style={scrollWrapStyle}>
+                <table style={{ ...tableStyle, minWidth: 1500 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 90 }}>
+                    <tr>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 90 }}>
                         {L('Date', 'วันที่')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 120 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 120 }}>
                         {L('Sales Staff', 'พนักงานขาย')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 140 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 160 }}>
                         {L('Customer Name', 'ชื่อลูกค้า')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 110 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 120 }}>
                         {L('Activity Type', 'ประเภท')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 240 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 260 }}>
                         {L('Key Discussion Summary', 'สรุปการสนทนา')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 110 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 120 }}>
                         {L('Reaction', 'ปฏิกิริยา')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 190 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 210 }}>
                         {L('Technical Questions', 'คำถามเทคนิค')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 180 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 210 }}>
                         {L('Next Action', 'ขั้นตอนถัดไป')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 115 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 120 }}>
                         {L('Appointment Date', 'วันนัดหมาย')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 70 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 80, textAlign: 'center' }}>
                         {L('HQ', 'HQ')}
                       </th>
-                      <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'normal', lineHeight: 1.4, minWidth: 90 }}>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 100, textAlign: 'center' }}>
                         {L('Actions', 'จัดการ')}
                       </th>
                     </tr>
@@ -655,64 +740,64 @@ export default function CustomerStatusTrackingPage() {
                         <tr
                           key={activity.activityID}
                           style={{
-                            borderBottom: idx < filteredActivities.length - 1 ? '1px solid #f1f5f9' : 'none',
-                            transition: 'background 0.2s'
+                            background: idx % 2 === 0 ? '#ffffff' : '#fbfdff',
+                            transition: 'background 0.2s ease, transform 0.2s ease'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fbff'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#fbfdff'}
                         >
-                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            {formatDate(activity.activityDate)}
+                          <td style={{ ...bodyCellStyle, whiteSpace: 'nowrap' }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{formatDate(activity.activityDate)}</div>
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#0f172a', fontWeight: 500, verticalAlign: 'top' }}>
+                          <td style={{ ...bodyCellStyle, color: '#0f172a', fontWeight: 600 }}>
                             {activity.salesStaffName || '-'}
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#0f172a', fontWeight: 600, verticalAlign: 'top' }}>
-                            {activity.customerName || '-'}
+                          <td style={{ ...bodyCellStyle, color: '#0f172a' }}>
+                            <div style={{ fontWeight: 700 }}>{activity.customerName || '-'}</div>
+                            {activity.customerID ? (
+                              <div style={{ marginTop: 4, fontSize: 11, color: '#94a3b8' }}>#{activity.customerID}</div>
+                            ) : null}
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#475569', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            {activity.activityType || '-'}
+                          <td style={bodyCellStyle}>
+                            <span style={badgeStyle('#1d4ed8', '#dbeafe')}>
+                              {activity.activityType || '-'}
+                            </span>
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'top' }}>
-                            {activity.keyDiscussionSummary || '-'}
+                          <td style={subtleTextCellStyle}>
+                            <div style={clampTwoLineStyle}>{activity.keyDiscussionSummary || '-'}</div>
                           </td>
-                          <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: reactionStyle.color,
-                              background: reactionStyle.bg,
-                              display: 'inline-block'
-                            }}>
+                          <td style={bodyCellStyle}>
+                            <span style={badgeStyle(reactionStyle.color, reactionStyle.bg)}>
                               {reactionLabel(activity.customerReaction)}
                             </span>
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'top' }}>
-                            {activity.technicalQuestionsRaised || '-'}
+                          <td style={subtleTextCellStyle}>
+                            <div style={clampTwoLineStyle}>{activity.technicalQuestionsRaised || '-'}</div>
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', lineHeight: 1.5, whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'top' }}>
-                            {activity.nextAction || '-'}
+                          <td style={subtleTextCellStyle}>
+                            <div style={clampTwoLineStyle}>{activity.nextAction || '-'}</div>
                           </td>
-                          <td style={{ padding: '12px 10px', fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                          <td style={{ ...bodyCellStyle, whiteSpace: 'nowrap', color: '#0f172a', fontWeight: 600 }}>
                             {formatDate(activity.nextActionDate)}
                           </td>
-                          <td style={{ padding: '12px 10px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: activity.hqSupportNeeded === 'Yes' ? '#991b1b' : '#059669', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            {hqSupportLabel(activity.hqSupportNeeded)}
+                          <td style={{ ...bodyCellStyle, textAlign: 'center' }}>
+                            <span style={badgeStyle(activity.hqSupportNeeded === 'Yes' ? '#991b1b' : '#166534', activity.hqSupportNeeded === 'Yes' ? '#fee2e2' : '#dcfce7')}>
+                              {hqSupportLabel(activity.hqSupportNeeded)}
+                            </span>
                           </td>
-                          <td style={{ padding: '8px 6px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
+                          <td style={{ ...bodyCellStyle, padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                               <button
                                 onClick={() => handleActivityEdit(activity)}
                                 title={L('Edit', 'แก้ไข')}
                                 style={{
-                                  padding: '4px 6px',
-                                  background: '#f1f5f9',
-                                  color: '#475569',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 16,
+                                  width: 32,
+                                  height: 32,
+                                  background: '#eef4ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #dbeafe',
+                                  borderRadius: 10,
+                                  fontSize: 15,
                                   cursor: 'pointer'
                                 }}
                               >
@@ -722,12 +807,13 @@ export default function CustomerStatusTrackingPage() {
                                 onClick={() => handleActivityDelete(activity.activityID)}
                                 title={L('Delete', 'ลบ')}
                                 style={{
-                                  padding: '4px 6px',
-                                  background: '#fee2e2',
-                                  color: '#991b1b',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 16,
+                                  width: 32,
+                                  height: 32,
+                                  background: '#fff1f2',
+                                  color: '#e11d48',
+                                  border: '1px solid #fecdd3',
+                                  borderRadius: 10,
+                                  fontSize: 15,
                                   cursor: 'pointer'
                                 }}
                               >
@@ -741,6 +827,7 @@ export default function CustomerStatusTrackingPage() {
                     }
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>
@@ -999,30 +1086,34 @@ export default function CustomerStatusTrackingPage() {
                 {L('Loading...', 'กำลังโหลด...')}
               </div>
             ) : (
-              <div style={{
-                background: 'white',
-                borderRadius: 12,
-                overflow: 'hidden',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+              <div style={tableShellStyle}>
+                <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)' }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                    {L('Customer Pipeline Overview', 'ภาพรวมลูกค้าใน Pipeline')}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 13, color: '#64748b' }}>
+                    {L(`Showing ${filteredCustomers.length} records`, `แสดง ${filteredCustomers.length} รายการ`)}
+                  </div>
+                </div>
+                <div style={scrollWrapStyle}>
+                <table style={{ ...tableStyle, minWidth: 1480 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>ID</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Company Name', 'ชื่อบริษัท')}</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Industry', 'อุตสาหกรรม')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Location', 'สถานที่')}</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Contact', 'ผู้ติดต่อ')}</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Position', 'ตำแหน่ง')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Phone', 'เบอร์โทร')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('kW', 'kW')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Saving', 'ประหยัด')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Owner', 'เซลล์')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Contact Date', 'วันติดต่อ')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Stage', 'สถานะ')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('%', '%')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Imp.', 'สำคัญ')}</th>
-                      <th style={{ padding: '12px 6px', textAlign: 'center', fontWeight: 600, color: '#475569', fontSize: 12, whiteSpace: 'nowrap' }}>{L('Act', 'จัดการ')}</th>
+                    <tr>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 72 }}>ID</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 220 }}>{L('Company Name', 'ชื่อบริษัท')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 140 }}>{L('Industry', 'อุตสาหกรรม')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 110 }}>{L('Location', 'สถานที่')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 130 }}>{L('Contact', 'ผู้ติดต่อ')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 130 }}>{L('Position', 'ตำแหน่ง')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 120 }}>{L('Phone', 'เบอร์โทร')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 80, textAlign: 'right' }}>{L('kW', 'kW')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 110, textAlign: 'right' }}>{L('Saving', 'ประหยัด')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 120 }}>{L('Owner', 'เซลล์')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 110 }}>{L('Contact Date', 'วันติดต่อ')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 110 }}>{L('Stage', 'สถานะ')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 80, textAlign: 'right' }}>{L('%', '%')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 96, textAlign: 'center' }}>{L('Imp.', 'สำคัญ')}</th>
+                      <th style={{ ...headerCellStyle, ...stickyHeadStyle, minWidth: 96, textAlign: 'center' }}>{L('Act', 'จัดการ')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1035,65 +1126,65 @@ export default function CustomerStatusTrackingPage() {
                       </tr>
                     ) : filteredCustomers.map((customer, idx) => {
                       const importStyle = importanceColors[customer.strategicImportance] || { color: '#475569', bg: '#f1f5f9' }
+                      const stageStyle = stageColors[customer.currentStage] || { color: '#475569', bg: '#f1f5f9' }
 
                       return (
                         <tr
                           key={customer.customerID}
                           style={{
-                            borderBottom: idx < filteredCustomers.length - 1 ? '1px solid #f1f5f9' : 'none',
-                            transition: 'background 0.2s'
+                            background: idx % 2 === 0 ? '#ffffff' : '#fbfdff',
+                            transition: 'background 0.2s ease'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fbff'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#fbfdff'}
                         >
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#64748b' }}>{customer.customerID}</td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 600 }}>{customer.customerCompanyName || '-'}</td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>{customer.industryType || '-'}</td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>{customer.locationProvince || '-'}</td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>{customer.contactPersonName || '-'}</td>
-                          <td style={{ padding: '10px 6px', fontSize: 11, color: '#64748b' }}>{customer.contactPosition || '-'}</td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>{customer.phone || '-'}</td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>{customer.estimatedLoadKW || '-'}</td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                          <td style={subtleTextCellStyle}>{customer.customerID}</td>
+                          <td style={{ ...bodyCellStyle, color: '#0f172a' }}>
+                            <div style={{ fontWeight: 700 }}>{customer.customerCompanyName || '-'}</div>
+                          </td>
+                          <td style={subtleTextCellStyle}>
+                            <div style={clampTwoLineStyle}>{customer.industryType || '-'}</div>
+                          </td>
+                          <td style={subtleTextCellStyle}>{customer.locationProvince || '-'}</td>
+                          <td style={subtleTextCellStyle}>
+                            <div style={{ fontWeight: 600, color: '#334155' }}>{customer.contactPersonName || '-'}</div>
+                          </td>
+                          <td style={subtleTextCellStyle}>
+                            <div style={clampTwoLineStyle}>{customer.contactPosition || '-'}</div>
+                          </td>
+                          <td style={subtleTextCellStyle}>{customer.phone || '-'}</td>
+                          <td style={{ ...bodyCellStyle, color: '#0f172a', textAlign: 'right', fontWeight: 700 }}>{customer.estimatedLoadKW || '-'}</td>
+                          <td style={{ ...bodyCellStyle, color: '#0f172a', textAlign: 'right', fontWeight: 700 }}>
                             {customer.estimatedMonthlySavingTHB ? customer.estimatedMonthlySavingTHB.toLocaleString() : '-'}
                           </td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>{customer.salesOwner || '-'}</td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569' }}>
-                            {customer.firstContactDate ? new Date(customer.firstContactDate).toLocaleDateString('th-TH', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit'
-                            }) : '-'}
+                          <td style={subtleTextCellStyle}>{customer.salesOwner || '-'}</td>
+                          <td style={subtleTextCellStyle}>
+                            {formatDate(customer.firstContactDate)}
                           </td>
-                          <td style={{ padding: '10px 6px', fontSize: 12, color: '#475569', fontWeight: 500 }}>{customer.currentStage || '-'}</td>
-                          <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right', fontWeight: 600 }}>
+                          <td style={bodyCellStyle}>
+                            <span style={badgeStyle(stageStyle.color, stageStyle.bg)}>{customer.currentStage || '-'}</span>
+                          </td>
+                          <td style={{ ...bodyCellStyle, color: '#0f172a', textAlign: 'right', fontWeight: 700 }}>
                             {customer.licensingProbability || 0}%
                           </td>
-                          <td style={{ padding: '12px' }}>
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: importStyle.color,
-                              background: importStyle.bg,
-                              display: 'inline-block'
-                            }}>
+                          <td style={{ ...bodyCellStyle, textAlign: 'center' }}>
+                            <span style={badgeStyle(importStyle.color, importStyle.bg)}>
                               {customer.strategicImportance || 'Low'}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
+                          <td style={{ ...bodyCellStyle, padding: '10px 8px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                               <button
                                 onClick={() => handleCustomerEdit(customer)}
                                 title={L('Edit', 'แก้ไข')}
                                 style={{
-                                  padding: '4px 6px',
-                                  background: '#f1f5f9',
-                                  color: '#475569',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 16,
+                                  width: 32,
+                                  height: 32,
+                                  background: '#eef4ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #dbeafe',
+                                  borderRadius: 10,
+                                  fontSize: 15,
                                   cursor: 'pointer'
                                 }}
                               >
@@ -1103,12 +1194,13 @@ export default function CustomerStatusTrackingPage() {
                                 onClick={() => handleCustomerDelete(customer.customerID)}
                                 title={L('Delete', 'ลบ')}
                                 style={{
-                                  padding: '4px 6px',
-                                  background: '#fee2e2',
-                                  color: '#991b1b',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 16,
+                                  width: 32,
+                                  height: 32,
+                                  background: '#fff1f2',
+                                  color: '#e11d48',
+                                  border: '1px solid #fecdd3',
+                                  borderRadius: 10,
+                                  fontSize: 15,
                                   cursor: 'pointer'
                                 }}
                               >
@@ -1122,6 +1214,7 @@ export default function CustomerStatusTrackingPage() {
                     }
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>
