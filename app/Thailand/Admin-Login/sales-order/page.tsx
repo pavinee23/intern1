@@ -7,6 +7,39 @@ import styles from '../admin-theme.module.css'
 import poStyles from '../purchase-order.module.css'
 
 type SOItem = { product_id?: number | null; sku?: string | null; productName: string; quantity: number; unitPrice: number }
+type QuotationItem = Record<string, unknown>
+type LocaleChangeDetail = string | { locale?: 'en' | 'th' }
+type CustomerRecord = {
+  cusID?: number | string
+  id?: number | string
+  fullname?: string
+  name?: string
+  email?: string
+  phone?: string
+  tel?: string
+  address?: string
+}
+type ProductRecord = {
+  id?: number | string
+  sku?: string
+  name?: string
+  price?: number | string
+}
+type QuotationRecord = {
+  quoteID?: number | string
+  quoteNo?: string
+  customer_name?: string
+  customer_email?: string
+  customer_phone?: string
+  customer_address?: string
+  delivery_date?: string
+  vat_percent?: number | string
+  discount_percent?: number | string
+  notes?: string
+  items?: QuotationItem[] | string
+  total?: number | string
+  total_amount?: number | string
+}
 
 export default function SalesOrderPage() {
   const router = useRouter()
@@ -20,7 +53,7 @@ export default function SalesOrderPage() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const d = (e as any).detail
+      const d = (e as CustomEvent<LocaleChangeDetail>).detail
       const v = typeof d === 'string' ? d : d?.locale
       if (v === 'en' || v === 'th') setLocale(v)
     }
@@ -65,8 +98,13 @@ export default function SalesOrderPage() {
 
   const [discountPercent, setDiscountPercent] = useState<number>(0)
   const [vatPercent, setVatPercent] = useState<number>(7)
-  const [customers, setCustomers] = useState<any[]>([])
+  const [customers, setCustomers] = useState<CustomerRecord[]>([])
   const [loading, setLoading] = useState(false)
+  const [quoteNo, setQuoteNo] = useState('')
+  const [quoteSearchTerm, setQuoteSearchTerm] = useState('')
+  const [quoteSearchResults, setQuoteSearchResults] = useState<QuotationRecord[]>([])
+  const [showQuoteSearchModal, setShowQuoteSearchModal] = useState(false)
+  const [importingQuote, setImportingQuote] = useState(false)
 
   // Load initial data
   useEffect(() => {
@@ -102,7 +140,7 @@ export default function SalesOrderPage() {
       }
       // Update date to today
       setOrderDate(new Date().toISOString().split('T')[0])
-    } catch (_) {
+    } catch {
       const now = new Date()
       const yy = String(now.getFullYear()).slice(-2)
       const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -135,12 +173,12 @@ export default function SalesOrderPage() {
   }
 
   // Product search
-  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [suggestions, setSuggestions] = useState<ProductRecord[]>([])
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number | null>(null)
   const searchTimeout = useRef<number | null>(null)
   // explicit product picker modal
   const [pickerVisible, setPickerVisible] = useState(false)
-  const [pickerProducts, setPickerProducts] = useState<any[]>([])
+  const [pickerProducts, setPickerProducts] = useState<ProductRecord[]>([])
   const [pickerLoading, setPickerLoading] = useState(false)
   const [pickerForIndex, setPickerForIndex] = useState<number | null>(null)
 
@@ -172,7 +210,7 @@ export default function SalesOrderPage() {
           const j = await res.json()
           if (j && Array.isArray(j.products)) setSuggestions(j.products)
           else setSuggestions([])
-        } catch (_) {
+        } catch {
           setSuggestions([])
         }
       }, 300) as unknown as number
@@ -200,7 +238,7 @@ export default function SalesOrderPage() {
     }
   }
 
-  const selectProductFromPicker = (p: any) => {
+  const selectProductFromPicker = (p: ProductRecord) => {
     if (pickerForIndex === null) return
     const idx = pickerForIndex
     setItems(prev => {
@@ -256,7 +294,7 @@ export default function SalesOrderPage() {
     }
 
     try {
-      const headers: any = { 'Content-Type': 'application/json', ...getAuthHeaders() }
+      const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() }
       const res = await fetch('/api/sales-orders', { method: 'POST', headers, body: JSON.stringify(payload) })
       const j = await res.json()
       if (j && j.success) {
@@ -270,6 +308,92 @@ export default function SalesOrderPage() {
       alert(L('Network error', 'เกิดข้อผิดพลาด'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const applyQuotationToForm = (quote: QuotationRecord) => {
+    const parsedItems = typeof quote.items === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(quote.items) as QuotationItem[]
+          } catch {
+            return []
+          }
+        })()
+      : (Array.isArray(quote.items) ? quote.items : [])
+
+    const mappedItems: SOItem[] = parsedItems.length > 0
+      ? parsedItems.map((it) => ({
+          product_id: Number(it.product_id || it.productID || it.id || 0) || null,
+          sku: String(it.sku || '') || null,
+          productName: String(it.product_name || it.productName || it.description || it.desc || it.sku || ''),
+          quantity: Number(it.quantity || it.qty || 1) || 1,
+          unitPrice: Number(it.unit_price || it.unitPrice || it.price || it.total_price || 0) || 0
+        }))
+      : [{ product_id: null, sku: null, productName: '', quantity: 1, unitPrice: 0 }]
+
+    setQuoteNo(String(quote.quoteNo || ''))
+    setItems(mappedItems)
+    setFormData(prev => ({
+      ...prev,
+      customerName: quote.customer_name || '',
+      customerEmail: quote.customer_email || '',
+      customerPhone: quote.customer_phone || '',
+      customerAddress: quote.customer_address || '',
+      deliveryDate: quote.delivery_date || prev.deliveryDate,
+      notes: quote.notes || prev.notes
+    }))
+
+    if (quote.vat_percent !== undefined) {
+      setVatPercent(Number(quote.vat_percent) || 7)
+    }
+    if (quote.discount_percent !== undefined) {
+      setDiscountPercent(Number(quote.discount_percent) || 0)
+    }
+  }
+
+  const importQuotationByNo = async () => {
+    const selectedQuoteNo = quoteNo.trim()
+    if (!selectedQuoteNo) {
+      alert(L('Please enter quotation number', 'กรุณากรอกเลขที่ใบเสนอราคา'))
+      return
+    }
+
+    setImportingQuote(true)
+    try {
+      const res = await fetch(`/api/quotations?quoteNo=${encodeURIComponent(selectedQuoteNo)}`, { headers: getAuthHeaders() })
+      const j = await res.json()
+      if (!res.ok || !j.success || !j.quotation) {
+        alert(L('Quotation not found', 'ไม่พบใบเสนอราคา'))
+        return
+      }
+
+      applyQuotationToForm(j.quotation as QuotationRecord)
+      window.dispatchEvent(new CustomEvent('k-system-toast', { detail: { message: L('Quotation imported to sales order', 'ดึงข้อมูลใบเสนอราคามาเป็นใบสั่งขายแล้ว'), type: 'success' } }))
+    } catch (err) {
+      console.error(err)
+      alert(L('Failed to fetch quotation', 'เกิดข้อผิดพลาดขณะดึงข้อมูลใบเสนอราคา'))
+    } finally {
+      setImportingQuote(false)
+    }
+  }
+
+  const openQuotationSearch = async () => {
+    setImportingQuote(true)
+    try {
+      const res = await fetch('/api/quotations', { headers: getAuthHeaders() })
+      const j = await res.json()
+      if (!res.ok || !j.success) {
+        alert(L('Failed to load quotations', 'โหลดรายการใบเสนอราคาไม่สำเร็จ'))
+        return
+      }
+      setQuoteSearchResults(j.rows || j.quotations || [])
+      setShowQuoteSearchModal(true)
+    } catch (err) {
+      console.error(err)
+      alert(L('Failed to load quotations', 'โหลดรายการใบเสนอราคาไม่สำเร็จ'))
+    } finally {
+      setImportingQuote(false)
     }
   }
 
@@ -325,6 +449,25 @@ export default function SalesOrderPage() {
                   title={L('Fixed to today', 'ตั้งเป็นวันที่ปัจจุบัน')}
                   className={styles.formInput}
                 />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 20, padding: 12, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, color: '#0369a1' }}>{L('Import from Quotation:', 'ดึงข้อมูลจากใบเสนอราคา:')}</span>
+                <input
+                  value={quoteNo}
+                  onChange={e => setQuoteNo(e.target.value)}
+                  placeholder={L('Quotation No.', 'เลขที่ใบเสนอราคา')}
+                  className={styles.formInput}
+                  style={{ maxWidth: 240 }}
+                />
+                <button type="button" className={styles.btnOutline} onClick={importQuotationByNo} disabled={importingQuote}>
+                  {importingQuote ? L('Loading...', 'กำลังดึงข้อมูล...') : L('Import', 'ดึงข้อมูล')}
+                </button>
+                <button type="button" className={styles.btnOutline} onClick={openQuotationSearch} disabled={importingQuote}>
+                  {L('Search quotation', 'ค้นหาใบเสนอราคา')}
+                </button>
               </div>
             </div>
 
@@ -439,7 +582,7 @@ export default function SalesOrderPage() {
                           />
                           {activeSuggestionIndex === idx && suggestions.length > 0 && (
                             <div className={poStyles.suggestionsDropdown}>
-                              {suggestions.map((p: any) => (
+                              {suggestions.map((p: ProductRecord) => (
                                 <div
                                   key={p.id || p.sku || p.name}
                                   onClick={() => {
@@ -650,6 +793,75 @@ export default function SalesOrderPage() {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </div>
+          )}
+          {showQuoteSearchModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }}>
+              <div style={{ width: '90%', maxWidth: 900, background: '#fff', borderRadius: 8, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 700 }}>{L('Select Quotation', 'เลือกใบเสนอราคา')}</div>
+                  <button onClick={() => setShowQuoteSearchModal(false)} className={styles.btnOutline}>✕</button>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 12 }}>
+                  <input
+                    value={quoteSearchTerm}
+                    onChange={e => setQuoteSearchTerm(e.target.value)}
+                    placeholder={L('Search by quote no or customer', 'ค้นหาด้วยเลขที่ใบเสนอราคาหรือชื่อลูกค้า')}
+                    className={styles.formInput}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+                <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>{L('Quote No.', 'เลขที่ใบเสนอราคา')}</th>
+                        <th>{L('Customer', 'ลูกค้า')}</th>
+                        <th style={{ textAlign: 'right' }}>{L('Total', 'ยอดรวม')}</th>
+                        <th style={{ width: 120 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quoteSearchResults
+                        .filter((q) => {
+                          const search = quoteSearchTerm.trim().toLowerCase()
+                          if (!search) return true
+                          return String(q.quoteNo || '').toLowerCase().includes(search) || String(q.customer_name || '').toLowerCase().includes(search)
+                        })
+                        .map((q) => (
+                          <tr key={String(q.quoteID || q.quoteNo || Math.random())}>
+                            <td>{q.quoteNo || '-'}</td>
+                            <td>{q.customer_name || '-'}</td>
+                            <td style={{ textAlign: 'right' }}>{fmtCurrency(Number(q.total || q.total_amount || 0))} ฿</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className={styles.btnOutline}
+                                onClick={() => {
+                                  applyQuotationToForm(q)
+                                  setShowQuoteSearchModal(false)
+                                }}
+                              >
+                                {L('Select', 'เลือก')}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      {quoteSearchResults.filter((q) => {
+                        const search = quoteSearchTerm.trim().toLowerCase()
+                        if (!search) return true
+                        return String(q.quoteNo || '').toLowerCase().includes(search) || String(q.customer_name || '').toLowerCase().includes(search)
+                      }).length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{ textAlign: 'center', padding: 20 }}>
+                            {L('No quotations found', 'ไม่พบใบเสนอราคา')}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

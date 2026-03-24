@@ -64,13 +64,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { ebDate, expense_type, category, vendor_name, vendor_invoice_no, amount, vat, total_amount, payment_method, payment_status, department, project_code, description, notes, items, created_by } = body
+    const { ebNo: requestedEbNo, ebDate, expense_type, category, vendor_name, vendor_invoice_no, amount, vat, total_amount, payment_method, payment_status, department, project_code, description, notes, items, created_by } = body
 
-    const ebNo = await generateDocumentNumber('EB', 'expense_bills', 'ebNo')
+    let ebNo = requestedEbNo
     const connection = await pool.getConnection()
 
     try {
       await connection.beginTransaction()
+
+      if (ebNo) {
+        const [existingRows]: any = await connection.query(
+          `SELECT ebID FROM expense_bills WHERE ebNo = ? LIMIT 1`,
+          [ebNo]
+        )
+        if (existingRows.length > 0) {
+          const duplicateError = new Error('EB number already exists. Please refresh to get a new number.') as Error & { status?: number }
+          duplicateError.status = 409
+          throw duplicateError
+        }
+      } else {
+        ebNo = await generateDocumentNumber('EB', 'expense_bills', 'ebNo')
+      }
 
       const [result]: any = await connection.query(
         `INSERT INTO expense_bills (ebNo, ebDate, expense_type, category, vendor_name, vendor_invoice_no, amount, vat, total_amount, payment_method, payment_status, department, project_code, description, notes, created_by, created_at)
@@ -99,7 +113,10 @@ export async function POST(request: NextRequest) {
       connection.release()
     }
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: error.status || 500 }
+    )
   }
 }
 

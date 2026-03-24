@@ -1,7 +1,34 @@
 "use client"
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+
+type ApplianceItem = {
+  name?: string
+  power?: number | string
+  qty?: number | string
+  hours?: number | string
+}
+
+type UsageHistoryItem = {
+  period?: string
+  kwh?: number | string
+  peak_kw?: number | string
+}
+
+type CalculationData = {
+  [key: string]: unknown
+  calcID?: string | number
+  power_calcuNo?: string | number
+  company_name?: string
+  customer_name?: string
+  status?: string
+  created_at?: string
+  parameters?: Record<string, unknown> | string | null
+  result?: Record<string, unknown> | string | null
+  monthly_payment?: number | string
+}
 
 export default function PowerCalculatorPrintPage() {
   const searchParams = useSearchParams()
@@ -18,7 +45,7 @@ export default function PowerCalculatorPrintPage() {
     } catch { return 'th' }
   })
 
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<CalculationData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -65,27 +92,33 @@ export default function PowerCalculatorPrintPage() {
     )
   }
 
-  const params = data.parameters ? (typeof data.parameters === 'string' ? JSON.parse(data.parameters) : data.parameters) : {}
-  const result = data.result ? (typeof data.result === 'string' ? JSON.parse(data.result) : data.result) : {}
+  const params = data.parameters
+    ? (typeof data.parameters === 'string' ? JSON.parse(data.parameters) : data.parameters)
+    : {}
+  const result = data.result
+    ? (typeof data.result === 'string' ? JSON.parse(data.result) : data.result)
+    : {}
+  const paramsRecord = params as Record<string, unknown>
+  const resultRecord = result as Record<string, unknown>
 
-  const voltage = params.voltage || 230
-  const current = params.current || 0
-  const pf = params.pf || 1
-  const phase = params.phase || 'single'
-  const appliances = params.appliances || []
-  const usageHistory = params.usage_history || params.usageHistory || []
-  const companyName = data.company_name || params.companyName || ''
-  const customerName = data.customer_name || params.customerName || ''
-  const unitPrice = params.unitPrice || 5.0
-  const powerSavingRate = params.powerSavingRate || 10
-  const deviceCapacity = params.deviceCapacity || 30
-  const productPrice = params.productPrice || 0
-  const paymentMonths = params.paymentMonths || 60
-  const avgMonthlyUsage = params.avgMonthlyUsage || 0
+  const voltage = Number(paramsRecord.voltage || 230)
+  const current = Number(paramsRecord.current || 0)
+  const pf = Number(paramsRecord.pf || 1)
+  const phase = String(paramsRecord.phase || 'single')
+  const appliances = (paramsRecord.appliances as ApplianceItem[]) || []
+  const usageHistory = ((paramsRecord.usage_history || paramsRecord.usageHistory) as UsageHistoryItem[]) || []
+  const companyName = String(data.company_name || paramsRecord.companyName || '')
+  const customerName = String(data.customer_name || paramsRecord.customerName || '')
+  const unitPrice = Number(paramsRecord.unitPrice || 5.0)
+  const powerSavingRate = Number(paramsRecord.powerSavingRate || 10)
+  const deviceCapacity = Number(paramsRecord.deviceCapacity || 30)
+  const productPrice = Number(paramsRecord.productPrice || 0)
+  const paymentMonths = Number(paramsRecord.paymentMonths || 60)
+  const avgMonthlyUsage = Number(paramsRecord.avgMonthlyUsage || 0)
 
-  const realPower = result.real || 0
-  const apparentPower = result.apparent || 0
-  const reactivePower = result.reactive || 0
+  const realPower = Number(resultRecord.real || 0)
+  const apparentPower = Number(resultRecord.apparent || 0)
+  const reactivePower = Number(resultRecord.reactive || 0)
 
   const estimatedCurrent = phase === 'single'
     ? apparentPower / voltage
@@ -110,7 +143,7 @@ export default function PowerCalculatorPrintPage() {
       const url = new URL(uri)
       url.searchParams.set(key, value)
       return url.toString()
-    } catch (e) { return uri }
+    } catch { return uri }
   }
 
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
@@ -157,6 +190,7 @@ export default function PowerCalculatorPrintPage() {
             box-sizing: border-box;
             overflow-x: hidden;
             min-height: 100vh;
+            overflow: visible;
           }
 
           /* Header */
@@ -453,6 +487,7 @@ export default function PowerCalculatorPrintPage() {
             font-size: 9pt;
             color: #64748b;
             text-align: center;
+            page-break-inside: avoid;
           }
 
           .no-print {
@@ -480,19 +515,22 @@ export default function PowerCalculatorPrintPage() {
             * {
               box-sizing: border-box;
             }
+            html,
             body {
               padding: 0;
               margin: 0;
               background: white;
-              overflow-x: hidden !important;
+              overflow: visible !important;
               width: 100%;
+              height: auto !important;
             }
             .page-container {
               padding: 0;
               margin: 0;
               max-width: 100%;
               width: 100%;
-              overflow-x: hidden !important;
+              min-height: auto !important;
+              overflow: visible !important;
             }
             .no-print {
               display: none !important;
@@ -501,7 +539,7 @@ export default function PowerCalculatorPrintPage() {
               page-break-inside: auto;
               margin-bottom: 8px;
               max-width: 100%;
-              overflow: hidden;
+              overflow: visible;
             }
 
             .form-section:first-of-type,
@@ -515,11 +553,11 @@ export default function PowerCalculatorPrintPage() {
             }
             .form-grid {
               max-width: 100%;
-              overflow: hidden;
+              overflow: visible;
             }
             .results-grid {
               max-width: 100%;
-              overflow: hidden;
+              overflow: visible;
             }
             .report-header {
               border-bottom: 2px solid #3b82f6;
@@ -544,7 +582,7 @@ export default function PowerCalculatorPrintPage() {
               page-break-before: avoid;
               page-break-inside: auto;
               max-width: 100%;
-              overflow: hidden;
+              overflow: visible;
             }
 
             .form-grid {
@@ -564,6 +602,9 @@ export default function PowerCalculatorPrintPage() {
               width: 100%;
               font-size: 8.5pt;
             }
+            .data-table thead {
+              display: table-header-group;
+            }
             .data-table tr {
               page-break-inside: avoid;
               page-break-after: auto;
@@ -573,11 +614,11 @@ export default function PowerCalculatorPrintPage() {
               padding: 4px 6px;
             }
             .report-footer {
-              position: fixed;
-              bottom: 0;
+              position: static;
               width: 100%;
               text-align: center;
               font-size: 8pt;
+              margin-top: 12px;
             }
           }
         `}</style>
@@ -611,7 +652,7 @@ export default function PowerCalculatorPrintPage() {
           <div className="report-header">
             <div className="company-info">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain', background: '#fff', padding: '4px', border: '1px solid #ddd' }} />
+                <Image src="/k-energy-save-logo.jpg" alt="Logo" width={80} height={80} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain', background: '#fff', padding: '4px', border: '1px solid #ddd' }} />
                 <div>
                   <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
                   <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
@@ -947,7 +988,7 @@ export default function PowerCalculatorPrintPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {appliances.map((app: any, i: number) => (
+                    {appliances.map((app: ApplianceItem, i: number) => (
                       <tr key={i}>
                         <td>{app.name || '-'}</td>
                         <td className="text-right">{(app.power || 0).toLocaleString()}</td>
@@ -975,7 +1016,7 @@ export default function PowerCalculatorPrintPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {usageHistory.map((usage: any, i: number) => (
+                    {usageHistory.map((usage: UsageHistoryItem, i: number) => (
                       <tr key={i}>
                         <td>{usage.period || '-'}</td>
                         <td className="text-right">{(usage.kwh || 0).toLocaleString()}</td>

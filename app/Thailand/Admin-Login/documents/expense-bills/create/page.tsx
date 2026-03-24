@@ -11,6 +11,8 @@ type ItemType = {
   unit_price: number
 }
 
+type LocaleChangeDetail = string | { locale?: 'en' | 'th' }
+
 export default function CreateExpenseBillPage() {
   const router = useRouter()
 
@@ -28,10 +30,11 @@ export default function CreateExpenseBillPage() {
   const [notes, setNotes] = useState('')
 
   const [items, setItems] = useState<ItemType[]>([{ description: '', quantity: 1, unit_price: 0 }])
-  const [vatRate, setVatRate] = useState(7)
+  const vatRate = 7
   const [totals, setTotals] = useState({ amount: 0, vat: 0, total: 0 })
 
   const [loading, setLoading] = useState(false)
+  const [refreshingEbNo, setRefreshingEbNo] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -44,7 +47,7 @@ export default function CreateExpenseBillPage() {
     } catch {}
 
     const handler = (e: Event) => {
-      const d = (e as any).detail
+      const d = (e as CustomEvent<LocaleChangeDetail>).detail
       const v = typeof d === 'string' ? d : d?.locale
       if (v === 'en' || v === 'th') setLocale(v)
     }
@@ -59,17 +62,48 @@ export default function CreateExpenseBillPage() {
   const L = (en: string, th: string) => locale === 'th' ? th : en
 
   useEffect(() => {
+    refreshEbNo()
+  }, [])
+
+  useEffect(() => {
     const amount = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
     const vat = (amount * vatRate) / 100
     const total = amount + vat
     setTotals({ amount, vat, total })
   }, [items, vatRate])
 
+  async function refreshEbNo() {
+    setRefreshingEbNo(true)
+    try {
+      const res = await fetch('/api/documents/generate-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'eb' })
+      })
+      const j = await res.json()
+      if (res.ok && j.success && j.docNo) {
+        setEbNo(j.docNo)
+      } else {
+        throw new Error(j.error || 'Failed to generate EB number')
+      }
+      setEbDate(new Date().toISOString().split('T')[0])
+    } catch (err) {
+      console.error('Failed to get expense bill number:', err)
+      const now = new Date()
+      const yyyy = String(now.getFullYear())
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const dd = String(now.getDate()).padStart(2, '0')
+      setEbNo(`EB-${yyyy}${mm}${dd}-00001`)
+    } finally {
+      setRefreshingEbNo(false)
+    }
+  }
+
   function addItem() {
     setItems([...items, { description: '', quantity: 1, unit_price: 0 }])
   }
 
-  function updateItem(i: number, key: keyof ItemType, value: any) {
+  function updateItem(i: number, key: keyof ItemType, value: string | number) {
     const copy = [...items]
     copy[i][key] = key === 'description' ? value : Number(value)
     setItems(copy)
@@ -110,6 +144,7 @@ export default function CreateExpenseBillPage() {
       const created_by = user?.username || user?.name || 'system'
 
       const payload = {
+        ebNo,
         ebDate,
         expense_type: expenseType,
         category,
@@ -186,7 +221,18 @@ export default function CreateExpenseBillPage() {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('EB No.', 'เลขที่ EB')}</label>
-                <input type="text" value={ebNo || L('Auto-generated', 'สร้างอัตโนมัติ')} disabled className={styles.formInput} style={{ background: '#f5f5f5' }} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={ebNo || L('Auto-generated', 'สร้างอัตโนมัติ')}
+                    disabled
+                    className={styles.formInput}
+                    style={{ background: '#f5f5f5', flex: 1 }}
+                  />
+                  <button type="button" className={styles.btnOutline} onClick={refreshEbNo} disabled={refreshingEbNo}>
+                    {refreshingEbNo ? L('Refreshing...', 'กำลังรีเฟรช...') : L('Refresh', 'รีเฟรช')}
+                  </button>
+                </div>
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Date', 'วันที่')}</label>

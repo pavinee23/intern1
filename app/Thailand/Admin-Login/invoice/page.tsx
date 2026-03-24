@@ -6,13 +6,54 @@ import AdminLayout from '../components/AdminLayout'
 import CreatedBy from '../components/CreatedBy'
 import styles from '../admin-theme.module.css'
 
+type InvoiceItem = {
+  desc?: string
+  qty?: number
+  price?: number
+  quantity?: number
+  Qty?: number
+  unit_price?: number
+  unitPrice?: number
+  unitprice?: number
+  total_price?: number
+  total?: number
+  totalPrice?: number
+}
+
+type LocaleChangeDetail = {
+  locale?: 'en' | 'th'
+}
+
+type SalesOrderItem = {
+  product_name?: string
+  description?: string
+  sku?: string
+  quantity?: number | string
+  unit_price?: number | string
+  total_price?: number | string
+}
+
+type SalesOrderSummary = {
+  orderID: number
+  orderNo?: string
+  customer_name?: string
+  customer_phone?: string
+  subtotal?: number | string
+  total_amount?: number | string
+  priceTotal?: number | string
+  vat_percent?: number | string
+}
+
+type SalesOrderDetail = SalesOrderSummary & {
+  items?: SalesOrderItem[]
+}
+
 export default function InvoicePage() {
   const [invoiceNo, setInvoiceNo] = useState(() => {
     try { return localStorage.getItem('k_system_next_invNo') || '' } catch { return '' }
   })
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split('T')[0])
   const [customer, setCustomer] = useState({ name: '', phone: '' })
-  type InvoiceItem = { desc?: string; qty?: number; price?: number; [key: string]: any }
   const [items, setItems] = useState<InvoiceItem[]>([{ desc: '', qty: 1, price: 0 }])
   const [taxRate, setTaxRate] = useState(7)
   const [totals, setTotals] = useState({ subtotal: 0, tax: 0, total: 0 })
@@ -24,10 +65,10 @@ export default function InvoicePage() {
     { id: 'bank-a', bank: 'Bank A', account: '123-456-7890', name: 'Company Ltd.' },
     { id: 'bank-b', bank: 'Bank B', account: '987-654-3210', name: 'Company Ltd.' }
   ]
-  const [quoteNo, setQuoteNo] = useState('')
-  const [quoteSearchResults, setQuoteSearchResults] = useState<any[] | null>(null)
-  const [showQuoteSearchModal, setShowQuoteSearchModal] = useState(false)
-  const [quoteSearchTerm, setQuoteSearchTerm] = useState('')
+  const [salesOrderNo, setSalesOrderNo] = useState('')
+  const [salesOrderSearchResults, setSalesOrderSearchResults] = useState<SalesOrderSummary[] | null>(null)
+  const [showSalesOrderSearchModal, setShowSalesOrderSearchModal] = useState(false)
+  const [salesOrderSearchTerm, setSalesOrderSearchTerm] = useState('')
 
   const [locale, setLocale] = useState<'en'|'th'>(() => {
     try {
@@ -40,7 +81,7 @@ export default function InvoicePage() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const d = (e as any).detail
+      const d = (e as CustomEvent<LocaleChangeDetail | string>).detail
       const v = typeof d === 'string' ? d : d?.locale
       if (v === 'en' || v === 'th') setLocale(v)
     }
@@ -79,7 +120,7 @@ export default function InvoicePage() {
   }
 
   useEffect(() => {
-    const parseNumber = (v: any) => {
+    const parseNumber = (v: unknown) => {
       const n = Number(v)
       return Number.isFinite(n) ? n : null
     }
@@ -98,10 +139,15 @@ export default function InvoicePage() {
   }, [items, taxRate])
 
   function addItem() { setItems([...items, { desc: '', qty: 1, price: 0 }]) }
-  function updateItem(i: number, key: string, value: any) {
+  function updateItem(i: number, key: 'desc' | 'qty' | 'price', value: string) {
     const copy = [...items]
-    // @ts-ignore
-    copy[i][key] = key === 'desc' ? value : Number(value)
+    if (key === 'desc') {
+      copy[i].desc = value
+    } else if (key === 'qty') {
+      copy[i].qty = Number(value)
+    } else {
+      copy[i].price = Number(value)
+    }
     setItems(copy)
   }
   function removeItem(i: number) {
@@ -136,7 +182,7 @@ export default function InvoicePage() {
         total_amount: Number(totals.total) || 0,
         notes: paymentOtherText || null,
         items,
-        paymentTerms: Object.keys(paymentTerms).filter(k => (paymentTerms as any)[k]),
+        paymentTerms: Object.keys(paymentTerms).filter(k => paymentTerms[k as keyof typeof paymentTerms]),
         created_by: createdBy,
         payment_bank: paymentBank || null
       }
@@ -149,7 +195,7 @@ export default function InvoicePage() {
         const j = await res.json()
         if (res.ok && j && j.success) {
           alert(L('Invoice saved', 'บันทึกใบแจ้งหนี้แล้ว'))
-          try { localStorage.removeItem('k_system_next_invNo') } catch (_) {}
+          try { localStorage.removeItem('k_system_next_invNo') } catch {}
           try {
             router.push('/Thailand/Admin-Login/invoice/list')
           } catch {}
@@ -217,61 +263,82 @@ export default function InvoicePage() {
                 />
               </div>
             </div>
-            {showQuoteSearchModal && (
+            {showSalesOrderSearchModal && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
                 <div style={{ width: '90%', maxWidth: 900, background: '#fff', borderRadius: 8, padding: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 700 }}>{L('Select Quotation', 'เลือกใบเสนอราคา')}</div>
-                    <button onClick={() => { setShowQuoteSearchModal(false); setQuoteSearchResults(null) }} className={styles.btnOutline}>✕</button>
+                    <div style={{ fontWeight: 700 }}>{L('Select Sales Order', 'เลือกใบสั่งขาย')}</div>
+                    <button type="button" onClick={() => { setShowSalesOrderSearchModal(false); setSalesOrderSearchResults(null) }} className={styles.btnOutline}>✕</button>
                   </div>
                   <div style={{ marginTop: 12, maxHeight: '60vh', overflow: 'auto' }}>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <input value={quoteSearchTerm} onChange={e => setQuoteSearchTerm(e.target.value)} placeholder={L('Search by quote no or customer','ค้นหาด้วยเลขที่หรือชื่อลูกค้า')} className={styles.formInput} style={{ flex: 1 }} />
-                      <button className={styles.btnOutline} onClick={async () => {
+                      <input value={salesOrderSearchTerm} onChange={e => setSalesOrderSearchTerm(e.target.value)} placeholder={L('Search by sales order no or customer','ค้นหาด้วยเลขที่ใบสั่งขายหรือชื่อลูกค้า')} className={styles.formInput} style={{ flex: 1 }} />
+                      <button type="button" className={styles.btnOutline} onClick={async () => {
                         try {
-                          const q = quoteSearchTerm || ''
-                          const res = await fetch(`/api/quotations?q=${encodeURIComponent(q)}`)
+                          const q = salesOrderSearchTerm || ''
+                          const res = await fetch(`/api/sales-orders?q=${encodeURIComponent(q)}`)
                           const j = await res.json()
                           if (!res.ok || !j.success) {
-                            alert(L('No quotations found','ไม่พบใบเสนอราคา'))
+                            alert(L('No sales orders found','ไม่พบใบสั่งขาย'))
                             return
                           }
-                          setQuoteSearchResults(j.quotations || j.quotes || [])
+                          setSalesOrderSearchResults(j.orders || [])
                         } catch (err) {
                           console.error(err)
                           alert(L('Search failed','ค้นหาไม่สำเร็จ'))
                         }
                       }}>{L('Search','ค้นหา')}</button>
                     </div>
-                    {(quoteSearchResults && quoteSearchResults.length > 0) ? (
+                    {(salesOrderSearchResults && salesOrderSearchResults.length > 0) ? (
                       <table className={styles.table}>
                         <thead>
-                          <tr><th>Quote No</th><th>Customer</th><th>Total</th><th></th></tr>
+                          <tr><th>{L('Sales Order No.', 'เลขที่ใบสั่งขาย')}</th><th>{L('Customer', 'ลูกค้า')}</th><th>{L('Total', 'ยอดรวม')}</th><th></th></tr>
                         </thead>
                         <tbody>
-                          {quoteSearchResults.map((q: any) => (
-                            <tr key={q.quoteID}>
-                              <td>{q.quoteNo}</td>
-                              <td>{q.customer_name}</td>
-                              <td style={{ textAlign: 'right' }}>{Number(q.total || q.total_amount || q.priceTotal || 0).toFixed(2)} ฿</td>
+                          {salesOrderSearchResults.map((order: SalesOrderSummary) => (
+                            <tr key={order.orderID}>
+                              <td>{order.orderNo}</td>
+                              <td>{order.customer_name}</td>
+                              <td style={{ textAlign: 'right' }}>{Number(order.priceTotal || order.total_amount || order.subtotal || 0).toFixed(2)} ฿</td>
                               <td>
-                                <button className={styles.btnOutline} onClick={() => {
-                                  // select this quotation
-                                  const mapped = (q.items || []).map((it: any) => ({ desc: it.product_name || it.description || it.sku || '', qty: Number(it.quantity) || 1, price: Number(it.unit_price) || Number(it.total_price) || 0 }))
-                                  setItems(mapped)
-                                  setCustomer({ name: q.customer_name || '', phone: q.customer_phone || '' })
-                                  if (q.vat_percent !== undefined) setTaxRate(Number(q.vat_percent) || 7)
-                                  setQuoteNo(q.quoteNo)
-                                  setShowQuoteSearchModal(false)
-                                  setQuoteSearchResults(null)
-                                }}>{L('Select', 'เลือก')}</button>
+                                <button type="button" className={styles.btnOutline} onClick={async () => {
+                                  try {
+                                    const res = await fetch(`/api/sales-orders?orderNo=${encodeURIComponent(order.orderNo || '')}`)
+                                    const j = await res.json()
+                                    if (!res.ok || !j.success || !j.order) {
+                                      alert(L('Sales order not found', 'ไม่พบใบสั่งขาย'))
+                                      return
+                                    }
+                                    const selectedOrder = j.order as SalesOrderDetail
+                                    const mapped = (selectedOrder.items || []).map((it: SalesOrderItem) => ({
+                                      desc: it.product_name || it.description || it.sku || '',
+                                      qty: Number(it.quantity) || 1,
+                                      price: Number(it.unit_price) || Number(it.total_price) || 0
+                                    }))
+                                    if (mapped.length === 0) {
+                                      alert(L('Selected sales order has no items', 'ใบสั่งขายที่เลือกไม่มีรายการ'))
+                                      return
+                                    }
+                                    setItems(mapped)
+                                    setCustomer({ name: selectedOrder.customer_name || '', phone: selectedOrder.customer_phone || '' })
+                                    if (selectedOrder.vat_percent !== undefined) setTaxRate(Number(selectedOrder.vat_percent) || 7)
+                                    setSalesOrderNo(selectedOrder.orderNo || '')
+                                    setShowSalesOrderSearchModal(false)
+                                    setSalesOrderSearchResults(null)
+                                  } catch (err) {
+                                    console.error(err)
+                                    alert(L('Failed to fetch sales order', 'เกิดข้อผิดพลาดขณะดึงข้อมูลใบสั่งขาย'))
+                                  }
+                                }}>
+                                  {L('Select', 'เลือก')}
+                                </button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     ) : (
-                      <div>{L('No quotations found', 'ไม่พบใบเสนอราคา')}</div>
+                      <div>{L('No sales orders found', 'ไม่พบใบสั่งขาย')}</div>
                     )}
                   </div>
                 </div>
@@ -304,51 +371,52 @@ export default function InvoicePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ marginBottom: 8, padding: 12, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, color: '#0369a1' }}>{L('Import from Quotation:', 'นำเข้าจากใบเสนอราคา:')}</span>
-                    <input value={quoteNo} onChange={e => setQuoteNo(e.target.value)} placeholder={L('Quotation No.', 'เลขที่ใบเสนอราคา')} className={styles.formInput} style={{ maxWidth: 220 }} />
+                    <span style={{ fontWeight: 600, color: '#0369a1' }}>{L('Import from Sales Order:', 'นำเข้าจากใบสั่งขาย:')}</span>
+                    <input value={salesOrderNo} onChange={e => setSalesOrderNo(e.target.value)} placeholder={L('Sales Order No.', 'เลขที่ใบสั่งขาย')} className={styles.formInput} style={{ maxWidth: 220 }} />
                     <button type="button" className={styles.btnOutline} onClick={async () => {
-                      if (!quoteNo) { alert(L('Please enter quotation number', 'กรุณาใส่เลขที่ใบเสนอราคา')); return }
+                      if (!salesOrderNo) { alert(L('Please enter sales order number', 'กรุณาใส่เลขที่ใบสั่งขาย')); return }
                       try {
-                        const res = await fetch(`/api/quotations?quoteNo=${encodeURIComponent(quoteNo)}`)
+                        const res = await fetch(`/api/sales-orders?orderNo=${encodeURIComponent(salesOrderNo)}`)
                         const j = await res.json()
                         if (!res.ok || !j.success) {
-                          alert(L('Quotation not found', 'ไม่พบใบเสนอราคา'))
+                          alert(L('Sales order not found', 'ไม่พบใบสั่งขาย'))
                           return
                         }
-                        const quote = j.quotation
-                        // map items
-                        const mapped = (quote.items || []).map((it: any) => ({ desc: it.product_name || it.description || it.sku || '', qty: Number(it.quantity) || 1, price: Number(it.unit_price) || Number(it.total_price) || 0 }))
+                        const order = j.order as SalesOrderDetail | undefined
+                        const mapped = (order?.items || []).map((it: SalesOrderItem) => ({
+                          desc: it.product_name || it.description || it.sku || '',
+                          qty: Number(it.quantity) || 1,
+                          price: Number(it.unit_price) || Number(it.total_price) || 0
+                        }))
                         if (mapped.length === 0) {
-                          alert(L('Selected quotation has no items', 'ใบเสนอราคาที่เลือกไม่มีรายการ'))
+                          alert(L('Selected sales order has no items', 'ใบสั่งขายที่เลือกไม่มีรายการ'))
                           return
                         }
                         setItems(mapped)
-                        // set customer info if available
-                        setCustomer({ name: quote.customer_name || '', phone: quote.customer_phone || '' })
-                        // set tax rate from quotation
-                        if (quote.vat_percent !== undefined) {
-                          setTaxRate(Number(quote.vat_percent) || 7)
+                        setCustomer({ name: order?.customer_name || '', phone: order?.customer_phone || '' })
+                        if (order?.vat_percent !== undefined) {
+                          setTaxRate(Number(order.vat_percent) || 7)
                         }
                       } catch (err) {
                         console.error(err)
-                        alert(L('Failed to fetch quotation', 'เกิดข้อผิดพลาดขณะดึงข้อมูลใบเสนอราคา'))
+                        alert(L('Failed to fetch sales order', 'เกิดข้อผิดพลาดขณะดึงข้อมูลใบสั่งขาย'))
                       }
                     }}>{L('Import', 'นำเข้า')}</button>
                     <button type="button" className={styles.btnOutline} onClick={async () => {
                       try {
-                        const res = await fetch(`/api/quotations`)
+                        const res = await fetch(`/api/sales-orders`)
                         const j = await res.json()
                         if (!res.ok || !j.success) {
-                          alert(L('No quotations found','ไม่พบใบเสนอราคา'))
+                          alert(L('No sales orders found','ไม่พบใบสั่งขาย'))
                           return
                         }
-                        setQuoteSearchResults(j.quotations || j.quotes || [])
-                        setShowQuoteSearchModal(true)
+                        setSalesOrderSearchResults(j.orders || [])
+                        setShowSalesOrderSearchModal(true)
                       } catch (err) {
                         console.error(err)
-                        alert(L('Failed to load quotations','โหลดรายการใบเสนอราคาไม่สำเร็จ'))
+                        alert(L('Failed to load sales orders','โหลดรายการใบสั่งขายไม่สำเร็จ'))
                       }
-                    }}>{L('Search quotation to select', 'ค้นหาใบเสนอราคาเพื่อเลือก')}</button>
+                    }}>{L('Search sales order to select', 'ค้นหาใบสั่งขายเพื่อเลือก')}</button>
                   </div>
                 </div>
               </div>

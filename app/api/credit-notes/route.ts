@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         cn.cnDate,
         cn.invID,
         cn.invNo,
+        cn.invNo as invoice_ref,
         cn.cusID,
         cn.customer_name,
         cn.reason,
@@ -117,9 +118,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
+      cnNo: requestedCnNo,
       cnDate,
       invID,
       invNo,
+      invoice_ref,
       cusID,
       customer_name,
       reason,
@@ -132,20 +135,34 @@ export async function POST(request: NextRequest) {
       created_by
     } = body
 
-    // Generate credit note number
-    const cnNo = await generateDocumentNumber('CN', 'credit_notes', 'cnNo')
+    let cnNo = requestedCnNo
+    const sourceInvNo = invNo || invoice_ref || null
 
     const connection = await pool.getConnection()
 
     try {
       await connection.beginTransaction()
 
+      if (cnNo) {
+        const [existingRows]: any = await connection.query(
+          `SELECT cnID FROM credit_notes WHERE cnNo = ? LIMIT 1`,
+          [cnNo]
+        )
+        if (existingRows.length > 0) {
+          const duplicateError = new Error('Credit note number already exists. Please refresh to get a new number.') as Error & { status?: number }
+          duplicateError.status = 409
+          throw duplicateError
+        }
+      } else {
+        cnNo = await generateDocumentNumber('CN', 'credit_notes', 'cnNo')
+      }
+
       // Insert credit note
       const [result]: any = await connection.query(
         `INSERT INTO credit_notes
         (cnNo, cnDate, invID, invNo, cusID, customer_name, reason, subtotal, discount, vat, total_amount, notes, created_by, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [cnNo, cnDate, invID, invNo, cusID, customer_name, reason, subtotal || 0, discount || 0, vat || 0, total_amount || 0, notes, created_by]
+        [cnNo, cnDate, invID, sourceInvNo, cusID, customer_name, reason, subtotal || 0, discount || 0, vat || 0, total_amount || 0, notes, created_by]
       )
 
       const cnID = result.insertId
@@ -186,7 +203,7 @@ export async function POST(request: NextRequest) {
     console.error('Create credit note error:', error)
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: error.status || 500 }
     )
   }
 }

@@ -922,33 +922,36 @@ export default function CalculatePayrollPage() {
 
           @page {
             size: A5 portrait;
-            margin: 0;
+            margin: 6mm;
           }
 
-          /* Scale the whole slip to fit A5 perfectly */
           #payslip-print-area {
-            position: fixed !important;
-            top: 0 !important; left: 0 !important;
-            width: 148mm !important;
-            height: 210mm !important;
-            padding: 5mm 6mm !important;
+            position: static !important;
+            width: auto !important;
+            min-height: auto !important;
+            height: auto !important;
+            padding: 0 !important;
             margin: 0 !important;
             box-sizing: border-box !important;
             background: #fff !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
-            z-index: 99999 !important;
-            overflow: hidden !important;
-            /* scale down all content uniformly to fill A5 */
-            transform-origin: top left !important;
+            overflow: visible !important;
+            page-break-after: auto !important;
           }
 
-          /* Header: logo + company + title */
+          body,
+          html {
+            overflow: visible !important;
+            height: auto !important;
+          }
+
           #payslip-print-area > div:first-child {
             margin-bottom: 2mm !important;
             padding-bottom: 2mm !important;
             gap: 6px !important;
+            page-break-inside: avoid !important;
           }
           #payslip-print-area img {
             width: 36px !important;
@@ -976,6 +979,14 @@ export default function CalculatePayrollPage() {
             font-size: 7pt !important;
             margin-bottom: 1.5mm !important;
             table-layout: fixed !important;
+            page-break-inside: auto !important;
+          }
+          #payslip-print-area thead {
+            display: table-header-group !important;
+          }
+          #payslip-print-area tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
           }
           #payslip-print-area td,
           #payslip-print-area th {
@@ -984,10 +995,10 @@ export default function CalculatePayrollPage() {
             word-break: break-word !important;
           }
 
-          /* Side-by-side income/deduction */
           #payslip-print-area > div[style*="gridTemplateColumns: '1fr 1fr'"] {
             gap: 2mm !important;
             margin-bottom: 1.5mm !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
