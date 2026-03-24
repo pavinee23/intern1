@@ -1,5 +1,6 @@
 "use client"
 
+import Image from 'next/image'
 import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
 
@@ -46,8 +47,24 @@ type PayrollForm = {
 type Lang = 'th' | 'en'
 
 const DEFAULT_APPROVED_BY: Record<Lang, string> = {
-  th: 'กรรมการและผู้จัดการฝ่ายบริหาร',
-  en: 'Managing Director and Executive Director'
+  th: 'NAM CHAL JANG',
+  en: 'NAM CHAL JANG'
+}
+
+const COMPANY_NAME: Record<Lang, string> = {
+  th: 'บริษัท เค เอ็นเนอร์ยี เซฟ จำกัด',
+  en: 'K Energy Save Co., Ltd.'
+}
+
+const COMPANY_ADDRESS: Record<Lang, string[]> = {
+  th: [
+    '84 ซอยเฉลิมพระเกียรติ ร.9 ซอย 34 แขวงหนองบอน เขตประเวศ กรุงเทพมหานคร 10250',
+    'โทร: 02-080-8916 | อีเมล: info@kenergysave.com'
+  ],
+  en: [
+    '84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250',
+    'Tel: 02-080-8916 | Email: info@kenergysave.com'
+  ]
 }
 
 const defaultForm = (lang: Lang = 'th'): PayrollForm => ({
@@ -72,7 +89,7 @@ const defaultForm = (lang: Lang = 'th'): PayrollForm => ({
   absentLateDeduction: 0,
   uniformDeduction: 0,
   advanceDeduction: 0,
-  preparedBy: '',
+  preparedBy: 'kattarin sukakate',
   approvedBy: DEFAULT_APPROVED_BY[lang],
   documentDate: new Date().toISOString().split('T')[0]
 })
@@ -280,18 +297,7 @@ export default function CalculatePayrollPage() {
     void loadEmployees()
   }, [])
 
-  useEffect(() => {
-    setForm(prev => {
-      const shouldUpdateApprovedBy =
-        !prev.approvedBy ||
-        prev.approvedBy === DEFAULT_APPROVED_BY.th ||
-        prev.approvedBy === DEFAULT_APPROVED_BY.en
-
-      if (!shouldUpdateApprovedBy) return prev
-
-      return { ...prev, approvedBy: DEFAULT_APPROVED_BY[lang] }
-    })
-  }, [lang])
+  // approvedBy is always fixed — no sync needed
 
   const loadEmployees = async () => {
     try {
@@ -347,8 +353,8 @@ export default function CalculatePayrollPage() {
         absentLateDeduction: Number(payslip.absent_late_deduction || 0),
         uniformDeduction: Number(payslip.uniform_deduction || 0),
         advanceDeduction: Number(payslip.advance_deduction || 0),
-        preparedBy: payslip.prepared_by || prev.preparedBy,
-        approvedBy: payslip.approved_by || prev.approvedBy,
+        preparedBy: 'kattarin sukakate',
+        approvedBy: 'NAM CHAL JANG',
         documentDate: payslip.document_date ? String(payslip.document_date).split('T')[0] : prev.documentDate
       }))
     } catch (err) {
@@ -463,6 +469,8 @@ export default function CalculatePayrollPage() {
 
   const formatMoney = (amount: number) =>
     amount.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const fmtDateTH = (iso?: string) => { if (!iso) return '-'; const [y, m, d] = iso.slice(0, 10).split('-'); return `${d}-${m}-${+y + 543}` }
 
   if (!mounted) {
     return (
@@ -694,10 +702,53 @@ export default function CalculatePayrollPage() {
             </div>
           </>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #cbd5e1', padding: 28 }}>
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>{L('Payslip', 'สลิปเงินเดือน')}</div>
-              <div style={{ fontSize: 14, color: '#475569', marginTop: 6 }}>{formattedPeriod}</div>
+          <div id="payslip-print-area" style={{ background: '#fff', borderRadius: 16, border: '1px solid #cbd5e1', padding: 28 }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 20,
+              marginBottom: 20,
+              paddingBottom: 18,
+              borderBottom: '2px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flex: 1 }}>
+                <div style={{
+                  width: 78,
+                  height: 78,
+                  borderRadius: 10,
+                  background: '#fff',
+                  padding: 4,
+                  border: '1px solid #dbe4ee',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Image
+                    src="/k-energy-save-logo.jpg"
+                    alt="K Energy Save Logo"
+                    width={68}
+                    height={68}
+                    style={{ objectFit: 'contain' }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
+                    {COMPANY_NAME[lang]}
+                  </div>
+                  {COMPANY_ADDRESS[lang].map(line => (
+                    <div key={line} style={{ fontSize: 12, color: '#475569', marginTop: 4, lineHeight: 1.5 }}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', minWidth: 190 }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>{L('Payslip', 'สลิปเงินเดือน')}</div>
+                <div style={{ fontSize: 14, color: '#475569', marginTop: 6 }}>{formattedPeriod}</div>
+              </div>
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: 13 }}>
@@ -718,7 +769,7 @@ export default function CalculatePayrollPage() {
                   <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Department', 'ฝ่าย')}</td>
                   <td style={{ border: '1px solid #000', padding: 10 }}>{form.department || '-'}</td>
                   <td style={{ border: '1px solid #000', padding: 10, fontWeight: 700 }}>{L('Date', 'วันที่')}</td>
-                  <td style={{ border: '1px solid #000', padding: 10 }}>{form.documentDate || '-'}</td>
+                  <td style={{ border: '1px solid #000', padding: 10 }}>{fmtDateTH(form.documentDate)}</td>
                 </tr>
               </tbody>
             </table>
@@ -813,13 +864,13 @@ export default function CalculatePayrollPage() {
               <tbody>
                 <tr>
                   <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700, width: '25%' }}>{L('Prepared By', 'จัดทำโดย')}</td>
-                  <td style={{ border: '1px solid #000', padding: 12 }}>{form.preparedBy || '-'}</td>
+                  <td style={{ border: '1px solid #000', padding: 12 }}>kattarin sukakate</td>
                   <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700, width: '30%' }}>{L('Approved By', 'ผู้อนุมัติ')}</td>
-                  <td style={{ border: '1px solid #000', padding: 12 }}>{form.approvedBy || '-'}</td>
+                  <td style={{ border: '1px solid #000', padding: 12 }}>NAM CHAL JANG</td>
                 </tr>
                 <tr>
                   <td style={{ border: '1px solid #000', padding: 12, fontWeight: 700 }}>{L('Date', 'วันที่')}</td>
-                  <td style={{ border: '1px solid #000', padding: 12 }}>{form.documentDate || '-'}</td>
+                  <td style={{ border: '1px solid #000', padding: 12 }}>{fmtDateTH(form.documentDate)}</td>
                   <td style={{ border: '1px solid #000', padding: 12 }}></td>
                   <td style={{ border: '1px solid #000', padding: 12 }}></td>
                 </tr>
@@ -862,12 +913,81 @@ export default function CalculatePayrollPage() {
 
       <style>{`
         @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
+          body * { visibility: hidden !important; }
+
+          #payslip-print-area,
+          #payslip-print-area * { visibility: visible !important; }
+
+          .no-print { display: none !important; }
+
+          @page {
+            size: A5 portrait;
             margin: 0;
-            padding: 0;
+          }
+
+          /* Scale the whole slip to fit A5 perfectly */
+          #payslip-print-area {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            padding: 5mm 6mm !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            background: #fff !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            z-index: 99999 !important;
+            overflow: hidden !important;
+            /* scale down all content uniformly to fill A5 */
+            transform-origin: top left !important;
+          }
+
+          /* Header: logo + company + title */
+          #payslip-print-area > div:first-child {
+            margin-bottom: 2mm !important;
+            padding-bottom: 2mm !important;
+            gap: 6px !important;
+          }
+          #payslip-print-area img {
+            width: 36px !important;
+            height: 36px !important;
+          }
+          #payslip-print-area > div:first-child div[style*="fontSize: 20"],
+          #payslip-print-area > div:first-child div[style*="fontWeight: 800"] {
+            font-size: 9pt !important;
+          }
+          #payslip-print-area > div:first-child div[style*="fontSize: 12"],
+          #payslip-print-area > div:first-child div[style*="fontSize: 14"] {
+            font-size: 7pt !important;
+          }
+          #payslip-print-area > div:first-child div[style*="fontSize: 24"] {
+            font-size: 11pt !important;
+          }
+          #payslip-print-area > div:first-child div[style*="minWidth"] {
+            min-width: 100px !important;
+          }
+
+          /* All tables */
+          #payslip-print-area table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 7pt !important;
+            margin-bottom: 1.5mm !important;
+            table-layout: fixed !important;
+          }
+          #payslip-print-area td,
+          #payslip-print-area th {
+            padding: 1.5px 4px !important;
+            line-height: 1.35 !important;
+            word-break: break-word !important;
+          }
+
+          /* Side-by-side income/deduction */
+          #payslip-print-area > div[style*="gridTemplateColumns: '1fr 1fr'"] {
+            gap: 2mm !important;
+            margin-bottom: 1.5mm !important;
           }
         }
       `}</style>

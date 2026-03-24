@@ -6,6 +6,8 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const paymentType = searchParams.get('payment_type')
+    const q = searchParams.get('q')
     if (id) {
       const [rows]: any = await pool.query(
         `SELECT po.*, s.name_th as supplier_name FROM acc_purchase_orders po
@@ -14,13 +16,18 @@ export async function GET(req: NextRequest) {
       const [items]: any = await pool.query(
         `SELECT pi.*, p.name_th as product_name FROM acc_purchase_order_items pi
          LEFT JOIN acc_products p ON pi.product_id = p.id
-         WHERE pi.po_id = ?`, [id])
+         WHERE pi.po_id = ? ORDER BY pi.id`, [id])
       return NextResponse.json({ ok: true, data: { ...rows[0], items } })
     }
+    const conditions: string[] = []
+    const params: any[] = []
+    if (paymentType) { conditions.push('po.payment_type = ?'); params.push(paymentType) }
+    if (q) { conditions.push('(po.doc_no LIKE ? OR s.name_th LIKE ? OR s.name_en LIKE ?)'); params.push(`%${q}%`, `%${q}%`, `%${q}%`) }
+    const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''
     const [rows]: any = await pool.query(
       `SELECT po.*, s.name_th as supplier_name FROM acc_purchase_orders po
        LEFT JOIN acc_suppliers s ON po.supplier_id = s.id
-       ORDER BY po.doc_date DESC, po.id DESC LIMIT 200`)
+       ${where} ORDER BY po.doc_date DESC, po.id DESC LIMIT 200`, params)
     return NextResponse.json({ ok: true, data: rows })
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 })
@@ -56,17 +63,17 @@ export async function POST(req: NextRequest) {
     }
 
     const [r]: any = await pool.query(
-      `INSERT INTO acc_purchase_orders (doc_no,doc_date,supplier_id,status,subtotal,discount,vat_amount,total,note,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [docNo, b.doc_date, b.supplier_id||null, b.status||'draft', b.subtotal||0, b.discount||0, b.vat_amount||0, b.total||0, b.note||null, b.created_by||null]
+      `INSERT INTO acc_purchase_orders (doc_no,doc_date,due_date,supplier_id,payment_type,status,subtotal,discount,vat_amount,exempt_amount,wht_rate,wht_amount,total,note,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [docNo, b.doc_date, b.due_date||null, b.supplier_id||null, b.payment_type||'credit', b.status||'draft', b.subtotal||0, b.discount||0, b.vat_amount||0, b.exempt_amount||0, b.wht_rate||0, b.wht_amount||0, b.total||0, b.note||null, b.created_by||null]
     )
     const poId = r.insertId
     if (b.items?.length) {
       for (const item of b.items) {
         await pool.query(
-          `INSERT INTO acc_purchase_order_items (po_id,product_id,description,qty,unit,unit_price,amount)
-           VALUES (?,?,?,?,?,?,?)`,
-          [poId, item.product_id||null, item.description||null, item.qty||1, item.unit||null, item.unit_price||0, item.amount||0]
+          `INSERT INTO acc_purchase_order_items (po_id,product_id,description,qty,unit,unit_price,amount,is_exempt)
+           VALUES (?,?,?,?,?,?,?,?)`,
+          [poId, item.product_id||null, item.description||null, item.qty||1, item.unit||null, item.unit_price||0, item.amount||0, item.is_exempt?1:0]
         )
       }
     }
@@ -80,16 +87,16 @@ export async function PUT(req: NextRequest) {
   try {
     const b = await req.json()
     await pool.query(
-      `UPDATE acc_purchase_orders SET doc_date=?,supplier_id=?,status=?,subtotal=?,discount=?,vat_amount=?,total=?,note=? WHERE id=?`,
-      [b.doc_date, b.supplier_id||null, b.status||'draft', b.subtotal||0, b.discount||0, b.vat_amount||0, b.total||0, b.note||null, b.id]
+      `UPDATE acc_purchase_orders SET doc_date=?,due_date=?,supplier_id=?,payment_type=?,status=?,subtotal=?,discount=?,vat_amount=?,exempt_amount=?,wht_rate=?,wht_amount=?,total=?,note=? WHERE id=?`,
+      [b.doc_date, b.due_date||null, b.supplier_id||null, b.payment_type||'credit', b.status||'draft', b.subtotal||0, b.discount||0, b.vat_amount||0, b.exempt_amount||0, b.wht_rate||0, b.wht_amount||0, b.total||0, b.note||null, b.id]
     )
     if (b.items !== undefined) {
       await pool.query('DELETE FROM acc_purchase_order_items WHERE po_id=?', [b.id])
       for (const item of (b.items || [])) {
         await pool.query(
-          `INSERT INTO acc_purchase_order_items (po_id,product_id,description,qty,unit,unit_price,amount)
-           VALUES (?,?,?,?,?,?,?)`,
-          [b.id, item.product_id||null, item.description||null, item.qty||1, item.unit||null, item.unit_price||0, item.amount||0]
+          `INSERT INTO acc_purchase_order_items (po_id,product_id,description,qty,unit,unit_price,amount,is_exempt)
+           VALUES (?,?,?,?,?,?,?,?)`,
+          [b.id, item.product_id||null, item.description||null, item.qty||1, item.unit||null, item.unit_price||0, item.amount||0, item.is_exempt?1:0]
         )
       }
     }

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from 'next/image'
 import React, { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -10,7 +11,7 @@ function _subscribe(cb: () => void) { _listeners.add(cb); return () => { _listen
 function _getSnapshot() { return _lang }
 function _setLang(v: 'th' | 'en') {
   _lang = v
-  try { localStorage.setItem('acc_lang', v) } catch (_) {}
+  try { localStorage.setItem('acc_lang', v) } catch {}
   _listeners.forEach(cb => cb())
 }
 export function useLang() {
@@ -190,11 +191,11 @@ export default function AccWindow({ title, children, minHeight = 500 }: Props) {
     try {
       const stored = localStorage.getItem('acc_lang')
       if (stored === 'en' || stored === 'th') _setLang(stored)
-    } catch (_) {}
+    } catch {}
     try {
       setUsername(localStorage.getItem('username') || '')
       setFullname(localStorage.getItem('fullname') || '')
-    } catch (_) {}
+    } catch {}
     const tick = () => setClock(new Date().toLocaleTimeString(lang === 'th' ? 'th-TH' : 'en-US'))
     tick()
     const t = setInterval(tick, 1000)
@@ -213,7 +214,7 @@ export default function AccWindow({ title, children, minHeight = 500 }: Props) {
     setOpenMenu(null)
     if (!href) return
     if (href === '__logout__') {
-      try { localStorage.clear() } catch (_) {}
+      try { localStorage.clear() } catch {}
       router.push('/Thailand/Accounting-Login')
       return
     }
@@ -252,13 +253,24 @@ export default function AccWindow({ title, children, minHeight = 500 }: Props) {
           boxShadow: '0 3px 12px rgba(0,0,0,0.25)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/k-energy-save-logo.jpg" alt="K Energy Save" style={{
-              height: 38, width: 'auto', objectFit: 'contain', borderRadius: 6,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
-              border: '1px solid rgba(255,255,255,0.15)',
-            }} />
+            <Image
+              src="/k-energy-save-logo.jpg"
+              alt="K Energy Save"
+              width={110}
+              height={38}
+              style={{
+                height: 38, width: 'auto', objectFit: 'contain', borderRadius: 6,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+                border: '1px solid rgba(255,255,255,0.15)',
+              }}
+            />
             <div>
-              <div style={{ color: '#fff', fontSize: 17, fontWeight: 800, lineHeight: 1.2, textShadow: '0 1px 3px rgba(0,0,0,0.3)', letterSpacing: '0.01em' }}>{title}</div>
+              <div
+                suppressHydrationWarning
+                style={{ color: '#fff', fontSize: 17, fontWeight: 800, lineHeight: 1.2, textShadow: '0 1px 3px rgba(0,0,0,0.3)', letterSpacing: '0.01em' }}
+              >
+                {title}
+              </div>
               <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11.5, marginTop: 2, fontWeight: 500, letterSpacing: '0.02em' }}>K-Energy Accounting System</div>
             </div>
           </div>

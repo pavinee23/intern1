@@ -37,9 +37,13 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'สินทรัพย์/ค่าเสื่อม',
     postingEn: 'Assets/Depreciation',
     postingHref: '/Thailand/Accounting-Login/accounting/journal',
-    documentTh: 'บันทึกรายการบัญชี',
-    documentEn: 'Journal Entry',
-    documentHref: '/Thailand/Accounting-Login/accounting/journal',
+    documentLinks: [
+      {
+        labelTh: 'บันทึกรายการบัญชี',
+        labelEn: 'Journal Entry',
+        href: '/Thailand/Accounting-Login/accounting/journal'
+      }
+    ],
   },
   {
     ledgerTh: 'สมุดรายวันจ่าย',
@@ -48,9 +52,13 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'จ่ายชำระหนี้',
     postingEn: 'Pay Debt',
     postingHref: '/Thailand/Accounting-Login/finance/pay',
-    documentTh: 'ใบเสร็จรับเงิน',
-    documentEn: 'Receipt',
-    documentHref: '/Thailand/Accounting-Login/finance/pay',
+    documentLinks: [
+      {
+        labelTh: 'ใบเสร็จรับเงิน',
+        labelEn: 'Receipt',
+        href: '/Thailand/Admin-Login/receipt/list'
+      }
+    ],
   },
   {
     ledgerTh: 'สมุดรายวันรับ',
@@ -59,9 +67,13 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'รับชำระหนี้',
     postingEn: 'Receive Debt Payment',
     postingHref: '/Thailand/Accounting-Login/finance/receive',
-    documentTh: 'ใบเสร็จรับเงิน',
-    documentEn: 'Receipt',
-    documentHref: '/Thailand/Accounting-Login/finance/receive',
+    documentLinks: [
+      {
+        labelTh: 'ใบเสร็จรับเงิน',
+        labelEn: 'Receipt',
+        href: '/Thailand/Admin-Login/receipt/list'
+      }
+    ],
   },
   {
     ledgerTh: 'สมุดรายวันขาย',
@@ -70,9 +82,18 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'ขายสด',
     postingEn: 'Cash Sale',
     postingHref: '/Thailand/Accounting-Login/sales/cash',
-    documentTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน',
-    documentEn: 'Tax Invoice/Receipt',
-    documentHref: '/Thailand/Accounting-Login/sales/cash',
+    documentLinks: [
+      {
+        labelTh: 'ใบกำกับภาษี',
+        labelEn: 'Tax Invoice',
+        href: '/Thailand/Admin-Login/tax-invoice/list'
+      },
+      {
+        labelTh: 'ใบเสร็จรับเงิน',
+        labelEn: 'Receipt',
+        href: '/Thailand/Admin-Login/receipt/list'
+      }
+    ],
   },
   {
     ledgerTh: 'สมุดรายวันขาย',
@@ -81,9 +102,18 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'ขายเชื่อ',
     postingEn: 'Credit Sale',
     postingHref: '/Thailand/Accounting-Login/sales/credit',
-    documentTh: 'ใบแจ้งหนี้/ใบกำกับภาษี',
-    documentEn: 'Invoice/Tax Invoice',
-    documentHref: '/Thailand/Accounting-Login/sales/credit',
+    documentLinks: [
+      {
+        labelTh: 'ใบแจ้งหนี้',
+        labelEn: 'Invoice',
+        href: '/Thailand/Admin-Login/invoice/list'
+      },
+      {
+        labelTh: 'ใบกำกับภาษี',
+        labelEn: 'Tax Invoice',
+        href: '/Thailand/Admin-Login/tax-invoice/list'
+      }
+    ],
   },
   {
     ledgerTh: 'สมุดรายวันซื้อ',
@@ -92,9 +122,18 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'ซื้อสด',
     postingEn: 'Cash Purchase',
     postingHref: '/Thailand/Accounting-Login/purchase/cash',
-    documentTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน',
-    documentEn: 'Tax Invoice/Receipt',
-    documentHref: '/Thailand/Accounting-Login/purchase/cash',
+    documentLinks: [
+      {
+        labelTh: 'ใบกำกับภาษี',
+        labelEn: 'Tax Invoice',
+        href: '/Thailand/Admin-Login/tax-invoice/list'
+      },
+      {
+        labelTh: 'ใบเสร็จรับเงิน',
+        labelEn: 'Receipt',
+        href: '/Thailand/Admin-Login/receipt/list'
+      }
+    ],
   },
   {
     ledgerTh: 'สมุดรายวันซื้อ',
@@ -103,9 +142,18 @@ const ACCOUNTING_FLOW_MENU = [
     postingTh: 'ซื้อเชื่อ',
     postingEn: 'Credit Purchase',
     postingHref: '/Thailand/Accounting-Login/purchase/credit',
-    documentTh: 'ใบแจ้งหนี้/ใบกำกับภาษี',
-    documentEn: 'Invoice/Tax Invoice',
-    documentHref: '/Thailand/Accounting-Login/purchase/credit',
+    documentLinks: [
+      {
+        labelTh: 'ใบแจ้งหนี้',
+        labelEn: 'Invoice',
+        href: '/Thailand/Admin-Login/invoice/list'
+      },
+      {
+        labelTh: 'ใบกำกับภาษี',
+        labelEn: 'Tax Invoice',
+        href: '/Thailand/Admin-Login/tax-invoice/list'
+      }
+    ],
   },
 ]
 
@@ -460,27 +508,34 @@ export default function AccountingDashboardPage() {
                         background: '#fff',
                       }}
                     >
-                      {item.documentTh ? (
-                        <button
-                          type="button"
-                          onClick={() => item.documentHref && router.push(item.documentHref)}
-                          title={L(item.documentEn, item.documentTh)}
-                          style={{
-                            width: '100%',
-                            padding: '10px 12px',
-                            borderRadius: 10,
-                            border: '1px solid #bfdbfe',
-                            background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
-                            color: '#1d4ed8',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 2px rgba(37,99,235,0.12)',
-                            fontFamily: '"Sarabun","Tahoma",sans-serif',
-                          }}
-                        >
-                          {L(item.documentEn, item.documentTh)}
-                        </button>
+                      {item.documentLinks?.length ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+                          {item.documentLinks.map((doc, docIndex) => (
+                            <React.Fragment key={`${doc.labelTh}-${doc.href}`}>
+                              <button
+                                type="button"
+                                onClick={() => router.push(doc.href)}
+                                title={L(doc.labelEn, doc.labelTh)}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#1d4ed8',
+                                  fontSize: 14,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  fontFamily: '"Sarabun","Tahoma",sans-serif',
+                                  textDecoration: 'underline',
+                                  padding: 0,
+                                }}
+                              >
+                                {L(doc.labelEn, doc.labelTh)}
+                              </button>
+                              {docIndex < item.documentLinks.length - 1 ? (
+                                <span style={{ color: '#94a3b8', fontWeight: 700 }}>/</span>
+                              ) : null}
+                            </React.Fragment>
+                          ))}
+                        </div>
                       ) : (
                         <span style={{ color: '#9ca3af', fontWeight: 600 }}>-</span>
                       )}
