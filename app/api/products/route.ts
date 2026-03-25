@@ -1,5 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { ResultSetHeader, RowDataPacket } from 'mysql2'
 import { pool } from '@/lib/mysql'
+
+type ProductRow = RowDataPacket & {
+  id: number
+  productID: number
+  sku: string | null
+  name: string | null
+  description: string | null
+  capacity: string | null
+  mcb: string | null
+  size: string | null
+  weight: string | null
+  price: number | null
+  price_vat: number | null
+  unit: string | null
+  tfc_duty: string | null
+  installation: string | null
+  profit: string | null
+  commission: string | null
+  category: string | null
+  image: string | null
+  stock_qty: number | null
+  is_active: number
+  created_at: string | null
+  updated_at: string | null
+}
+
+type CountRow = RowDataPacket & {
+  total: number
+}
+
+type ProductPayload = {
+  id?: number | string | null
+  sku?: string | null
+  name?: string | null
+  description?: string | null
+  capacity?: string | null
+  mcb?: string | null
+  size?: string | null
+  weight?: string | null
+  price?: number | string | null
+  unit?: string | null
+  category?: string | null
+  stock_qty?: number | string | null
+  is_active?: number | boolean | null
+}
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : 'Unknown error'
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +87,7 @@ export async function GET(request: NextRequest) {
       WHERE 1=1
     `
 
-    const params: any[] = []
+    const params: Array<string | number> = []
 
     if (id) {
       query += ` AND productID = ?`
@@ -64,11 +112,11 @@ export async function GET(request: NextRequest) {
     query += ` ORDER BY productID DESC LIMIT ? OFFSET ?`
     params.push(limit, offset)
 
-    const [rows] = await pool.query(query, params)
+    const [rows] = await pool.query<ProductRow[]>(query, params)
 
     // Get total count
     let countQuery = `SELECT COUNT(*) as total FROM product_list WHERE 1=1`
-    const countParams: any[] = []
+    const countParams: Array<string | number> = []
 
     if (category) {
       countQuery += ` AND category = ?`
@@ -80,8 +128,8 @@ export async function GET(request: NextRequest) {
       countParams.push(active === 'true' ? 1 : 0)
     }
 
-    const [countResult] = await pool.query(countQuery, countParams)
-    const total = (countResult as any)[0].total
+    const [countResult] = await pool.query<CountRow[]>(countQuery, countParams)
+    const total = countResult[0]?.total || 0
 
     return NextResponse.json({
       success: true,
@@ -91,10 +139,10 @@ export async function GET(request: NextRequest) {
       limit,
       offset
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Products API error:', error)
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     )
   }
@@ -102,7 +150,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json() as ProductPayload
     const {
       sku,
       name,
@@ -138,16 +186,16 @@ export async function POST(request: NextRequest) {
       category || null,
       stock_qty || 0,
       is_active !== undefined ? is_active : 1
-    ])
+    ] as Array<string | number | null>)
 
     return NextResponse.json({
       success: true,
-      productId: (result as any).insertId
+      productId: (result as ResultSetHeader).insertId
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create product error:', error)
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     )
   }
@@ -155,7 +203,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json() as ProductPayload
     const { id, stock_qty } = body
 
     if (!id) {
@@ -172,10 +220,10 @@ export async function PUT(request: NextRequest) {
       success: true,
       id
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update product stock error:', error)
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     )
   }

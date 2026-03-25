@@ -40,6 +40,9 @@ export default function SalesApprovalsPage() {
   ];
 
   const [items, setItems] = useState<SalesApproval[]>([]);
+  const [productionOrders, setProductionOrders] = useState<any[]>([]);
+  const [showPoModal, setShowPoModal] = useState(false);
+  const [loadingPO, setLoadingPO] = useState(false);
 
   useEffect(() => {
     fetch('/api/korea/int-approvals').then(r => r.json()).then(data => { if (Array.isArray(data)) setItems(data); });
@@ -70,6 +73,35 @@ export default function SalesApprovalsPage() {
       await fetch(`/api/korea/int-approvals?id=${id}`, { method: 'DELETE' });
       setItems(items.filter(o => o.id !== id));
     }
+  };
+
+  const searchProductionOrders = async () => {
+    setLoadingPO(true);
+    try {
+      const branchCodeMap: Record<string, string> = { korea: 'KR', brunei: 'BN', thailand: 'TH', vietnam: 'VN' };
+      const branchCode = branchCodeMap[newItem.branch];
+      const response = await fetch(`/api/korea/production-orders?branch=${encodeURIComponent(branches.find(b => b.key === newItem.branch)?.name || '')}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setProductionOrders(data);
+        setShowPoModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to load production orders:', error);
+    } finally {
+      setLoadingPO(false);
+    }
+  };
+
+  const selectProductionOrder = (order: any) => {
+    setNewItem({
+      ...newItem,
+      productName: order.product || '',
+      quantity: order.quantity || 0,
+      amount: 0,
+      remarks: `PO: ${order.orderNumber || order.id} - Customer: ${order.customerName || '-'}`
+    });
+    setShowPoModal(false);
   };
 
   const handleCreate = async () => {
@@ -236,6 +268,27 @@ export default function SalesApprovalsPage() {
                   {branches.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
                 </select>
               </div>
+
+              {/* Production Order Search */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-blue-900">
+                    {locale === 'ko' ? '생산 주문서에서 선택' : 'Select from Production Orders (PDO)'}
+                  </label>
+                  <button
+                    onClick={searchProductionOrders}
+                    disabled={loadingPO}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  >
+                    <SearchIcon className="w-4 h-4" />
+                    {loadingPO ? (locale === 'ko' ? '검색 중...' : 'Searching...') : (locale === 'ko' ? 'PDO 검색' : 'Search PDO')}
+                  </button>
+                </div>
+                <p className="text-xs text-blue-700">
+                  {locale === 'ko' ? '선택한 지점의 생산 주문을 검색하고 제품 정보를 자동으로 채웁니다' : 'Search production orders (PDO) for the selected branch and auto-fill product info'}
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.productName}</label>
                 <input type="text" value={newItem.productName} onChange={e => setNewItem({ ...newItem, productName: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
@@ -262,6 +315,78 @@ export default function SalesApprovalsPage() {
                 <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">{t.cancel}</button>
                 <button onClick={handleCreate} className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">{t.save}</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Production Order Search Modal */}
+      {showPoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-500 to-indigo-500">
+              <h2 className="text-lg font-bold text-white">
+                {locale === 'ko' ? '생산 주문 선택 (PDO)' : 'Select Production Order (PDO)'} - {branches.find(b => b.key === newItem.branch)?.name}
+              </h2>
+              <button onClick={() => setShowPoModal(false)} className="text-white hover:bg-white/20 rounded-full p-2">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {productionOrders.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <ClipboardCheck className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">{locale === 'ko' ? '생산 주문이 없습니다' : 'No Production Orders'}</p>
+                  <p className="text-sm mt-1">{locale === 'ko' ? '이 지점에 대한 생산 주문을 먼저 생성하십시오' : 'Create a production order for this branch first'}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {productionOrders.map((order, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => selectProductionOrder(order)}
+                      className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-blue-600 text-lg">{order.orderNumber || order.id}</span>
+                            {order.status && (
+                              <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                                order.status === 'ready' ? 'bg-green-100 text-green-800' :
+                                order.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.status}
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-medium text-gray-800">{order.product}</p>
+                            <div className="flex gap-4 text-sm text-gray-600">
+                              <span>
+                                <span className="font-medium">{locale === 'ko' ? '고객:' : 'Customer:'}</span> {order.customerName || '-'}
+                              </span>
+                              <span>
+                                <span className="font-medium">{locale === 'ko' ? '수량:' : 'Qty:'}</span> {order.quantity?.toLocaleString() || 0}
+                              </span>
+                            </div>
+                            {order.dueDate && (
+                              <p className="text-xs text-gray-500">
+                                <span className="font-medium">{locale === 'ko' ? '납기:' : 'Due:'}</span> {order.dueDate}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right pl-4">
+                          <div className="text-2xl font-bold text-blue-600">{order.quantity?.toLocaleString() || 0}</div>
+                          <div className="text-xs text-gray-500">{locale === 'ko' ? '단위' : 'units'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

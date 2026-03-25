@@ -13,6 +13,19 @@ type User = {
   site?: string
 }
 
+type ActivityItem = {
+  type: string
+  descEn: string
+  descTh: string
+  ts?: string | null
+}
+
+type ActivityApiItem = {
+  type?: string
+  title?: string
+  ts?: string | null
+}
+
 export default function ThailandAdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
@@ -345,7 +358,7 @@ export default function ThailandAdminDashboard() {
     }
   ]
 
-  const [activities, setActivities] = useState<Array<any>>([])
+  const [activities, setActivities] = useState<ActivityItem[]>([])
   const [activitiesLoading, setActivitiesLoading] = useState(true)
   const [activitiesError, setActivitiesError] = useState<string | null>(null)
   const [, forceUpdate] = useState(0)
@@ -389,10 +402,10 @@ export default function ThailandAdminDashboard() {
         const res = await fetch('/api/activity')
         const j = await res.json()
         if (j && j.success && Array.isArray(j.activities) && mounted) {
-          const items = j.activities.map((a: any) => ({
+          const items = (j.activities as ActivityApiItem[]).map((a) => ({
             type: a.type,
-            descEn: a.title,
-            descTh: a.title,
+            descEn: a.title || '-',
+            descTh: a.title || '-',
             ts: a.ts
           }))
           setActivities(items.slice(0, 24))
@@ -434,7 +447,7 @@ export default function ThailandAdminDashboard() {
             // Refresh stats when new activity arrives
             refreshStats()
           }
-        } catch (err) {
+        } catch {
           // ignore ping/ready messages
         }
       }
@@ -446,7 +459,7 @@ export default function ThailandAdminDashboard() {
       }
       return es
     }
-    let es = connectActivityStream()
+    const es = connectActivityStream()
 
     // SSE for live stats (updates every few seconds)
     const statsEs = new EventSource('/api/stats/stream')
@@ -474,7 +487,7 @@ export default function ThailandAdminDashboard() {
             koreaTracking: Number(d.stats.koreaTracking) || 0
           })
         }
-      } catch (err) {
+      } catch {
         // ignore invalid messages
       }
     }
@@ -487,23 +500,22 @@ export default function ThailandAdminDashboard() {
     return () => {
       mounted = false
       if (esRetryTimer) clearTimeout(esRetryTimer)
-      try { es.close() } catch (_) {}
-      try { statsEs.close() } catch (_) {}
+      try { es.close() } catch {}
+      try { statsEs.close() } catch {}
       clearInterval(timeInterval)
     }
   }, [])
 
   useEffect(() => {
     const handler = (e: Event) => {
-      // @ts-ignore
-      const v = e?.detail as 'en' | 'th'
+      const v = (e as CustomEvent<'en' | 'th'>).detail
       if (v) setLang(v)
     }
     const storageHandler = () => {
       try {
         const l = localStorage.getItem('k_system_lang') as 'en' | 'th'
         if (l === 'en' || l === 'th') setLang(l)
-      } catch (_) {}
+      } catch {}
     }
     window.addEventListener('k-system-lang', handler)
     window.addEventListener('storage', storageHandler)
@@ -747,22 +759,32 @@ export default function ThailandAdminDashboard() {
                     <span className={`${styles.badge} ${
                       activity.type === 'order' ? styles.badgeInfo :
                       activity.type === 'customer' ? styles.badgeSuccess :
+                      activity.type === 'supplier' ? styles.badgeSuccess :
+                      activity.type === 'product' ? styles.badgePending :
                       activity.type === 'invoice' ? styles.badgeWarning :
                       activity.type === 'quotation' ? styles.badgeInfo :
                       activity.type === 'receipt' ? styles.badgeSuccess :
                       activity.type === 'contract' ? styles.badgePending :
                       activity.type === 'sales' ? styles.badgeInfo :
                       activity.type === 'followup' ? styles.badgeWarning :
+                      activity.type === 'tracking' ? styles.badgeInfo :
+                      activity.type === 'tax_invoice' ? styles.badgeWarning :
+                      activity.type === 'testing' ? styles.badgePending :
                       styles.badgePending
                     }`}>
                       {activity.type === 'order' ? L('PO','ใบสั่งซื้อ') :
                        activity.type === 'customer' ? L('Customer','ลูกค้า') :
+                       activity.type === 'supplier' ? L('Supplier','ซัพพลายเออร์') :
+                       activity.type === 'product' ? L('Product','สินค้า') :
                        activity.type === 'invoice' ? L('Invoice','ใบแจ้งหนี้') :
                        activity.type === 'quotation' ? L('Quote','ใบเสนอราคา') :
                        activity.type === 'receipt' ? L('Receipt','ใบเสร็จ') :
                        activity.type === 'contract' ? L('Contract','สัญญา') :
                        activity.type === 'sales' ? L('SO','ใบสั่งขาย') :
                        activity.type === 'followup' ? L('Follow','ติดตาม') :
+                       activity.type === 'tracking' ? L('Tracking','ติดตามขนส่ง') :
+                       activity.type === 'tax_invoice' ? L('Tax','ใบกำกับภาษี') :
+                       activity.type === 'testing' ? L('Testing','ทดสอบลูกค้า') :
                        L('Other','อื่นๆ')}
                     </span>
                   </td>

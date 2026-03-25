@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/mysql'
 
+type CountRow = { cnt: number }
+type ColumnNameRow = { COLUMN_NAME: string }
+type DocNoRow = { docNo: string | null }
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Failed to generate document number'
+}
+
 // API สำหรับสร้างเลขที่เอกสารทุกประเภท โดยเช็คจากฐานข้อมูลจริง
 // รองรับ: PR, CN, EB, GR, PV, SI, SC, ST, SA, WT, PDO, FWL, IMP, EXP
 export async function POST(request: NextRequest) {
@@ -34,15 +42,17 @@ export async function POST(request: NextRequest) {
       'cn': { prefix: 'CN', table: 'credit_notes', field: 'cnNo' },
       'eb': { prefix: 'EB', table: 'expense_bills', field: 'ebNo' },
 
-      // Production
+      // Production & Logistics
       'pdo': { prefix: 'PDO', table: 'production_orders', field: 'pdoNo' },
+      'sh': { prefix: 'SH', table: 'kr_shipment_updates', field: 'shipmentNumber' },
 
       // After Sales
       'wt': { prefix: 'WT', table: 'warranties', field: 'wtNo' },
       'fwl': { prefix: 'FWL', table: 'field_work_logs', field: 'fwlNo' }
     }
 
-    const docType = documentTypes[type.toLowerCase()]
+    const normalizedType = String(type).toLowerCase()
+    const docType = documentTypes[normalizedType]
 
     if (!docType) {
       return NextResponse.json(
@@ -67,31 +77,46 @@ export async function POST(request: NextRequest) {
       await connection.beginTransaction()
 
       // ตรวจสอบว่าตารางมีอยู่หรือไม่
-      const [tableCheck]: any = await connection.query(
+      const [tableCheck] = await connection.query(
         `SELECT COUNT(*) as cnt FROM information_schema.tables
          WHERE table_schema = DATABASE() AND table_name = ?`,
         [docType.table]
       )
+      const tableCheckRows = tableCheck as CountRow[]
 
-      if (tableCheck[0].cnt === 0) {
+      if (tableCheckRows[0]?.cnt === 0) {
         throw new Error(`Table ${docType.table} does not exist`)
       }
 
       // ดึงเลขที่เอกสารล่าสุดของวันนี้
-      const [rows]: any = await connection.query(
-        `SELECT ${docType.field} as docNo
+      let fieldName = docType.field
+      if (normalizedType === 'pdo') {
+        const [columnRows] = await connection.query(
+          `SELECT COLUMN_NAME
+           FROM information_schema.columns
+           WHERE table_schema = DATABASE() AND table_name = ?
+             AND COLUMN_NAME IN ('pdoNo', 'poNo')`,
+          [docType.table]
+        )
+        const columns = new Set((columnRows as ColumnNameRow[]).map((row) => row.COLUMN_NAME))
+        fieldName = columns.has('pdoNo') ? 'pdoNo' : columns.has('poNo') ? 'poNo' : docType.field
+      }
+
+      const [rows] = await connection.query(
+        `SELECT ${fieldName} as docNo
          FROM ${docType.table}
-         WHERE ${docType.field} LIKE ?
-         ORDER BY ${docType.field} DESC
+         WHERE ${fieldName} LIKE ?
+         ORDER BY ${fieldName} DESC
          LIMIT 1`,
         [searchPattern]
       )
+      const docRows = rows as DocNoRow[]
 
       let nextNumber = 1
 
-      if (rows.length > 0 && rows[0].docNo) {
+      if (docRows.length > 0 && docRows[0].docNo) {
         // แยกเลขลำดับจากเลขที่เอกสาร เช่น PR-20260324-0005 -> 5
-        const lastDocNo = rows[0].docNo
+        const lastDocNo = docRows[0].docNo
         const parts = lastDocNo.split('-')
         if (parts.length >= 3) {
           const lastSeq = parseInt(parts[parts.length - 1]) || 0
@@ -118,8 +143,9 @@ export async function POST(request: NextRequest) {
         docNo: newDocNo,
         prefix: docType.prefix,
         type: type.toUpperCase(),
+        field: fieldName,
         sequence: nextNumber,
-        lastDocNo: rows.length > 0 ? rows[0].docNo : null
+        lastDocNo: docRows.length > 0 ? docRows[0].docNo : null
       })
     } catch (error) {
       await connection.rollback()
@@ -127,12 +153,12 @@ export async function POST(request: NextRequest) {
     } finally {
       connection.release()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Generate document number error:', error)
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to generate document number'
+        error: getErrorMessage(error)
       },
       { status: 500 }
     )

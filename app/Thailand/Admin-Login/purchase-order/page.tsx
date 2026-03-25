@@ -316,19 +316,20 @@ export default function PurchaseOrderPage() {
 
   return (
     <AdminLayout title="Purchase Order" titleTh="ใบสั่งซื้อ (Supplier)">
-      <div className={styles.contentCard}>
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            {L('Supplier Purchase Order', 'ใบสั่งซื้อจาก Supplier')}
-          </h2>
-          <p className={styles.cardSubtitle}>
-            {L('Create purchase orders from suppliers and confirm goods received', 'สร้างใบสั่งซื้อจากซัพพลายเออร์และยืนยันการรับสินค้า')}
-          </p>
-        </div>
+      <div className={poStyles.container}>
+        <div className={poStyles.card}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              {L('Supplier Purchase Order', 'ใบสั่งซื้อจาก Supplier')}
+            </h2>
+            <p className={styles.cardSubtitle}>
+              {L('Create purchase orders from suppliers and confirm goods received', 'สร้างใบสั่งซื้อจากซัพพลายเออร์และยืนยันการรับสินค้า')}
+            </p>
+          </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb', marginBottom: 20 }}>
@@ -639,6 +640,7 @@ export default function PurchaseOrderPage() {
             </form>
           )}
         </div>
+      </div>
       </div>
     </AdminLayout>
   )

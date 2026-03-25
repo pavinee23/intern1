@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/mysql'
+import { fetchActivityFeed, type ActivityFeedItem } from '@/lib/activity-feed'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function formatRow(r: any) {
-  return {
-    type: r.type,
-    title: r.title,
-    ts: r.ts,
-    ref_id: r.ref_id
-  }
+function buildSignature(activity: ActivityFeedItem) {
+  return [activity.type, activity.ref_id ?? 'none', activity.ts ?? 'none', activity.title].join('::')
 }
 
 export async function GET() {
@@ -18,86 +13,66 @@ export async function GET() {
 
   const stream = new ReadableStream({
     async start(controller) {
-      let lastTs: string | null = null
+      let closed = false
+      let knownSignatures = new Set<string>()
 
-      // initialize lastTs to latest activity timestamp to avoid flooding
-      try {
-        const conn = await pool.getConnection()
+      const send = (payload: unknown) => {
+        if (closed) return
         try {
-          const [rows]: any = await conn.query(`
-            SELECT created_at AS ts FROM (
-              SELECT created_at FROM purchase_orders
-              UNION ALL
-              SELECT created_at FROM cus_detail
-              UNION ALL
-              SELECT created_at FROM invoices
-            ) x ORDER BY ts DESC LIMIT 1
-          `)
-          if (Array.isArray(rows) && rows.length) lastTs = rows[0].ts
-        } catch (e) {
-          console.error('init lastTs error', e)
-        } finally {
-          conn.release()
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+        } catch {
+          closed = true
         }
-      } catch (e) {
-        console.error('pool getConnection error', e)
       }
 
-      const poll = async () => {
+      const syncActivities = async (emitNewOnly: boolean) => {
         try {
-          const conn = await pool.getConnection()
-          try {
-            const sql = `
-              SELECT 'order' AS type, orderNo AS title, created_at AS ts, orderID AS ref_id FROM purchase_orders
-              UNION ALL
-              SELECT 'customer' AS type, fullname AS title, created_at AS ts, cusID AS ref_id FROM cus_detail
-              UNION ALL
-              SELECT 'invoice' AS type, invNo AS title, created_at AS ts, invID AS ref_id FROM invoices
-              ORDER BY ts ASC
-            `
-            const [rows]: any = await conn.query(sql)
-            const filtered = (Array.isArray(rows) ? rows : []).filter((r: any) => {
-              if (!r.ts) return false
-              if (!lastTs) return true
-              return new Date(r.ts).getTime() > new Date(lastTs).getTime()
-            })
-            if (filtered.length) {
-              for (const r of filtered) {
-                const ev = formatRow(r)
-                const payload = JSON.stringify(ev)
-                try { controller.enqueue(encoder.encode(`data: ${payload}\n\n`)) } catch (_) { return }
-                lastTs = r.ts
-              }
+          const activities = await fetchActivityFeed(60)
+          const currentSignatures = new Set(activities.map(buildSignature))
+
+          if (emitNewOnly) {
+            const newActivities = activities
+              .filter((activity) => !knownSignatures.has(buildSignature(activity)))
+              .sort((a, b) => new Date(a.ts || 0).getTime() - new Date(b.ts || 0).getTime())
+
+            for (const activity of newActivities) {
+              send(activity)
             }
-          } finally {
-            conn.release()
           }
-        } catch (e: any) {
-          // Swallow connection errors silently — will retry on next interval
-          if (!String(e).includes('Too many')) console.error('activity stream poll error', e)
+
+          knownSignatures = currentSignatures
+        } catch (error) {
+          if (!String(error).includes('Too many')) {
+            console.error('activity stream sync error', error)
+          }
         }
       }
 
-      // send a ping every 30s to keep connection alive
+      await syncActivities(false)
+      send({ ready: true })
+
+      const interval = setInterval(async () => {
+        if (closed) {
+          clearInterval(interval)
+          return
+        }
+        await syncActivities(true)
+      }, 10000)
+
       const pingInterval = setInterval(() => {
-        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify({ ping: Date.now() })}\n\n`)) } catch (_) {}
+        if (closed) {
+          clearInterval(pingInterval)
+          return
+        }
+        send({ ping: Date.now() })
       }, 30000)
 
-      // poll every 10 seconds (reduce DB connection pressure)
-      const interval = setInterval(poll, 10000)
-
-      // run initial poll once
-      await poll()
-
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ ready: true })}\n\n`))
-
-      if (controller.signal && typeof controller.signal.addEventListener === 'function') {
-        controller.signal.addEventListener('abort', () => {
-          clearInterval(interval)
-          clearInterval(pingInterval)
-          try { controller.close() } catch (e) {}
-        })
-      }
+      setTimeout(() => {
+        closed = true
+        clearInterval(interval)
+        clearInterval(pingInterval)
+        try { controller.close() } catch {}
+      }, 10 * 60 * 1000)
     }
   })
 
@@ -106,7 +81,8 @@ export async function GET() {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive'
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     }
   })
 }

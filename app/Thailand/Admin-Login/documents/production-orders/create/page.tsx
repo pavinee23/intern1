@@ -6,10 +6,23 @@ import AdminLayout from '../../../components/AdminLayout'
 import styles from '../../../admin-theme.module.css'
 import ProductSearchModal from './ProductSearchModal'
 
+type LocaleChangeDetail = string | { locale?: 'en' | 'th' }
+
+type ProductCatalogItem = {
+  sku?: string
+  name?: string
+  unit?: string
+  MCB?: string
+  Weight?: string
+  'Capacity (kVA)'?: string
+  'Size (WxLxH) cm.'?: string
+}
+
 export default function CreateProductionOrderPage() {
   const router = useRouter()
 
   const [pdoNo, setPdoNo] = useState('')
+  const [refreshingPdoNo, setRefreshingPdoNo] = useState(false)
   const [pdoDate, setPdoDate] = useState(() => new Date().toISOString().split('T')[0])
   const [productCode, setProductCode] = useState('')
   const [productName, setProductName] = useState('')
@@ -57,7 +70,7 @@ export default function CreateProductionOrderPage() {
     } catch {}
 
     const handler = (e: Event) => {
-      const d = (e as any).detail
+      const d = (e as CustomEvent<LocaleChangeDetail>).detail
       const v = typeof d === 'string' ? d : d?.locale
       if (v === 'en' || v === 'th') setLocale(v)
     }
@@ -69,10 +82,41 @@ export default function CreateProductionOrderPage() {
     }
   }, [])
 
+  useEffect(() => {
+    refreshPdoNo()
+  }, [])
+
   const L = (en: string, th: string) => locale === 'th' ? th : en
 
+  async function refreshPdoNo() {
+    setRefreshingPdoNo(true)
+    try {
+      const res = await fetch('/api/documents/generate-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'pdo' })
+      })
+      const j = await res.json()
+      if (res.ok && j.success && j.docNo) {
+        setPdoNo(j.docNo)
+      } else {
+        throw new Error(j.error || 'Failed to generate PDO number')
+      }
+      setPdoDate(new Date().toISOString().split('T')[0])
+    } catch (err) {
+      console.error('Failed to get PDO number:', err)
+      const now = new Date()
+      const yyyy = String(now.getFullYear())
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const dd = String(now.getDate()).padStart(2, '0')
+      setPdoNo(`PDO-${yyyy}${mm}${dd}-00001`)
+    } finally {
+      setRefreshingPdoNo(false)
+    }
+  }
+
   // Handle product selection from catalog
-  function handleProductSelect(product: any) {
+  function handleProductSelect(product: ProductCatalogItem) {
     setProductCode(product.sku || '')
     setProductName(product.name || '')
     setUnit(product.unit || 'pcs')
@@ -116,6 +160,7 @@ export default function CreateProductionOrderPage() {
       const created_by = user?.username || user?.name || 'system'
 
       const payload = {
+        pdoNo,
         pdoDate,
         product_code: productCode,
         product_name: productName,
@@ -185,7 +230,23 @@ export default function CreateProductionOrderPage() {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('PDO No.', 'เลขที่ PDO')}</label>
-                <input type="text" value={pdoNo || L('Auto-generated', 'สร้างอัตโนมัติ')} disabled className={styles.formInput} style={{ background: '#f5f5f5' }} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={pdoNo || L('Auto-generated', 'สร้างอัตโนมัติ')}
+                    disabled
+                    className={styles.formInput}
+                    style={{ background: '#f5f5f5' }}
+                  />
+                  <button
+                    type="button"
+                    className={`${styles.btnOutline} ${styles.btnRefresh}`}
+                    onClick={refreshPdoNo}
+                    disabled={refreshingPdoNo || loading}
+                  >
+                    {refreshingPdoNo ? L('Refreshing...', 'กำลังรีเฟรช...') : L('Refresh', 'รีเฟรช')}
+                  </button>
+                </div>
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Date', 'วันที่')}</label>

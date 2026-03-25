@@ -477,6 +477,30 @@ export async function POST() {
         items JSON,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
+      `CREATE TABLE IF NOT EXISTS kr_shipment_updates (
+        id VARCHAR(50) NOT NULL PRIMARY KEY,
+        shipmentNumber VARCHAR(50) NOT NULL,
+        orderNumber VARCHAR(50) NOT NULL,
+        destination ENUM('Korea','Brunei','Thailand','Vietnam') DEFAULT 'Korea',
+        destCode ENUM('KR','BN','TH','VN') DEFAULT 'KR',
+        shipmentMethod ENUM('land','sea','air') DEFAULT 'sea',
+        currentStatus ENUM('preparing','in-transit','customs','delivered') DEFAULT 'preparing',
+        currentLocation VARCHAR(255),
+        estimatedDelivery DATE,
+        trackingNumber VARCHAR(100),
+        carrier VARCHAR(150),
+        lastUpdate DATETIME,
+        destinationAddress TEXT,
+        contactPerson VARCHAR(150),
+        contactPhone VARCHAR(100),
+        packagingNote TEXT,
+        totalWeight VARCHAR(50),
+        totalBoxes INT DEFAULT 0,
+        items JSON,
+        updates JSON,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
       // Domestic Market: Domestic Shipments
       `CREATE TABLE IF NOT EXISTS kr_domestic_shipments (
         id VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -522,7 +546,7 @@ export async function POST() {
     }
 
     return NextResponse.json({ success: true, tables: results, count: results.length })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
   }
 }

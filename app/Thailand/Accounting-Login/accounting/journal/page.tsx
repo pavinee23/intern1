@@ -32,7 +32,7 @@ const btnStyle = (accent = false): React.CSSProperties => ({
 })
 
 export default function JournalPage() {
-  const { L } = useLang()
+  const { L, lang } = useLang()
   const [list, setList] = useState<Entry[]>([])
   const [coa, setCoa] = useState<any[]>([])
   const [form, setForm] = useState<Entry>(emptyEntry())
@@ -74,6 +74,189 @@ export default function JournalPage() {
   const statusColor: Record<string, string> = { draft: '#6b7280', posted: '#16a34a', reversed: '#dc2626' }
   const statusLabel: Record<string, string> = { draft: L('Draft', 'ร่าง'), posted: L('Posted', 'ผ่านบัญชีแล้ว'), reversed: L('Reversed', 'กลับรายการ') }
   const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const printJournalEntry = async (entryId: number) => {
+    const r = await fetch('/api/accounting/journal-entries?id=' + entryId)
+    const d = await r.json()
+    if (!d.ok || !d.data) return
+
+    const entry = d.data
+    const lines = entry.lines || []
+    const totalDebit = lines.reduce((s: number, l: any) => s + (Number(l.debit) || 0), 0)
+    const totalCredit = lines.reduce((s: number, l: any) => s + (Number(l.credit) || 0), 0)
+
+    // Get current user info
+    let currentUser = 'Unknown User'
+    try {
+      const userInfo = localStorage.getItem('k_system_accountant_user')
+      if (userInfo) {
+        const parsed = JSON.parse(userInfo)
+        currentUser = parsed.name || parsed.username || parsed.email || 'Unknown User'
+      }
+    } catch (e) {
+      // If can't get user, use default
+    }
+
+    // Capture current language for print
+    const currentLang = lang
+    const printL = (en: string, th: string) => currentLang === 'th' ? th : en
+
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Journal Entry - ${entry.doc_no}</title>
+        <style>
+          @media print { @page { margin: 1cm; } }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Sarabun', 'Tahoma', sans-serif; padding: 20px; font-size: 14px; }
+          .company-header { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #333; }
+          .company-logo { width: 80px; height: 80px; object-fit: contain; }
+          .company-info { text-align: left; }
+          .company-name { font-size: 22px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+          .company-address { font-size: 13px; color: #666; line-height: 1.5; }
+          .header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #d1d5db; }
+          .header h1 { font-size: 24px; margin-bottom: 8px; font-weight: 700; }
+          .header .subtitle { font-size: 16px; color: #666; }
+          .info-section { margin-bottom: 25px; }
+          .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+          .info-item { display: flex; }
+          .info-label { font-weight: 600; min-width: 120px; color: #444; }
+          .info-value { color: #000; }
+          .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          .status-draft { background: #f3f4f6; color: #6b7280; }
+          .status-posted { background: #dcfce7; color: #16a34a; }
+          .status-reversed { background: #fee2e2; color: #dc2626; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #374151; color: #fff; padding: 10px; text-align: left; font-weight: 600; border: 1px solid #1f2937; }
+          td { padding: 8px 10px; border: 1px solid #d1d5db; }
+          tbody tr:nth-child(even) { background: #f9fafb; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .font-mono { font-family: 'Courier New', monospace; }
+          .total-row { font-weight: 700; background: #e5e7eb !important; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #d1d5db; }
+          .signature-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 40px; text-align: center; }
+          .signature-box { padding-top: 60px; border-top: 1px solid #000; }
+          .print-time { text-align: right; color: #666; font-size: 12px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="company-header">
+          <img src="/k-energy-save-logo.png" alt="Company Logo" class="company-logo" />
+          <div class="company-info">
+            <div class="company-name">Zera co.,ltd</div>
+            <div class="company-address">
+              K Energy Save System<br>
+              ${printL('Thailand Office', 'สำนักงานประเทศไทย')}
+            </div>
+          </div>
+        </div>
+
+        <div class="header">
+          <h1>${printL('Journal Entry', 'รายการบันทึกบัญชี')}</h1>
+          <div class="subtitle">${printL('General Ledger', 'สมุดรายวันทั่วไป')}</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">${printL('Document No:', 'เลขที่เอกสาร:')}</span>
+              <span class="info-value font-mono">${entry.doc_no || '-'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">${printL('Date:', 'วันที่:')}</span>
+              <span class="info-value">${entry.doc_date ? new Date(entry.doc_date).toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">${printL('Status:', 'สถานะ:')}</span>
+              <span class="status-badge status-${entry.status}">${currentLang === 'th' ? (statusLabel[entry.status] || entry.status) : (entry.status === 'draft' ? 'Draft' : entry.status === 'posted' ? 'Posted' : entry.status === 'reversed' ? 'Reversed' : entry.status)}</span>
+            </div>
+          </div>
+          <div class="info-item">
+            <span class="info-label">${printL('Description:', 'คำอธิบาย:')}</span>
+            <span class="info-value">${entry.description || '-'}</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 15%">${printL('Account Code', 'รหัสบัญชี')}</th>
+              <th style="width: 40%">${printL('Description', 'คำอธิบาย')}</th>
+              <th style="width: 20%" class="text-right">${printL('Debit', 'เดบิต')}</th>
+              <th style="width: 20%" class="text-right">${printL('Credit', 'เครดิต')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lines.map((line: any) => `
+              <tr>
+                <td class="font-mono">${line.acc_code || ''}</td>
+                <td>${line.description || ''}</td>
+                <td class="text-right">${line.debit ? fmt(Number(line.debit)) : '-'}</td>
+                <td class="text-right">${line.credit ? fmt(Number(line.credit)) : '-'}</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td colspan="2" class="text-right">${printL('Total:', 'รวม:')}</td>
+              <td class="text-right">${fmt(totalDebit)}</td>
+              <td class="text-right">${fmt(totalCredit)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div class="signature-section">
+            <div class="signature-box">
+              <div>${printL('Prepared By', 'ผู้จัดทำ')}</div>
+              <div style="margin-top: 8px; color: #666;">_____________________</div>
+            </div>
+            <div class="signature-box">
+              <div>${printL('Reviewed By', 'ผู้ตรวจสอบ')}</div>
+              <div style="margin-top: 8px; color: #666;">_____________________</div>
+            </div>
+            <div class="signature-box">
+              <div>${printL('Approved By', 'ผู้อนุมัติ')}</div>
+              <div style="margin-top: 8px; color: #666;">_____________________</div>
+            </div>
+          </div>
+          <div class="print-time">
+            ${printL('Printed on:', 'พิมพ์เมื่อ:')} ${new Date().toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            })}<br>
+            ${printL('Printed by:', 'พิมพ์โดย:')} ${currentUser}
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() { window.print(); }, 250);
+          };
+          window.onafterprint = function() {
+            window.close();
+          };
+        </script>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
 
   return (
     <AccWindow title={L('Journal Entry', 'บันทึกบัญชี')}>
@@ -117,10 +300,24 @@ export default function JournalPage() {
                     }}>{statusLabel[row.status] || row.status}</span>
                   </td>
                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                    <button style={btnStyle()} onClick={async () => {
-                      const r = await fetch('/api/accounting/journal-entries?id=' + row.id)
-                      const d = await r.json(); if (d.ok) { setForm({ ...d.data, lines: d.data.lines || [] }); setShowForm(true) }
-                    }}>{L('View/Edit', 'ดู/แก้ไข')}</button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button style={btnStyle()} onClick={async () => {
+                        const r = await fetch('/api/accounting/journal-entries?id=' + row.id)
+                        const d = await r.json(); if (d.ok) { setForm({ ...d.data, lines: d.data.lines || [] }); setShowForm(true) }
+                      }}>{L('View/Edit', 'ดู/แก้ไข')}</button>
+                      <button
+                        style={{ ...btnStyle(), background: '#1e40af', color: '#fff', border: '1px solid #1e40af', display: 'flex', alignItems: 'center', gap: 4 }}
+                        onClick={() => printJournalEntry(row.id)}
+                        title={L('Print Report', 'พิมพ์รายงาน')}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                          <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        {L('Print', 'พิมพ์')}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -44,6 +44,62 @@ interface ShipmentUpdate {
   }[];
 }
 
+type ProductionOrderSearchResult = {
+  id?: string | number;
+  orderNumber?: string;
+  product?: string;
+  customerName?: string;
+  quantity?: number;
+  status?: string;
+  dueDate?: string;
+};
+
+type ProductSearchResult = {
+  id?: number | null;
+  sku?: string | null;
+  name?: string | null;
+  unit?: string | null;
+  weight?: string | null;
+};
+
+type ShipmentUpdateRow = Partial<ShipmentUpdate> & {
+  shipmentMethod?: string;
+  currentStatus?: string;
+  totalBoxes?: number | string;
+  items?: unknown;
+  updates?: unknown;
+};
+
+function normalizeShipment(row: ShipmentUpdateRow): ShipmentUpdate {
+  return {
+    id: String(row?.id ?? ''),
+    shipmentNumber: row?.shipmentNumber ?? '',
+    orderNumber: row?.orderNumber ?? '',
+    destination: (row?.destination ?? 'Korea') as ShipmentUpdate['destination'],
+    destCode: (row?.destCode ?? 'KR') as ShipmentUpdate['destCode'],
+    shipmentMethod: row?.shipmentMethod === 'land' ? 'land' : 'sea',
+    currentStatus: (row?.currentStatus ?? 'preparing') as ShipmentUpdate['currentStatus'],
+    currentLocation: row?.currentLocation ?? '',
+    estimatedDelivery: row?.estimatedDelivery ?? '',
+    trackingNumber: row?.trackingNumber ?? '',
+    carrier: row?.carrier ?? '',
+    lastUpdate: row?.lastUpdate ?? '',
+    destinationAddress: row?.destinationAddress ?? '',
+    contactPerson: row?.contactPerson ?? '',
+    contactPhone: row?.contactPhone ?? '',
+    packagingNote: row?.packagingNote ?? '',
+    totalWeight: row?.totalWeight ?? '',
+    totalBoxes: Number(row?.totalBoxes ?? 0),
+    items: Array.isArray(row?.items) ? row.items : [],
+    updates: Array.isArray(row?.updates) ? row.updates : [],
+  };
+}
+
+function getCurrentTimestamp() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
 export default function ShipmentUpdatesPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -77,185 +133,57 @@ export default function ShipmentUpdatesPage() {
     totalBoxes: 0,
   });
   const [newItems, setNewItems] = useState<ShipmentItem[]>([{ productName: '', productCode: '', quantity: 0, unit: 'pcs', weight: '' }]);
+  const [shipments, setShipments] = useState<ShipmentUpdate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [poSearchQuery, setPoSearchQuery] = useState('');
+  const [poSearchResults, setPoSearchResults] = useState<ProductionOrderSearchResult[]>([]);
+  const [showPoDropdown, setShowPoDropdown] = useState(false);
+  const [showPoSearchModal, setShowPoSearchModal] = useState(false);
+  const [allProductionOrders, setAllProductionOrders] = useState<ProductionOrderSearchResult[]>([]);
+  const [productSearchResults, setProductSearchResults] = useState<ProductSearchResult[]>([]);
+  const [activeProductRow, setActiveProductRow] = useState<number | null>(null);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const productSearchRef = useRef<HTMLDivElement | null>(null);
+  const productSearchTimeout = useRef<number | null>(null);
 
-  const [shipments, setShipments] = useState<ShipmentUpdate[]>([
-    {
-      id: '1',
-      shipmentNumber: 'SH-2026-KR-001',
-      orderNumber: 'PO-2026-001',
-      destination: 'Korea',
-      destCode: 'KR',
-      shipmentMethod: 'land',
-      currentStatus: 'in-transit',
-      currentLocation: 'Seoul Distribution Center',
-      estimatedDelivery: '2026-02-16',
-      trackingNumber: 'TK-KR-20260215-001',
-      carrier: 'Korea Express',
-      lastUpdate: '2026-02-15 16:00',
-      destinationAddress: '123 Gangnam-gu, Seoul, South Korea',
-      contactPerson: 'Kim Min-ji',
-      contactPhone: '+82-2-1234-5678',
-      packagingNote: 'Handle with care - fragile electronic components',
-      totalWeight: '250 kg',
-      totalBoxes: 5,
-      items: [
-        { productName: 'Main Control Unit', productCode: 'MCU-A2024', quantity: 50, unit: 'pcs', weight: '100 kg', dimensions: '50x40x30 cm' },
-        { productName: 'Power Module', productCode: 'PM-500W', quantity: 50, unit: 'pcs', weight: '75 kg', dimensions: '40x30x20 cm' },
-        { productName: 'Display Panel', productCode: 'DP-LCD7', quantity: 50, unit: 'pcs', weight: '50 kg', dimensions: '30x25x15 cm' },
-        { productName: 'Sensor Array', productCode: 'SA-V3', quantity: 50, unit: 'sets', weight: '25 kg', dimensions: '20x15x10 cm' }
-      ],
-      updates: [
-        {
-          timestamp: '2026-02-15 16:00',
-          location: 'Seoul Distribution Center',
-          status: 'In Transit',
-          notes: 'Arrived at Seoul hub, preparing for final delivery'
-        },
-        {
-          timestamp: '2026-02-15 12:00',
-          location: 'Busan Checkpoint',
-          status: 'In Transit',
-          notes: 'Passed checkpoint, heading to Seoul'
-        },
-        {
-          timestamp: '2026-02-15 08:00',
-          location: 'Warehouse',
-          status: 'Dispatched',
-          notes: 'Package dispatched from main warehouse'
-        }
-      ]
-    },
-    {
-      id: '2',
-      shipmentNumber: 'SH-2026-BN-002',
-      orderNumber: 'PO-2026-003',
-      destination: 'Brunei',
-      destCode: 'BN',
-      shipmentMethod: 'sea',
-      currentStatus: 'customs',
-      currentLocation: 'Muara Port - Customs',
-      estimatedDelivery: '2026-02-18',
-      trackingNumber: 'TK-BN-20260212-003',
-      carrier: 'Pacific Shipping Lines',
-      lastUpdate: '2026-02-15 14:30',
-      destinationAddress: '45 Jalan Menteri Besar, Bandar Seri Begawan, Brunei',
-      contactPerson: 'Ahmad Hassan',
-      contactPhone: '+673-222-3456',
-      totalWeight: '180 kg',
-      totalBoxes: 4,
-      items: [
-        { productName: 'Energy Monitor Pro', productCode: 'EMP-2024', quantity: 30, unit: 'pcs', weight: '120 kg' },
-        { productName: 'Smart Sensors', productCode: 'SS-V2', quantity: 30, unit: 'sets', weight: '60 kg' }
-      ],
-      updates: [
-        {
-          timestamp: '2026-02-15 14:30',
-          location: 'Muara Port - Customs',
-          status: 'Customs Clearance',
-          notes: 'Under customs inspection, expected clearance today'
-        },
-        {
-          timestamp: '2026-02-14 18:00',
-          location: 'Muara Port',
-          status: 'Arrived',
-          notes: 'Vessel arrived at destination port'
-        },
-        {
-          timestamp: '2026-02-12 10:00',
-          location: 'Port of Busan',
-          status: 'Departed',
-          notes: 'Loaded on vessel MS Pacific Star'
-        }
-      ]
-    },
-    {
-      id: '3',
-      shipmentNumber: 'SH-2026-TH-003',
-      orderNumber: 'PO-2026-004',
-      destination: 'Thailand',
-      destCode: 'TH',
-      shipmentMethod: 'sea',
-      currentStatus: 'in-transit',
-      currentLocation: 'South China Sea',
-      estimatedDelivery: '2026-02-20',
-      trackingNumber: 'TK-TH-20260213-004',
-      carrier: 'Asian Maritime Co.',
-      lastUpdate: '2026-02-15 10:00',
-      destinationAddress: '789 Sukhumvit Road, Bangkok, Thailand',
-      contactPerson: 'Somchai Prasert',
-      contactPhone: '+66-2-345-6789',
-      packagingNote: 'Waterproof packaging required',
-      totalWeight: '320 kg',
-      totalBoxes: 6,
-      items: [
-        { productName: 'Industrial Controller', productCode: 'IC-X500', quantity: 40, unit: 'pcs', weight: '200 kg', dimensions: '60x50x40 cm' },
-        { productName: 'Cooling System', productCode: 'CS-T300', quantity: 40, unit: 'pcs', weight: '120 kg', dimensions: '45x35x25 cm' }
-      ],
-      updates: [
-        {
-          timestamp: '2026-02-15 10:00',
-          location: 'South China Sea',
-          status: 'In Transit',
-          notes: 'Vessel en route, weather conditions favorable'
-        },
-        {
-          timestamp: '2026-02-13 14:00',
-          location: 'Port of Busan',
-          status: 'Departed',
-          notes: 'Departed on vessel MS Thai Express'
-        },
-        {
-          timestamp: '2026-02-13 08:00',
-          location: 'Warehouse',
-          status: 'Preparing',
-          notes: 'Cargo prepared and loaded'
-        }
-      ]
-    },
-    {
-      id: '4',
-      shipmentNumber: 'SH-2026-VN-004',
-      orderNumber: 'PO-2026-005',
-      destination: 'Vietnam',
-      destCode: 'VN',
-      shipmentMethod: 'sea',
-      currentStatus: 'delivered',
-      currentLocation: 'Hanoi Branch',
-      estimatedDelivery: '2026-02-15',
-      trackingNumber: 'TK-VN-20260210-005',
-      carrier: 'Vietnam Shipping Corp',
-      lastUpdate: '2026-02-15 09:00',
-      destinationAddress: '456 Nguyen Hue Boulevard, Ho Chi Minh City, Vietnam',
-      contactPerson: 'Nguyen Van An',
-      contactPhone: '+84-28-765-4321',
-      totalWeight: '210 kg',
-      totalBoxes: 5,
-      items: [
-        { productName: 'Smart Gateway', productCode: 'SG-2024', quantity: 35, unit: 'pcs', weight: '140 kg' },
-        { productName: 'Network Module', productCode: 'NM-W100', quantity: 35, unit: 'pcs', weight: '70 kg' }
-      ],
-      updates: [
-        {
-          timestamp: '2026-02-15 09:00',
-          location: 'Hanoi Branch',
-          status: 'Delivered',
-          notes: 'Successfully delivered and signed by recipient'
-        },
-        {
-          timestamp: '2026-02-14 16:00',
-          location: 'Hanoi Distribution',
-          status: 'Out for Delivery',
-          notes: 'Final delivery in progress'
-        },
-        {
-          timestamp: '2026-02-13 10:00',
-          location: 'Hai Phong Port',
-          status: 'Customs Cleared',
-          notes: 'Cleared customs, heading to Hanoi'
-        }
-      ]
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (productSearchRef.current && !productSearchRef.current.contains(event.target as Node)) {
+        setActiveProductRow(null);
+        setProductSearchResults([]);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const loadShipments = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/korea/shipment-updates', { cache: 'no-store' });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to load shipment updates');
+      }
+
+      setShipments(Array.isArray(data) ? data.map(normalizeShipment) : []);
+      setLoadError('');
+    } catch (error) {
+      console.error('Failed to load shipment updates:', error);
+      setLoadError(locale === 'ko' ? '배송 데이터를 불러오지 못했습니다.' : 'Unable to load shipment data.');
+      setShipments([]);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  }, [locale]);
+
+  useEffect(() => {
+    loadShipments();
+  }, [loadShipments]);
 
   const getStatusInfo = (status: string) => {
     const statuses = {
@@ -319,35 +247,169 @@ export default function ShipmentUpdatesPage() {
     setEditItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: value } : item));
   };
 
-  const handleSaveShipment = () => {
-    if (!selectedShipment) return;
-    const updated: ShipmentUpdate = {
-      ...selectedShipment,
-      carrier: editCarrier,
-      trackingNumber: editTracking,
-      destinationAddress: editAddress,
-      contactPerson: editContact,
-      contactPhone: editPhone,
-      packagingNote: editPackagingNote || undefined,
-      items: editItems,
-    };
-    setShipments(prev => prev.map(s => s.id === updated.id ? updated : s));
-    setSelectedShipment(updated);
-    alert(locale === 'ko' ? '저장되었습니다!' : 'Saved successfully!');
+  const upsertShipment = (shipment: ShipmentUpdate) => {
+    setShipments(prev => {
+      const exists = prev.some(s => s.id === shipment.id);
+      if (!exists) return [shipment, ...prev];
+      return prev.map(s => s.id === shipment.id ? shipment : s);
+    });
+    setSelectedShipment(shipment);
   };
 
-  const handleAddUpdate = () => {
-    if (selectedShipment) {
+  const handleSaveShipment = async () => {
+    if (!selectedShipment) return;
+
+    try {
+      setIsSaving(true);
+
+      const response = await fetch('/api/korea/shipment-updates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedShipment.id,
+          carrier: editCarrier,
+          trackingNumber: editTracking,
+          destinationAddress: editAddress,
+          contactPerson: editContact,
+          contactPhone: editPhone,
+          packagingNote: editPackagingNote || null,
+          items: editItems,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to save shipment');
+      }
+
+      if (data?.shipment) {
+        upsertShipment(normalizeShipment(data.shipment));
+      }
+
+      alert(locale === 'ko' ? '저장되었습니다!' : 'Saved successfully!');
+    } catch (error) {
+      console.error('Failed to save shipment:', error);
+      alert(locale === 'ko' ? '저장에 실패했습니다.' : 'Failed to save shipment.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddUpdate = async () => {
+    if (!selectedShipment) return;
+
+    try {
+      setIsSaving(true);
+
+      const timestamp = getCurrentTimestamp();
+      const updateEntry = {
+        timestamp,
+        location: selectedShipment.currentLocation || '-',
+        status: getStatusInfo(selectedShipment.currentStatus).label,
+        notes: locale === 'ko' ? '배송 정보가 갱신되었습니다.' : 'Shipment details were updated.',
+      };
+
+      const response = await fetch('/api/korea/shipment-updates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedShipment.id,
+          carrier: editCarrier,
+          trackingNumber: editTracking,
+          destinationAddress: editAddress,
+          contactPerson: editContact,
+          contactPhone: editPhone,
+          packagingNote: editPackagingNote || null,
+          items: editItems,
+          appendUpdate: updateEntry,
+          lastUpdate: timestamp,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to append shipment update');
+      }
+
+      if (data?.shipment) {
+        upsertShipment(normalizeShipment(data.shipment));
+      }
+
       alert(
         locale === 'ko'
           ? `${selectedShipment.shipmentNumber} 업데이트가 추가되었습니다!`
           : `Update added for ${selectedShipment.shipmentNumber}!`
       );
       closeModal();
+    } catch (error) {
+      console.error('Failed to add shipment update:', error);
+      alert(locale === 'ko' ? '업데이트 추가에 실패했습니다.' : 'Failed to add shipment update.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const destMap: Record<string, string> = { Korea: 'KR', Brunei: 'BN', Thailand: 'TH', Vietnam: 'VN' };
+
+  const generateShipmentNumber = async () => {
+    try {
+      const response = await fetch('/api/documents/generate-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'sh' })
+      });
+      const data = await response.json();
+      if (data.success && data.docNo) {
+        setNewShipment(p => ({ ...p, shipmentNumber: data.docNo }));
+      }
+    } catch (error) {
+      console.error('Failed to generate shipment number:', error);
+    }
+  };
+
+  const searchProductionOrders = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setPoSearchResults([]);
+      setShowPoDropdown(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/korea/production-orders?search=${encodeURIComponent(searchTerm)}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setPoSearchResults(data);
+        setShowPoDropdown(true);
+      }
+    } catch (error) {
+      console.error('Failed to search production orders:', error);
+      setPoSearchResults([]);
+    }
+  };
+
+  const selectProductionOrder = (order: ProductionOrderSearchResult) => {
+    const orderNo = order.orderNumber || String(order.id || '');
+    setNewShipment(p => ({
+      ...p,
+      orderNumber: orderNo,
+    }));
+    setPoSearchQuery(orderNo);
+    setShowPoDropdown(false);
+    setShowPoSearchModal(false);
+  };
+
+  const openPoSearchModal = async () => {
+    setShowPoSearchModal(true);
+    try {
+      const response = await fetch('/api/korea/production-orders');
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setAllProductionOrders(data);
+      }
+    } catch (error) {
+      console.error('Failed to load production orders:', error);
+    }
+  };
 
   const resetNewShipmentForm = () => {
     setNewShipment({
@@ -357,31 +419,139 @@ export default function ShipmentUpdatesPage() {
       contactPerson: '', contactPhone: '', packagingNote: '', totalWeight: '', totalBoxes: 0,
     });
     setNewItems([{ productName: '', productCode: '', quantity: 0, unit: 'pcs', weight: '' }]);
+    setPoSearchQuery('');
+    setPoSearchResults([]);
+    setShowPoDropdown(false);
   };
 
-  const handleCreateShipment = () => {
+  const handleCreateShipment = async () => {
     if (!newShipment.shipmentNumber || !newShipment.orderNumber) {
       alert(locale === 'ko' ? '배송번호와 주문번호를 입력하세요.' : 'Please enter shipment number and order number.');
       return;
     }
-    const now = new Date();
-    const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const created: ShipmentUpdate = {
-      id: String(Date.now()),
-      ...newShipment,
-      lastUpdate: ts,
-      packagingNote: newShipment.packagingNote || undefined,
-      items: newItems.filter(it => it.productName),
-      updates: [{ timestamp: ts, location: newShipment.currentLocation || '-', status: 'Preparing', notes: locale === 'ko' ? '배송 등록됨' : 'Shipment registered' }],
-    };
-    setShipments(prev => [created, ...prev]);
-    setIsAddModalOpen(false);
-    resetNewShipmentForm();
-    alert(locale === 'ko' ? '배송이 등록되었습니다!' : 'Shipment created!');
+
+    try {
+      setIsSaving(true);
+
+      const timestamp = getCurrentTimestamp();
+      const response = await fetch('/api/korea/shipment-updates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `ship-${Date.now()}`,
+          ...newShipment,
+          lastUpdate: timestamp,
+          packagingNote: newShipment.packagingNote || null,
+          items: newItems.filter(it => it.productName),
+          updates: [
+            {
+              timestamp,
+              location: newShipment.currentLocation || '-',
+              status: 'Preparing',
+              notes: locale === 'ko' ? '배송 등록됨' : 'Shipment registered',
+            },
+          ],
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to create shipment');
+      }
+
+      const created: ShipmentUpdate = normalizeShipment({
+        id: data?.id || `ship-${Date.now()}`,
+        ...newShipment,
+        lastUpdate: timestamp,
+        items: newItems.filter(it => it.productName),
+        updates: [
+          {
+            timestamp,
+            location: newShipment.currentLocation || '-',
+            status: 'Preparing',
+            notes: locale === 'ko' ? '배송 등록됨' : 'Shipment registered',
+          },
+        ],
+      });
+
+      setShipments(prev => [created, ...prev]);
+      setIsAddModalOpen(false);
+      resetNewShipmentForm();
+      alert(locale === 'ko' ? '배송이 등록되었습니다!' : 'Shipment created!');
+    } catch (error) {
+      console.error('Failed to create shipment:', error);
+      alert(locale === 'ko' ? '배송 등록에 실패했습니다.' : 'Failed to create shipment.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleNewItemChange = (index: number, field: keyof ShipmentItem, value: string | number) => {
     setNewItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const searchProducts = async (keyword: string, rowIndex: number) => {
+    const q = keyword.trim();
+    if (!q) {
+      setProductSearchResults([]);
+      setProductSearchLoading(false);
+      setActiveProductRow(null);
+      return;
+    }
+
+    try {
+      setProductSearchLoading(true);
+      const response = await fetch(`/api/products?q=${encodeURIComponent(q)}&limit=20`);
+      const data = await response.json();
+      if (Array.isArray(data?.products)) {
+        setProductSearchResults(data.products);
+        setActiveProductRow(rowIndex);
+      } else {
+        setProductSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Failed to search products:', error);
+      setProductSearchResults([]);
+    } finally {
+      setProductSearchLoading(false);
+    }
+  };
+
+  const handleProductInputChange = (index: number, value: string) => {
+    setNewItems(prev => prev.map((item, i) => (
+      i === index
+        ? { ...item, productName: value, productCode: value ? item.productCode : '', unit: value ? item.unit : 'pcs', weight: value ? item.weight : '' }
+        : item
+    )));
+
+    setActiveProductRow(index);
+    if (productSearchTimeout.current) window.clearTimeout(productSearchTimeout.current);
+
+    if (!value.trim()) {
+      setProductSearchResults([]);
+      setProductSearchLoading(false);
+      return;
+    }
+
+    productSearchTimeout.current = window.setTimeout(() => {
+      searchProducts(value, index);
+    }, 250) as unknown as number;
+  };
+
+  const handleProductSelect = (index: number, product: ProductSearchResult) => {
+    setNewItems(prev => prev.map((item, i) => (
+      i === index
+        ? {
+            ...item,
+            productName: product.name || '',
+            productCode: product.sku || '',
+            unit: product.unit || item.unit || 'pcs',
+            weight: product.weight || item.weight || '',
+          }
+        : item
+    )));
+    setProductSearchResults([]);
+    setActiveProductRow(null);
   };
 
   return (
@@ -411,6 +581,12 @@ export default function ShipmentUpdatesPage() {
 
       {/* Stats */}
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {loadError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg p-4 shadow">
             <p className="text-sm text-gray-600">{locale === 'ko' ? '전체 배송' : 'Total Shipments'}</p>
@@ -442,15 +618,27 @@ export default function ShipmentUpdatesPage() {
             <h2 className="text-xl font-bold text-white">
               {locale === 'ko' ? '배송 목록' : 'Shipment List'}
             </h2>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {locale === 'ko' ? '배송 추가' : 'Add Shipment'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={loadShipments}
+                disabled={isLoading}
+                className="px-4 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {locale === 'ko' ? 'รีเฟรช' : 'Refresh'}
+              </button>
+              <button
+                onClick={() => { setIsAddModalOpen(true); generateShipmentNumber(); }}
+                className="px-4 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {locale === 'ko' ? '배송 추가' : 'Add Shipment'}
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -484,7 +672,19 @@ export default function ShipmentUpdatesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {shipments.map((shipment) => {
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
+                      {locale === 'ko' ? '배송 데이터를 불러오는 중...' : 'Loading shipment data...'}
+                    </td>
+                  </tr>
+                ) : shipments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
+                      {locale === 'ko' ? '등록된 배송이 없습니다.' : 'No shipment updates found.'}
+                    </td>
+                  </tr>
+                ) : shipments.map((shipment) => {
                   const statusInfo = getStatusInfo(shipment.currentStatus);
                   return (
                     <tr key={shipment.id} className="hover:bg-gray-50">
@@ -697,11 +897,11 @@ export default function ShipmentUpdatesPage() {
                 <button onClick={closeModal} className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg">
                   {t.close}
                 </button>
-                <button onClick={handleSaveShipment} className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg">
-                  {locale === 'ko' ? '저장' : 'Save'}
+                <button onClick={handleSaveShipment} disabled={isSaving} className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-medium rounded-lg">
+                  {isSaving ? (locale === 'ko' ? '저장 중...' : 'Saving...') : (locale === 'ko' ? '저장' : 'Save')}
                 </button>
-                <button onClick={handleAddUpdate} className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg">
-                  {locale === 'ko' ? '업데이트 추가' : 'Add Update'}
+                <button onClick={handleAddUpdate} disabled={isSaving} className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium rounded-lg">
+                  {isSaving ? (locale === 'ko' ? '처리 중...' : 'Working...') : (locale === 'ko' ? '업데이트 추가' : 'Add Update')}
                 </button>
               </div>
             </div>
@@ -729,11 +929,65 @@ export default function ShipmentUpdatesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">{locale === 'ko' ? '배송번호' : 'Shipment No.'} *</label>
-                  <input type="text" value={newShipment.shipmentNumber} onChange={e => setNewShipment(p => ({ ...p, shipmentNumber: e.target.value }))} placeholder="SH-2026-XX-00X" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+                  <div className="flex gap-2">
+                    <input type="text" value={newShipment.shipmentNumber} onChange={e => setNewShipment(p => ({ ...p, shipmentNumber: e.target.value }))} placeholder="SH-2026-XX-00X" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" readOnly />
+                    <button
+                      onClick={generateShipmentNumber}
+                      className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium"
+                      title={locale === 'ko' ? '새 번호 생성' : 'Generate New Number'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <div>
+                <div className="relative">
                   <label className="text-sm text-gray-600 mb-1 block">{locale === 'ko' ? '주문번호' : 'Order No.'} *</label>
-                  <input type="text" value={newShipment.orderNumber} onChange={e => setNewShipment(p => ({ ...p, orderNumber: e.target.value }))} placeholder="PO-2026-00X" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={poSearchQuery}
+                        onChange={e => {
+                          const value = e.target.value;
+                          setPoSearchQuery(value);
+                          setNewShipment(p => ({ ...p, orderNumber: value }));
+                          searchProductionOrders(value);
+                        }}
+                        onFocus={() => {
+                          if (poSearchResults.length > 0) setShowPoDropdown(true);
+                        }}
+                        placeholder="PO-2026-00X"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      />
+                      {showPoDropdown && poSearchResults.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {poSearchResults.map((order, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => selectProductionOrder(order)}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="font-medium text-sm text-gray-800">{order.orderNumber || order.id}</div>
+                              <div className="text-xs text-gray-600">
+                                {order.product} • {order.customerName} • {order.quantity} units
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={openPoSearchModal}
+                      className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium"
+                      title={locale === 'ko' ? 'ค้นหา PO' : 'Search PO'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">{locale === 'ko' ? '목적지' : 'Destination'}</label>
@@ -803,7 +1057,7 @@ export default function ShipmentUpdatesPage() {
               </div>
 
               {/* Items */}
-              <div>
+              <div ref={productSearchRef}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-gray-800">{locale === 'ko' ? '품목 목록' : 'Items'}</h3>
                   <button onClick={() => setNewItems(prev => [...prev, { productName: '', productCode: '', quantity: 0, unit: 'pcs', weight: '' }])} className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg flex items-center gap-1">
@@ -823,7 +1077,52 @@ export default function ShipmentUpdatesPage() {
                         )}
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        <input type="text" value={item.productName} onChange={e => handleNewItemChange(i, 'productName', e.target.value)} placeholder={locale === 'ko' ? '품목명' : 'Item Name'} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
+                        <div className="col-span-2 md:col-span-1 relative">
+                          <input
+                            type="text"
+                            value={item.productName}
+                            onChange={e => handleProductInputChange(i, e.target.value)}
+                            onFocus={() => {
+                              setActiveProductRow(i);
+                              if (item.productName.trim()) {
+                                searchProducts(item.productName, i);
+                              }
+                            }}
+                            placeholder={locale === 'ko' ? '상품 검색 및 선택' : 'Search and select product'}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500"
+                          />
+                          <div className="mt-1 text-[11px] text-gray-500">
+                            {locale === 'ko' ? '상품명 또는 SKU로 검색 후 선택하세요.' : 'Search by product name or SKU, then select.'}
+                          </div>
+                          {activeProductRow === i && (productSearchLoading || productSearchResults.length > 0 || item.productName.trim()) && (
+                            <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                              {productSearchLoading && (
+                                <div className="px-3 py-2 text-xs text-gray-500">
+                                  {locale === 'ko' ? '상품 검색 중...' : 'Searching products...'}
+                                </div>
+                              )}
+                              {!productSearchLoading && productSearchResults.length === 0 && item.productName.trim() && (
+                                <div className="px-3 py-2 text-xs text-gray-500">
+                                  {locale === 'ko' ? '검색된 상품이 없습니다.' : 'No products found.'}
+                                </div>
+                              )}
+                              {!productSearchLoading && productSearchResults.map((product) => (
+                                <button
+                                  key={product.id || product.sku || product.name}
+                                  type="button"
+                                  onClick={() => handleProductSelect(i, product)}
+                                  className="block w-full border-b border-gray-100 px-3 py-2 text-left hover:bg-green-50 last:border-b-0"
+                                >
+                                  <div className="text-sm font-medium text-gray-800">{product.name || '-'}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {product.sku ? `SKU: ${product.sku}` : locale === 'ko' ? '코드 없음' : 'No SKU'}
+                                    {product.unit ? ` • ${product.unit}` : ''}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <input type="text" value={item.productCode} onChange={e => handleNewItemChange(i, 'productCode', e.target.value)} placeholder={locale === 'ko' ? '품목코드' : 'Code'} className="px-2 py-1.5 border border-gray-300 rounded text-sm font-mono focus:ring-2 focus:ring-green-500" />
                         <input type="number" value={item.quantity} onChange={e => handleNewItemChange(i, 'quantity', parseInt(e.target.value) || 0)} placeholder={locale === 'ko' ? '수량' : 'Qty'} min={0} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
                         <input type="text" value={item.unit} onChange={e => handleNewItemChange(i, 'unit', e.target.value)} placeholder={locale === 'ko' ? '단위' : 'Unit'} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
@@ -840,10 +1139,80 @@ export default function ShipmentUpdatesPage() {
                 <button onClick={() => { setIsAddModalOpen(false); resetNewShipmentForm(); }} className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg">
                   {t.cancel}
                 </button>
-                <button onClick={handleCreateShipment} className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg">
-                  {locale === 'ko' ? '배송 등록' : 'Create Shipment'}
+                <button onClick={handleCreateShipment} disabled={isSaving} className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-medium rounded-lg">
+                  {isSaving ? (locale === 'ko' ? '등록 중...' : 'Creating...') : (locale === 'ko' ? '배송 등록' : 'Create Shipment')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PO Search Modal */}
+      {showPoSearchModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">
+                {locale === 'ko' ? 'ค้นหา Production Order' : 'Search Production Order'}
+              </h2>
+              <button onClick={() => setShowPoSearchModal(false)} className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {allProductionOrders.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-lg font-medium">{locale === 'ko' ? 'ไม่มี Production Order' : 'No Production Orders'}</p>
+                  <p className="text-sm mt-1">{locale === 'ko' ? 'กรุณาสร้าง PO ก่อน' : 'Please create a PO first'}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {allProductionOrders.map((order, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => selectProductionOrder(order)}
+                      className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-blue-600">{order.orderNumber || order.id}</span>
+                            {order.status && (
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                order.status === 'ready' ? 'bg-green-100 text-green-800' :
+                                order.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.status}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            <p className="font-medium">{order.product}</p>
+                            <p className="text-gray-600 mt-1">
+                              {locale === 'ko' ? '고객' : 'Customer'}: {order.customerName || '-'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">{locale === 'ko' ? '수량' : 'Qty'}</p>
+                          <p className="text-lg font-bold text-gray-800">{order.quantity}</p>
+                          {order.dueDate && (
+                            <p className="text-xs text-gray-500 mt-1">{order.dueDate}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

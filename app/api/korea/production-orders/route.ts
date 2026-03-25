@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get('id')
     const status = searchParams.get('status')
     const branch = searchParams.get('branch')
+    const search = searchParams.get('search')
 
     if (id) {
       const rows = await query('SELECT * FROM kr_production_orders WHERE id = ?', [id])
@@ -19,7 +20,12 @@ export async function GET(req: NextRequest) {
     const params: any[] = []
     if (status) { sql += ' AND status = ?'; params.push(status) }
     if (branch) { sql += ' AND branch = ?'; params.push(branch) }
-    sql += ' ORDER BY dueDate ASC'
+    if (search) {
+      sql += ' AND (orderNumber LIKE ? OR product LIKE ? OR customerName LIKE ?)'
+      const searchPattern = `%${search}%`
+      params.push(searchPattern, searchPattern, searchPattern)
+    }
+    sql += ' ORDER BY dueDate DESC LIMIT 50'
 
     const rows = await query(sql, params)
     return NextResponse.json(rows)
