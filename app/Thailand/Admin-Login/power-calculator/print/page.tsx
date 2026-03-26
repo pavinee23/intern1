@@ -47,6 +47,9 @@ export default function PowerCalculatorPrintPage() {
 
   const [data, setData] = useState<CalculationData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loggedUser, setLoggedUser] = useState<string | null>(null)
+  const [printCount, setPrintCount] = useState<number>(0)
+  const [lastPrinted, setLastPrinted] = useState<string | null>(null)
 
   useEffect(() => {
     if (!calcID) return
@@ -66,6 +69,31 @@ export default function PowerCalculatorPrintPage() {
     }
 
     load()
+  }, [calcID])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('k_system_admin_user')
+      if (raw) {
+        const u = JSON.parse(raw)
+        setLoggedUser(u?.name || u?.fullname || u?.username || String(u?.userId || ''))
+      }
+    } catch {}
+    const key = `print_count:power_calc:${calcID || 'unknown'}`
+    setPrintCount(parseInt(localStorage.getItem(key) || '0', 10) || 0)
+    setLastPrinted(localStorage.getItem(key + ':last') || null)
+    const onAfter = () => {
+      try {
+        const newCnt = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1
+        const ts = new Date().toISOString()
+        localStorage.setItem(key, String(newCnt))
+        localStorage.setItem(key + ':last', ts)
+        setPrintCount(newCnt)
+        setLastPrinted(ts)
+      } catch (e) { console.error('print count update error', e) }
+    }
+    ;(window as any).onafterprint = onAfter
+    return () => { try { (window as any).onafterprint = null } catch (_) {} }
   }, [calcID])
 
   useEffect(() => {
@@ -479,14 +507,42 @@ export default function PowerCalculatorPrintPage() {
           .text-right { text-align: right; }
           .text-center { text-align: center; }
 
+          /* Bank Account Information */
+          .bank-info {
+            margin-top: 20px;
+            padding: 12px 16px;
+            background: linear-gradient(to bottom, #eff6ff, #ffffff);
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            page-break-inside: avoid;
+          }
+          .bank-info-title {
+            font-size: 10pt;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+          }
+          .bank-info-content {
+            font-size: 9pt;
+            line-height: 1.7;
+            color: #1f2937;
+          }
+          .bank-info-content div {
+            margin-bottom: 3px;
+          }
+
           /* Footer */
           .report-footer {
-            margin-top: 20px;
-            padding-top: 12px;
-            border-top: 2px solid #e2e8f0;
-            font-size: 9pt;
-            color: #64748b;
-            text-align: center;
+            margin-top: 16px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 8pt;
+            color: #9ca3af;
+            display: flex;
+            justify-content: space-between;
             page-break-inside: avoid;
           }
 
@@ -652,7 +708,7 @@ export default function PowerCalculatorPrintPage() {
           <div className="report-header">
             <div className="company-info">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Image src="/k-energy-save-logo.jpg" alt="Logo" width={80} height={80} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain', background: '#fff', padding: '4px', border: '1px solid #ddd' }} />
+                <Image src="/k-energy-save-logo.jpg" alt="Logo" width={80} height={80} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'contain', background: '#fff', padding: '4px' }} />
                 <div>
                   <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
                   <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
@@ -775,7 +831,7 @@ export default function PowerCalculatorPrintPage() {
                   </div>
                   <div className="form-field">
                     <span className="field-label">{L('Device Capacity:', 'ความจุอุปกรณ์:')}</span>
-                    <span className="field-value">{deviceCapacity} kVAR</span>
+                    <span className="field-value">{deviceCapacity} kVA</span>
                   </div>
                   <div className="form-field">
                     <span className="field-label">{L('Avg Usage/Month:', 'ใช้ไฟเฉลี่ย/เดือน:')}</span>
@@ -1010,9 +1066,9 @@ export default function PowerCalculatorPrintPage() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>งวด (Period)</th>
-                      <th className="text-right">การใช้ไฟ (kWh)</th>
-                      <th className="text-right">Peak kW</th>
+                      <th>{L('Period', 'งวด')}</th>
+                      <th className="text-right">{L('Usage (kWh)', 'การใช้ไฟ (kWh)')}</th>
+                      <th className="text-right">{L('Peak kW', 'Peak kW')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1031,8 +1087,9 @@ export default function PowerCalculatorPrintPage() {
 
           {/* Footer */}
           <div className="report-footer">
-            <div>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date().toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</div>
-            <div style={{ marginTop: '4px' }}>{L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}</div>
+            <span>{L('User:', 'ผู้พิมพ์:')} {loggedUser || '-'}</span>
+            <span>{L('Printed:', 'พิมพ์เมื่อ:')} {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
+            <span>{L('Print Count:', 'ครั้งที่พิมพ์:')} {printCount + 1}</span>
           </div>
         </div>
       </body>

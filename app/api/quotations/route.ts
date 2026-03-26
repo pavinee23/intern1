@@ -12,7 +12,13 @@ export async function GET(request: NextRequest) {
     // Single quotation by ID
     if (id) {
       const [rows]: any = await pool.query(
-        `SELECT * FROM quotations WHERE quoteID = ?`, [id]
+        `SELECT q.*,
+                p.\`Pre-installNo\` as imported_pre_install_no,
+                pc.power_calcuNo as imported_power_calc_no
+         FROM quotations q
+         LEFT JOIN pre_installation_forms p ON q.pre_install_formID = p.formID
+         LEFT JOIN power_calculations pc ON q.power_calc_id = pc.calcID
+         WHERE q.quoteID = ?`, [id]
       )
       return NextResponse.json({ success: true, quotation: rows?.[0] || null, rows })
     }
@@ -20,7 +26,13 @@ export async function GET(request: NextRequest) {
     // Single quotation by quoteNo
     if (quoteNo) {
       const [rows]: any = await pool.query(
-        `SELECT * FROM quotations WHERE quoteNo = ?`, [quoteNo]
+        `SELECT q.*,
+                p.\`Pre-installNo\` as imported_pre_install_no,
+                pc.power_calcuNo as imported_power_calc_no
+         FROM quotations q
+         LEFT JOIN pre_installation_forms p ON q.pre_install_formID = p.formID
+         LEFT JOIN power_calculations pc ON q.power_calc_id = pc.calcID
+         WHERE q.quoteNo = ?`, [quoteNo]
       )
       return NextResponse.json({ success: true, quotation: rows?.[0] || null, rows })
     }

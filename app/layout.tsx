@@ -10,11 +10,11 @@ export const metadata: Metadata = {
   description: 'ระบบบริหารจัดการครบวงจร - บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด | K Energy Save Co., Ltd.',
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/k-energy-save-logo.png', sizes: '192x192', type: 'image/png' }
+      { url: '/zera-logo.png', sizes: 'any' },
+      { url: '/zera-logo.png', sizes: '192x192', type: 'image/png' }
     ],
-    apple: '/k-energy-save-logo.png',
-    shortcut: '/favicon.ico',
+    apple: '/zera-logo.png',
+    shortcut: '/zera-logo.png',
   },
   openGraph: {
     title: 'K Energy Save | ระบบบริหารจัดการ',
@@ -47,8 +47,8 @@ export default function RootLayout({
     <html lang="ko">
       <head>
         <meta charSet="utf-8" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+        <link rel="icon" href="/zera-logo.png" sizes="any" />
+        <link rel="icon" type="image/png" href="/zera-logo.png" />
       </head>
       <body>
         <SiteProvider>

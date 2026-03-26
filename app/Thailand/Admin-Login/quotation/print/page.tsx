@@ -92,6 +92,164 @@ function QuotationPrintContent() {
 
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
 
+  // Basic Thai character to romanization mapping
+  const romanizeThai = (text: string): string => {
+    // Common Thai name patterns and words (process these first)
+    const commonWords: Record<string, string> = {
+      'ไถ่': 'Thai',
+      'ไทย': 'Thai',
+      'ไท': 'Thai',
+    }
+
+    // Check for common words first
+    let result = text
+    Object.entries(commonWords).forEach(([thai, roman]) => {
+      result = result.replace(new RegExp(thai, 'g'), roman)
+    })
+
+    const thaiToRoman: Record<string, string> = {
+      // Consonants
+      'ก': 'k', 'ข': 'kh', 'ฃ': 'kh', 'ค': 'kh', 'ฅ': 'kh', 'ฆ': 'kh',
+      'ง': 'ng', 'จ': 'j', 'ฉ': 'ch', 'ช': 'ch', 'ซ': 's', 'ฌ': 'ch',
+      'ญ': 'y', 'ฎ': 'd', 'ฏ': 't', 'ฐ': 'th', 'ฑ': 'th', 'ฒ': 'th',
+      'ณ': 'n', 'ด': 'd', 'ต': 't', 'ถ': 'th', 'ท': 'th', 'ธ': 'th',
+      'น': 'n', 'บ': 'b', 'ป': 'p', 'ผ': 'ph', 'ฝ': 'f', 'พ': 'ph',
+      'ฟ': 'f', 'ภ': 'ph', 'ม': 'm', 'ย': 'y', 'ร': 'r', 'ล': 'l',
+      'ว': 'w', 'ศ': 's', 'ษ': 's', 'ส': 's', 'ห': 'h', 'ฬ': 'l',
+      'อ': '', 'ฮ': 'h',
+      // Vowels
+      'ะ': 'a', 'ั': 'a', 'า': 'a', 'ำ': 'am', 'ิ': 'i', 'ี': 'i',
+      'ึ': 'ue', 'ื': 'ue', 'ุ': 'u', 'ู': 'u', 'เ': 'e', 'แ': 'ae',
+      'โ': 'o', 'ใ': 'ai', 'ไ': 'ai', 'ๅ': '', 'ๆ': '',
+      // Tone marks and diacritics
+      '่': '', '้': '', '๊': '', '๋': '', '็': '', '์': '', 'ํ': '',
+      'ฯ': '', 'ฺ': '', '฿': 'baht',
+      // Special characters
+      ' ': ' ', '.': '.', ',': ',', '-': '-', '/': '/'
+    }
+
+    // Romanize remaining Thai characters
+    let romanized = ''
+    for (let i = 0; i < result.length; i++) {
+      const char = result[i]
+      if (thaiToRoman[char] !== undefined) {
+        romanized += thaiToRoman[char]
+      } else if (char.match(/[a-zA-Z0-9]/)) {
+        // Keep English characters and numbers as-is
+        romanized += char
+      } else {
+        romanized += char
+      }
+    }
+    return romanized
+  }
+
+  // Transliterate Thai text to English (business terms and common words)
+  const transliterateText = (text: string): string => {
+    if (!text) return ''
+    if (selectedLang === 'th') return text
+
+    let result = text
+
+    // Business entity terms
+    const businessTerms: Record<string, string> = {
+      'บริษัท': '',
+      'จำกัด': 'Co., Ltd.',
+      'มหาชน': 'Public Co., Ltd.',
+      'ห้างหุ้นส่วนจำกัด': 'Limited Partnership',
+      'ห้างหุ้นส่วนสามัญ': 'Ordinary Partnership',
+
+      // Common business words
+      'อินดัสเทรียล': 'Industrial',
+      'เทรดดิ้ง': 'Trading',
+      'เทคโนโลยี': 'Technology',
+      'เอ็นเตอร์ไพรส์': 'Enterprise',
+      'โฮลดิ้ง': 'Holding',
+      'กรุ๊ป': 'Group',
+      'อินเตอร์เนชั่นแนล': 'International',
+      'เซอร์วิส': 'Service',
+      'โซลูชั่น': 'Solution',
+      'ซัพพลาย': 'Supply',
+      'แมนูแฟคเจอริ่ง': 'Manufacturing',
+
+      // Titles
+      'คุณ': 'K.',
+      'นาย': 'Mr.',
+      'นาง': 'Mrs.',
+      'นางสาว': 'Ms.',
+      'ดร.': 'Dr.',
+      'ผศ.': 'Asst. Prof.',
+      'รศ.': 'Assoc. Prof.',
+      'ศ.': 'Prof.',
+
+      // Common Thai words
+      'ไทย': 'Thai',
+      'กรุงเทพ': 'Bangkok',
+      'สยาม': 'Siam',
+      'เกษตร': 'Kaset'
+    }
+
+    // Replace business terms
+    Object.entries(businessTerms).forEach(([thai, english]) => {
+      result = result.replace(new RegExp(thai, 'g'), english)
+    })
+
+    // Romanize remaining Thai characters
+    result = romanizeThai(result)
+
+    // Clean up extra spaces
+    result = result.replace(/\s+/g, ' ').trim()
+
+    // Capitalize first letter of each word
+    result = result.split(' ').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ')
+
+    return result
+  }
+
+  // Format address based on selected language
+  const formatAddress = (address: string): string => {
+    if (!address) return '-'
+    if (selectedLang === 'en') {
+      // Replace Thai prefixes and transliterate place names
+      let formatted = address
+      formatted = formatted.replace(/หมู่\s*/g, 'Moo ')
+      formatted = formatted.replace(/ต\./g, 'T.')
+      formatted = formatted.replace(/อ\./g, 'A.')
+      formatted = formatted.replace(/จ\./g, '')
+
+      // Try to transliterate known place names
+      Object.entries({
+        'ดอนทราย': 'Don Sai',
+        'โพธาราม': 'Photharam',
+        'ราชบุรี': 'Ratchaburi',
+        'กรุงเทพ': 'Bangkok',
+        'กรุงเทพมหานคร': 'Bangkok',
+        'เชียงใหม่': 'Chiang Mai',
+        'ภูเก็ต': 'Phuket',
+        'พัทยา': 'Pattaya',
+        'สมุทรปราการ': 'Samut Prakan',
+        'นนทบุรี': 'Nonthaburi',
+        'ปทุมธานี': 'Pathum Thani',
+        'ชลบุรี': 'Chonburi',
+        'ระยอง': 'Rayong',
+        'นครราชสีมา': 'Nakhon Ratchasima',
+        'ขอนแก่น': 'Khon Kaen',
+        'อุบลราชธานี': 'Ubon Ratchathani',
+        'อุดรธานี': 'Udon Thani',
+        'สงขลา': 'Songkhla',
+        'นครศรีธรรมราช': 'Nakhon Si Thammarat',
+        'สุราษฎร์ธานี': 'Surat Thani'
+      }).forEach(([thai, english]) => {
+        formatted = formatted.replace(new RegExp(thai, 'g'), english)
+      })
+
+      return formatted.trim()
+    }
+    return address
+  }
+
   const items = Array.isArray(quote.items) ? quote.items : []
   const subtotal = Number(quote.subtotal || 0)
   const discount = Number(quote.discount || 0)
@@ -99,66 +257,287 @@ function QuotationPrintContent() {
   const vat = Number(quote.vat || ((afterDiscount * 7) / 100))
   const grandTotal = Number(quote.total || quote.total_amount || (afterDiscount + vat))
 
-  const customerName = quote.customer_name || quote.customer || '-'
-  const customerAddress = quote.customer_address || quote.address || '-'
+  const customerName = transliterateText(quote.customer_name || quote.customer || '-')
+  const customerCompany = transliterateText(quote.customer_company || quote.company || '')
+  const customerAddress = formatAddress(quote.customer_address || quote.address || '-')
   const customerPhone = quote.customer_phone || quote.phone || '-'
   const customerEmail = quote.customer_email || quote.email || '-'
+  const customerTaxId = quote.customer_tax_id || quote.tax_id || ''
+
+  // Imported from reference
+  const importedPreInstall = quote.imported_pre_install_no || ''
+  const importedPowerCalc = quote.imported_power_calc_no || ''
+  const importedFrom = importedPreInstall
+    ? L('Pre-installation: ', 'ก่อนติดตั้ง: ') + importedPreInstall
+    : importedPowerCalc
+    ? L('Power Calculator: ', 'คำนวณพลังงาน: ') + importedPowerCalc
+    : ''
 
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
+        @page { size: A4 portrait; margin: 1.5cm; }
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; overflow: hidden !important; }
           html, body { -ms-overflow-style: none !important; scrollbar-width: none !important; }
           ::-webkit-scrollbar { display: none !important; }
-          .a4-page { box-shadow: none !important; }
+          .a4-page { box-shadow: none !important; margin: 0 !important; padding: 12mm 15mm 25mm 15mm !important; }
         }
-        @media screen { body { background: #e5e5e5; overflow-y: auto; } }
+        @media screen { body { background: #f5f5f5; overflow-y: auto; } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { display: none; }
         html { -ms-overflow-style: none; scrollbar-width: none; }
-        .a4-page { width: 100%; max-width: 190mm; min-height: 297mm; margin: 10mm auto; padding: 10mm 12mm; background: white; font-family: 'Sarabun', 'Segoe UI', sans-serif; font-size: 11pt; line-height: 1.4; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
-        .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #16a34a; }
-        .company-info { flex: 1; }
-        .company-name { font-size: 18pt; font-weight: 700; color: #16a34a; margin-bottom: 4px; }
-        .company-name-en { font-size: 11pt; font-weight: 600; color: #333; margin-bottom: 6px; }
-        .company-address { font-size: 9pt; color: #666; line-height: 1.5; }
+
+        .a4-page {
+          width: 100%; max-width: 210mm; min-height: 297mm;
+          margin: 10mm auto; padding: 12mm 15mm 25mm 15mm;
+          background: white;
+          font-family: 'Sarabun', 'Segoe UI', 'Helvetica', sans-serif;
+          font-size: 10pt; line-height: 1.4; color: #1f2937;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+          position: relative;
+        }
+
+        /* Header Section */
+        .header-row {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          margin-bottom: 16px; padding-bottom: 12px;
+          border-bottom: 3px solid #16a34a;
+        }
+        .company-info { flex: 1; max-width: 60%; }
+        .company-logo-section { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 8px; }
+        .company-logo {
+          width: 75px; height: 75px;
+          border-radius: 8px;
+          object-fit: contain;
+          background: #fff;
+          padding: 6px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .company-text { flex: 1; }
+        .company-name { font-size: 17pt; font-weight: 700; color: #16a34a; margin-bottom: 2px; line-height: 1.2; }
+        .company-name-en { font-size: 10pt; font-weight: 600; color: #4b5563; margin-bottom: 6px; }
+        .company-address { font-size: 8.5pt; color: #6b7280; line-height: 1.5; }
+
         .doc-title { text-align: right; }
-        .doc-title h1 { font-size: 22pt; font-weight: 700; color: #16a34a; margin: 0 0 4px 0; }
-        .doc-title h2 { font-size: 14pt; font-weight: 600; color: #666; margin: 0; }
-        .info-section { display: flex; gap: 20px; margin-bottom: 16px; }
-        .info-box { flex: 1; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
-        .info-box-title { font-weight: 700; font-size: 10pt; color: #16a34a; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
-        .info-row { display: flex; margin-bottom: 4px; font-size: 10pt; }
-        .info-label { width: 100px; font-weight: 600; color: #555; }
-        .info-value { flex: 1; color: #333; }
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt; }
-        .items-table th { background: #16a34a; color: white; padding: 8px 10px; text-align: left; font-weight: 600; }
+        .doc-title h1 {
+          font-size: 24pt; font-weight: 700;
+          color: #16a34a;
+          margin: 0 0 4px 0;
+          letter-spacing: -0.5px;
+        }
+        .doc-title h2 {
+          font-size: 12pt; font-weight: 600;
+          color: #6b7280;
+          margin: 0;
+        }
+
+        /* Info Boxes */
+        .info-section {
+          display: flex; gap: 14px;
+          margin-bottom: 14px;
+        }
+        .info-box {
+          flex: 1;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 10px 12px;
+          background: linear-gradient(to bottom, #fafafa, #ffffff);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .info-box-title {
+          font-weight: 700; font-size: 9.5pt;
+          color: #16a34a;
+          margin-bottom: 8px; padding-bottom: 4px;
+          border-bottom: 2px solid #16a34a;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .info-row {
+          display: flex;
+          margin-bottom: 4px;
+          font-size: 9pt;
+          line-height: 1.5;
+        }
+        .info-label {
+          min-width: 95px;
+          font-weight: 600;
+          color: #4b5563;
+        }
+        .info-value {
+          flex: 1;
+          color: #1f2937;
+        }
+
+        /* Items Table */
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 12px;
+          font-size: 9pt;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+        .items-table thead {
+          background: linear-gradient(to bottom, #16a34a, #15803d);
+        }
+        .items-table th {
+          color: white;
+          padding: 8px 10px;
+          text-align: left;
+          font-weight: 600;
+          text-transform: uppercase;
+          font-size: 8.5pt;
+          letter-spacing: 0.3px;
+        }
         .items-table th:nth-child(1) { width: 40px; text-align: center; }
         .items-table th:nth-child(3) { width: 70px; text-align: right; }
         .items-table th:nth-child(4) { width: 100px; text-align: right; }
         .items-table th:nth-child(5) { width: 110px; text-align: right; }
-        .items-table td { padding: 8px 10px; border-bottom: 1px solid #eee; }
-        .items-table td:nth-child(1) { text-align: center; }
-        .items-table td:nth-child(3), .items-table td:nth-child(4), .items-table td:nth-child(5) { text-align: right; }
-        .items-table tbody tr:nth-child(even) { background: #f9f9f9; }
-        .summary-section { display: flex; justify-content: flex-end; margin-bottom: 20px; }
-        .summary-table { width: 280px; font-size: 10pt; }
-        .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
-        .summary-row.total { font-weight: 700; font-size: 12pt; color: #16a34a; border-top: 2px solid #16a34a; border-bottom: none; padding-top: 10px; margin-top: 4px; }
-        .terms-section { border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 20px; background: #f0fdf4; }
-        .terms-title { font-weight: 700; font-size: 10pt; color: #16a34a; margin-bottom: 10px; }
-        .terms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 10pt; }
-        .terms-item { display: flex; }
-        .terms-label { font-weight: 600; color: #555; min-width: 120px; }
-        .signature-section { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; }
-        .signature-box { width: 30%; text-align: center; }
-        .signature-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 8px; }
-        .signature-label { font-size: 10pt; font-weight: 600; color: #333; }
-        .signature-sublabel { font-size: 9pt; color: #666; }
-        .footer-info { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 8pt; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
+        .items-table td {
+          padding: 8px 10px;
+          border-bottom: 1px solid #f3f4f6;
+        }
+        .items-table td:nth-child(1) { text-align: center; font-weight: 600; color: #6b7280; }
+        .items-table td:nth-child(3),
+        .items-table td:nth-child(4),
+        .items-table td:nth-child(5) { text-align: right; }
+        .items-table tbody tr:hover { background: #f9fafb; }
+        .items-table tbody tr:nth-child(even) { background: #fafafa; }
+
+        /* Summary Section */
+        .summary-section {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 14px;
+        }
+        .summary-table {
+          width: 280px;
+          font-size: 9.5pt;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 8px 12px;
+          background: #fafafa;
+        }
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 5px 0;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row.total {
+          font-weight: 700;
+          font-size: 12pt;
+          color: #16a34a;
+          border-top: 2px solid #16a34a;
+          padding-top: 8px;
+          margin-top: 4px;
+        }
+
+        /* Terms Section */
+        .terms-section {
+          border: 1px solid #d1fae5;
+          border-radius: 6px;
+          padding: 10px 12px;
+          margin-bottom: 14px;
+          background: linear-gradient(to bottom, #f0fdf4, #ffffff);
+        }
+        .terms-title {
+          font-weight: 700;
+          font-size: 9.5pt;
+          color: #16a34a;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .terms-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          font-size: 8.5pt;
+        }
+        .terms-item { display: flex; line-height: 1.5; }
+        .terms-label {
+          font-weight: 600;
+          color: #4b5563;
+          min-width: 110px;
+        }
+
+        /* Signature Section */
+        .signature-section {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+          padding-top: 16px;
+          margin-bottom: 65px;
+          gap: 16px;
+        }
+        .signature-box {
+          flex: 1;
+          text-align: center;
+          padding: 8px;
+          border: 1px solid #f3f4f6;
+          border-radius: 6px;
+          background: #fafafa;
+        }
+        .signature-line {
+          border-bottom: 2px solid #9ca3af;
+          height: 35px;
+          margin-bottom: 8px;
+        }
+        .signature-label {
+          font-size: 9pt;
+          font-weight: 600;
+          color: #1f2937;
+        }
+        .signature-sublabel {
+          font-size: 8pt;
+          color: #6b7280;
+          margin-top: 2px;
+        }
+
+        /* Bank Info */
+        .bank-info {
+          position: absolute;
+          bottom: 24mm;
+          left: 15mm;
+          right: 15mm;
+          padding: 10px 14px;
+          background: linear-gradient(to bottom, #eff6ff, #ffffff);
+          border: 1px solid #93c5fd;
+          border-radius: 6px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .bank-info-title {
+          font-size: 10pt;
+          font-weight: 700;
+          color: #1e40af;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .bank-info-content {
+          font-size: 9pt;
+          line-height: 1.6;
+          color: #1f2937;
+        }
+
+        /* Footer */
+        .footer-info {
+          position: absolute;
+          bottom: 10mm;
+          left: 15mm;
+          right: 15mm;
+          display: flex;
+          justify-content: space-between;
+          font-size: 7.5pt;
+          color: #9ca3af;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 6px;
+        }
       `}</style>
 
       
@@ -181,16 +560,16 @@ function QuotationPrintContent() {
       <div className="a4-page">
         <div className="header-row">
           <div className="company-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img src="/k-energy-save-logo.jpg" alt="Logo" style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'contain', background: '#fff', padding: 4, border: '1px solid #ddd' }} />
-              <div>
+            <div className="company-logo-section">
+              <img src="/k-energy-save-logo.jpg" alt="Logo" className="company-logo" />
+              <div className="company-text">
                 <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
                 <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
               </div>
             </div>
-            <div className="company-address" style={{ marginTop: 8 }}>
+            <div className="company-address">
               84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250<br/>
-              Tel: 02-080-8916 | Email: info@kenergysave.com
+              {L('Tel:', 'โทร:')} 02-080-8916 | {L('Email:', 'อีเมล:')} info@kenergysave.com
             </div>
           </div>
           <div className="doc-title">
@@ -216,7 +595,18 @@ function QuotationPrintContent() {
             </div>
             <div className="info-row">
               <span className="info-label">{L('Status:', 'สถานะ:')}</span>
-              <span className="info-value" style={{ color: quote.status === 'accepted' ? '#16a34a' : '#666' }}>{quote.status || 'pending'}</span>
+              <span className="info-value" style={{ color: quote.status === 'accepted' ? '#16a34a' : '#666' }}>
+                {quote.status === 'accepted' ? L('Accepted', 'ยอมรับ') :
+                 quote.status === 'rejected' ? L('Rejected', 'ปฏิเสธ') :
+                 quote.status === 'pending' ? L('Pending', 'รอดำเนินการ') :
+                 quote.status || L('Pending', 'รอดำเนินการ')}
+              </span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">{L('Imported from:', 'นำเข้าจาก:')}</span>
+              <span className="info-value" style={{ fontSize: '0.9em', color: importedFrom ? '#0369a1' : '#999' }}>
+                {importedFrom || '-'}
+              </span>
             </div>
           </div>
           <div className="info-box">
@@ -225,6 +615,12 @@ function QuotationPrintContent() {
               <span className="info-label">{L('Name:', 'ชื่อ:')}</span>
               <span className="info-value" style={{ fontWeight: 600 }}>{customerName}</span>
             </div>
+            {customerCompany && (
+              <div className="info-row">
+                <span className="info-label">{L('Company:', 'บริษัท:')}</span>
+                <span className="info-value" style={{ fontWeight: 600 }}>{customerCompany}</span>
+              </div>
+            )}
             <div className="info-row">
               <span className="info-label">{L('Address:', 'ที่อยู่:')}</span>
               <span className="info-value">{customerAddress}</span>
@@ -236,6 +632,10 @@ function QuotationPrintContent() {
             <div className="info-row">
               <span className="info-label">{L('Email:', 'อีเมล:')}</span>
               <span className="info-value">{customerEmail}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">{L('Tax ID:', 'เลขผู้เสียภาษี:')}</span>
+              <span className="info-value">{customerTaxId || '-'}</span>
             </div>
           </div>
         </div>
@@ -331,11 +731,11 @@ function QuotationPrintContent() {
           </div>
         </div>
 
-        <div style={{ marginTop: 20, padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', marginBottom: 8 }}>
+        <div className="bank-info">
+          <div className="bank-info-title">
             {L('Bank Account Information', 'ข้อมูลบัญชีธนาคาร')}
           </div>
-          <div style={{ fontSize: 9, lineHeight: 1.6, color: '#334155' }}>
+          <div className="bank-info-content">
             <div><strong>{L('Bank:', 'ธนาคาร:')}</strong> {L('Kasikorn Bank (KBANK)', 'ธนาคารกสิกรไทย')}</div>
             <div><strong>{L('Current Account:', 'บัญชีกระแสรายวัน:')}</strong> 212-1-17253-7</div>
             <div><strong>{L('Savings Account:', 'บัญชีออมทรัพย์:')}</strong> 211-8-78336-3</div>

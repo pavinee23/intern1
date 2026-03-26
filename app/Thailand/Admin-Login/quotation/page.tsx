@@ -17,6 +17,13 @@ type CustomerType = {
   message?: string | null
   created_by?: string | null
   created_at?: string | null
+  // Address components for dynamic formatting
+  house_number?: string | null
+  moo?: string | null
+  tambon?: string | null
+  amphoe?: string | null
+  province?: string | null
+  postcode?: string | null
 }
 
 export default function QuotationPage() {
@@ -73,10 +80,79 @@ export default function QuotationPage() {
 
   const L = (en: string, th: string) => locale === 'th' ? th : en
 
+  // Transliterate Thai text to English (basic romanization)
+  const transliterate = (text: string): string => {
+    if (!text) return ''
+
+    // Common province/district mappings
+    const placeNames: Record<string, string> = {
+      'ดอนทราย': 'Don Sai',
+      'โพธาราม': 'Photharam',
+      'ราชบุรี': 'Ratchaburi',
+      'กรุงเทพ': 'Bangkok',
+      'กรุงเทพมหานคร': 'Bangkok',
+      'เชียงใหม่': 'Chiang Mai',
+      'ภูเก็ต': 'Phuket',
+      'พัทยา': 'Pattaya',
+      'สมุทรปราการ': 'Samut Prakan',
+      'นนทบุรี': 'Nonthaburi',
+      'ปทุมธานี': 'Pathum Thani',
+      'ชลบุรี': 'Chonburi',
+      'ระยอง': 'Rayong',
+      'นครราชสีมา': 'Nakhon Ratchasima',
+      'ขอนแก่น': 'Khon Kaen',
+      'อุบลราชธานี': 'Ubon Ratchathani',
+      'อุดรธานี': 'Udon Thani',
+      'สงขลา': 'Songkhla',
+      'นครศรีธรรมราช': 'Nakhon Si Thammarat',
+      'สุราษฎร์ธานี': 'Surat Thani'
+    }
+
+    return placeNames[text] || text
+  }
+
+  // Format address based on current locale
+  const formatAddress = (c: CustomerType) => {
+    if (locale === 'en') {
+      // English format with transliteration
+      const parts = [
+        c.house_number,
+        c.moo ? `Moo ${c.moo}` : '',
+        c.tambon ? `T.${transliterate(c.tambon)}` : '',
+        c.amphoe ? `A.${transliterate(c.amphoe)}` : '',
+        c.province ? transliterate(c.province) : '',
+        c.postcode
+      ].filter(Boolean).join(' ')
+      return parts || c.address || ''
+    } else {
+      // Thai format
+      const parts = [
+        c.house_number,
+        c.moo ? `หมู่ ${c.moo}` : '',
+        c.tambon ? `ต.${c.tambon}` : '',
+        c.amphoe ? `อ.${c.amphoe}` : '',
+        c.province ? `จ.${c.province}` : '',
+        c.postcode
+      ].filter(Boolean).join(' ')
+      return parts || c.address || ''
+    }
+  }
+
   // Load initial quote number
   useEffect(() => {
     refreshQuoteNo()
   }, [])
+
+  // Update address format when locale changes
+  useEffect(() => {
+    if (customer.house_number || customer.moo || customer.tambon) {
+      const formatted = formatAddress(customer)
+      if (customer.address !== formatted) {
+        setCustomer(prev => ({ ...prev, address: formatted }))
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale])
 
   // Load all customers
   useEffect(() => {
@@ -219,27 +295,47 @@ export default function QuotationPage() {
       const j = await res.json()
       if (j && j.success && j.customer) {
         const cu = j.customer
-        // Build address from parts if available
-        const addressParts = [
-          cu.house_number,
-          cu.moo ? `หมู่ ${cu.moo}` : '',
-          cu.tambon ? `ต.${cu.tambon}` : '',
-          cu.amphoe ? `อ.${cu.amphoe}` : '',
-          cu.province ? `จ.${cu.province}` : '',
-          cu.postcode
-        ].filter(Boolean).join(' ')
+
+        // Build formatted address based on current locale
+        let addressParts
+        if (locale === 'en') {
+          addressParts = [
+            cu.house_number,
+            cu.moo ? `Moo ${cu.moo}` : '',
+            cu.tambon ? `T.${transliterate(cu.tambon)}` : '',
+            cu.amphoe ? `A.${transliterate(cu.amphoe)}` : '',
+            cu.province ? transliterate(cu.province) : '',
+            cu.postcode
+          ].filter(Boolean).join(' ')
+        } else {
+          addressParts = [
+            cu.house_number,
+            cu.moo ? `หมู่ ${cu.moo}` : '',
+            cu.tambon ? `ต.${cu.tambon}` : '',
+            cu.amphoe ? `อ.${cu.amphoe}` : '',
+            cu.province ? `จ.${cu.province}` : '',
+            cu.postcode
+          ].filter(Boolean).join(' ')
+        }
 
         setCustomer({
           name: cu.fullname || '',
           phone: cu.phone || '',
-          address: addressParts || '',
+          address: addressParts || cu.address || '',
           email: cu.email || null,
           company: cu.company || null,
           tax_id: cu.tax_id || null,
           subject: cu.subject || null,
           message: cu.message || null,
           created_by: cu.created_by || null,
-          created_at: cu.created_at || null
+          created_at: cu.created_at || null,
+          // Store address components for dynamic formatting
+          house_number: cu.house_number || null,
+          moo: cu.moo || null,
+          tambon: cu.tambon || null,
+          amphoe: cu.amphoe || null,
+          province: cu.province || null,
+          postcode: cu.postcode || null
         })
       } else {
         setCustomer({ name: c.fullname || '', phone: c.phone || '', address: c.address || '' })
@@ -580,23 +676,37 @@ export default function QuotationPage() {
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Tax ID', 'เลขผู้เสียภาษี')}</label>
+                  <label className={styles.formLabel}>{L('Email', 'อีเมล')}</label>
                   <input
-                    value={customer.tax_id || ''}
-                    onChange={e => setCustomer({ ...customer, tax_id: e.target.value })}
+                    type="email"
+                    value={customer.email || ''}
+                    onChange={e => setCustomer({ ...customer, email: e.target.value })}
                     className={styles.formInput}
-                    placeholder={L('Tax ID (13 digits)', 'เลขประจำตัวผู้เสียภาษี (13 หลัก)')}
-                    maxLength={13}
+                    placeholder={L('Email address', 'อีเมล')}
                   />
                 </div>
               </div>
 
-              {(customer.email || customer.company) && (
-                <div style={{ marginTop: 12, padding: 12, border: '1px solid #e6eef6', borderRadius: 8, background: '#fbfeff', fontSize: 13 }}>
-                  {customer.email && <div><strong>{L('Email', 'อีเมล')}:</strong> {customer.email}</div>}
-                  {customer.company && <div><strong>{L('Company', 'บริษัท')}:</strong> {customer.company}</div>}
-                </div>
-              )}
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>{L('Company', 'บริษัท')}</label>
+                <input
+                  value={customer.company || ''}
+                  onChange={e => setCustomer({ ...customer, company: e.target.value })}
+                  className={styles.formInput}
+                  placeholder={L('Company name', 'ชื่อบริษัท')}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>{L('Tax ID', 'เลขผู้เสียภาษี')}</label>
+                <input
+                  value={customer.tax_id || ''}
+                  onChange={e => setCustomer({ ...customer, tax_id: e.target.value })}
+                  className={styles.formInput}
+                  placeholder={L('Tax ID (13 digits)', 'เลขประจำตัวผู้เสียภาษี (13 หลัก)')}
+                  maxLength={13}
+                />
+              </div>
             </div>
 
             {/* Items Section */}
