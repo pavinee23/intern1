@@ -89,7 +89,7 @@ export default function UserLogin() {
 						}, 1200)
 					} catch(_) {}
 					if (userSite === 'thailand') {
-						router.push('/Thailand/Admin-Login/dashboard')
+						router.push('/KR-Thailand/Admin-Login/dashboard')
 					} else {
 						router.push('/sites')
 					}

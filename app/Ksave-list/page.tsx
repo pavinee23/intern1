@@ -641,7 +641,7 @@ export default function KsaveListPage() {
           </div>
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <a href="/Thailand/Admin-Login/dashboard" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', borderRadius: 8, textDecoration: 'none', color: '#475569', fontWeight: 400 }}>
+            <a href="/KR-Thailand/Admin-Login/dashboard" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', borderRadius: 8, textDecoration: 'none', color: '#475569', fontWeight: 400 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
               <span>Dashboard</span>
             </a>

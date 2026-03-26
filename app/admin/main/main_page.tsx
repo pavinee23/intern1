@@ -72,7 +72,7 @@ export default function AdminMainPage() {
     {
       title: L('Thailand Admin', '태국 관리자'),
       desc: L('Thailand Branch Management', '태국 지사 관리'),
-      href: '/Thailand/Admin-Login',
+      href: '/KR-Thailand/Admin-Login',
       color: '#059669',
       bg: '#ecfdf5',
       border: '#d1fae5',

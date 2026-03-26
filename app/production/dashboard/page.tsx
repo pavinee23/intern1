@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
@@ -30,6 +31,59 @@ export default function ProductionDashboardPage() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+
+  const branchInvoiceCards = [
+    {
+      id: 'korea',
+      href: '/Korea/Admin-Login/invoices/create',
+      flagSrc: '/flags/kr.svg',
+      flagAlt: 'South Korea flag',
+      name: locale === 'ko' ? '본사' : 'Korea HQ',
+      subtitle: locale === 'ko' ? '한국 본사' : 'Headquarters',
+      borderClass: 'border-orange-200 hover:border-orange-500 hover:bg-orange-50',
+      textClass: 'group-hover:text-orange-700',
+    },
+    {
+      id: 'thailand',
+      href: '/KR-Thailand/Admin-Login/invoices/create',
+      flagSrc: '/flags/th.svg',
+      flagAlt: 'Thailand flag',
+      name: locale === 'ko' ? '태국' : 'Thailand',
+      subtitle: locale === 'ko' ? '태국 지점' : 'Thailand Branch',
+      borderClass: 'border-blue-200 hover:border-blue-500 hover:bg-blue-50',
+      textClass: 'group-hover:text-blue-700',
+    },
+    {
+      id: 'vietnam',
+      href: '/KR-Vietnam/Admin-Login/invoices/create',
+      flagSrc: '/flags/vn.svg',
+      flagAlt: 'Vietnam flag',
+      name: locale === 'ko' ? '베트남' : 'Vietnam',
+      subtitle: locale === 'ko' ? '베트남 지점' : 'Vietnam Branch',
+      borderClass: 'border-green-200 hover:border-green-500 hover:bg-green-50',
+      textClass: 'group-hover:text-green-700',
+    },
+    {
+      id: 'malaysia',
+      href: '/KR-Malaysia/Admin-Login/invoices/create',
+      flagSrc: '/flags/my.svg',
+      flagAlt: 'Malaysia flag',
+      name: locale === 'ko' ? '말레이시아' : 'Malaysia',
+      subtitle: locale === 'ko' ? '말레이시아 지점' : 'Malaysia Branch',
+      borderClass: 'border-purple-200 hover:border-purple-500 hover:bg-purple-50',
+      textClass: 'group-hover:text-purple-700',
+    },
+    {
+      id: 'brunei',
+      href: '/KR-Brunei/Admin-Login/invoices/create',
+      flagSrc: '/flags/bn.svg',
+      flagAlt: 'Brunei flag',
+      name: locale === 'ko' ? '브루나이' : 'Brunei',
+      subtitle: locale === 'ko' ? '브루나이 지점' : 'Brunei Branch',
+      borderClass: 'border-yellow-200 hover:border-yellow-500 hover:bg-yellow-50',
+      textClass: 'group-hover:text-yellow-700',
+    },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -276,6 +330,45 @@ export default function ProductionDashboardPage() {
               >
                 <div className="text-2xl mb-1">{dept.emoji}</div>
                 <div className="text-sm font-medium">{dept.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Branch Invoice Creation */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {locale === 'ko' ? '지점별 인보이스 생성' : 'Create Branch Invoices'}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {branchInvoiceCards.map((branch) => (
+              <button
+                key={branch.id}
+                onClick={() => router.push(branch.href)}
+                className={`p-4 rounded-lg border-2 transition-all group ${branch.borderClass}`}
+              >
+                <div className="text-center">
+                  <div className="mb-3 flex justify-center">
+                    <span className="inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm">
+                      <Image
+                        src={branch.flagSrc}
+                        alt={branch.flagAlt}
+                        width={44}
+                        height={44}
+                        className="h-11 w-11 object-contain"
+                      />
+                    </span>
+                  </div>
+                  <div className={`text-sm font-semibold text-gray-700 ${branch.textClass}`}>
+                    {branch.name}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {branch.subtitle}
+                  </div>
+                </div>
               </button>
             ))}
           </div>

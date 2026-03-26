@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const invNo = searchParams.get('invNo')
     const id = searchParams.get('id')
+    const branchCode = searchParams.get('branch_code') || searchParams.get('branchCode')
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
       SELECT
         i.invID as id,
         i.invNo,
+        i.branch_code,
         i.invDate,
         i.cusID,
         i.customer_name,
@@ -102,6 +104,12 @@ export async function GET(request: NextRequest) {
     // Get list of invoices
     let query = baseSelect + ` WHERE 1=1`
     const params: any[] = []
+
+    // Filter by branch code if provided
+    if (branchCode) {
+      query += ` AND i.branch_code = ?`
+      params.push(branchCode)
+    }
 
     query += ` ORDER BY i.invID DESC LIMIT ? OFFSET ?`
     params.push(limit, offset)

@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       pdoNo: incomingPdoNo,
       pdoDate, product_id, product_code, product_name, quantity_ordered, unit,
       start_date, due_date, priority, production_line, shift, supervisor,
-      notes, materials, steps, created_by
+      notes, materials, steps, created_by, sales_orderID
     } = body
 
     const connection = await pool.getConnection()
@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
 
       addInsertValue(schema.noCol, pdoNo)
       addInsertValue(schema.dateCol, pdoDate)
+      addInsertValue('sales_orderID', sales_orderID || null)
       addInsertValue('product_id', product_id)
       addInsertValue('product_code', product_code)
       addInsertValue('product_name', product_name)
