@@ -46,6 +46,77 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      quoteNo,
+      quoteDate,
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      customerCompany,
+      customerTaxId,
+      preInstallFormID,
+      powerCalcID,
+      items,
+      subtotal,
+      discountPercent,
+      discountAmount,
+      vatAmount,
+      total
+    } = body
+
+    if (!quoteNo || !customerName) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Insert quotation
+    const [result]: any = await pool.query(
+      `INSERT INTO quotations (
+        quoteNo, quoteDate, customer_name, customer_email, customer_phone,
+        customer_address, customer_company, customer_tax_id,
+        pre_install_formID, power_calc_id,
+        subtotal, discount_percent, discount, vat, total,
+        items, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [
+        quoteNo,
+        quoteDate,
+        customerName,
+        customerEmail,
+        customerPhone,
+        customerAddress,
+        customerCompany,
+        customerTaxId,
+        preInstallFormID || null,
+        powerCalcID || null,
+        subtotal,
+        discountPercent,
+        discountAmount,
+        vatAmount,
+        total,
+        JSON.stringify(items)
+      ]
+    )
+
+    return NextResponse.json({
+      success: true,
+      quoteID: result.insertId
+    })
+  } catch (error: any) {
+    console.error('Quotations POST error:', error)
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()

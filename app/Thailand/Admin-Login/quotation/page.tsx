@@ -12,6 +12,7 @@ type CustomerType = {
   address: string
   email?: string | null
   company?: string | null
+  tax_id?: string | null
   subject?: string | null
   message?: string | null
   created_by?: string | null
@@ -26,6 +27,7 @@ export default function QuotationPage() {
   const [showSearch, setShowSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
+  const [allCustomers, setAllCustomers] = useState<any[]>([])
   const [productSearchOpen, setProductSearchOpen] = useState(false)
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [productSearchResults, setProductSearchResults] = useState<any[]>([])
@@ -44,6 +46,9 @@ export default function QuotationPage() {
   const [showPowerCalcModal, setShowPowerCalcModal] = useState(false)
   const [powerCalcList, setPowerCalcList] = useState<any[]>([])
   const [powerCalcLoading, setPowerCalcLoading] = useState(false)
+  const [importedFromRef, setImportedFromRef] = useState<string>('')
+  const [preInstallFormID, setPreInstallFormID] = useState<number | null>(null)
+  const [powerCalcID, setPowerCalcID] = useState<number | null>(null)
 
   const [locale, setLocale] = useState<'en'|'th'>(() => {
     try {
@@ -73,6 +78,22 @@ export default function QuotationPage() {
     refreshQuoteNo()
   }, [])
 
+  // Load all customers
+  useEffect(() => {
+    const loadAllCustomers = async () => {
+      try {
+        const res = await fetch('/api/customers')
+        const j = await res.json()
+        if (j && Array.isArray(j.customers)) {
+          setAllCustomers(j.customers)
+        }
+      } catch (err) {
+        console.error('Failed to load all customers', err)
+      }
+    }
+    loadAllCustomers()
+  }, [])
+
   const refreshQuoteNo = async () => {
     try {
       const res = await fetch('/api/quotation-seq')
@@ -95,7 +116,8 @@ export default function QuotationPage() {
 
   useEffect(() => {
     const subtotal = items.reduce((s, it) => s + it.qty * Number(it.price || 0), 0)
-    const afterDiscount = Math.max(0, subtotal - Number(discount || 0))
+    const discountAmount = (subtotal * Number(discount || 0)) / 100
+    const afterDiscount = Math.max(0, subtotal - discountAmount)
     const tax = (afterDiscount * Number(taxRate || 0)) / 100
     setTotals({ subtotal, tax, total: afterDiscount + tax })
   }, [items, discount, taxRate])
@@ -131,6 +153,7 @@ export default function QuotationPage() {
     if (!validate()) return
     setLoading(true)
     try {
+      const discountAmount = (totals.subtotal * Number(discount || 0)) / 100
       const payload = {
         quoteNo,
         quoteDate,
@@ -138,6 +161,10 @@ export default function QuotationPage() {
         customerEmail: customer.email || null,
         customerPhone: customer.phone,
         customerAddress: customer.address,
+        customerCompany: customer.company || null,
+        customerTaxId: customer.tax_id || null,
+        preInstallFormID: preInstallFormID,
+        powerCalcID: powerCalcID,
         items: items.map(it => ({
           description: it.desc,
           product_name: it.desc,
@@ -145,7 +172,8 @@ export default function QuotationPage() {
           unit_price: it.price
         })),
         subtotal: totals.subtotal,
-        discountAmount: discount,
+        discountPercent: discount,
+        discountAmount: discountAmount,
         vatPercent: taxRate,
         vatAmount: totals.tax,
         total: totals.total
@@ -191,12 +219,23 @@ export default function QuotationPage() {
       const j = await res.json()
       if (j && j.success && j.customer) {
         const cu = j.customer
+        // Build address from parts if available
+        const addressParts = [
+          cu.house_number,
+          cu.moo ? `หมู่ ${cu.moo}` : '',
+          cu.tambon ? `ต.${cu.tambon}` : '',
+          cu.amphoe ? `อ.${cu.amphoe}` : '',
+          cu.province ? `จ.${cu.province}` : '',
+          cu.postcode
+        ].filter(Boolean).join(' ')
+
         setCustomer({
           name: cu.fullname || '',
           phone: cu.phone || '',
-          address: cu.address || '',
+          address: addressParts || '',
           email: cu.email || null,
           company: cu.company || null,
+          tax_id: cu.tax_id || null,
           subject: cu.subject || null,
           message: cu.message || null,
           created_by: cu.created_by || null,
@@ -299,6 +338,13 @@ export default function QuotationPage() {
         newItems.push({ desc: L('Equipment: ', 'อุปกรณ์: ') + f.equipment_needed, qty: 1, price: 0 })
       }
       if (newItems.length > 0) setItems(newItems)
+
+      // Save imported reference and FK
+      const refNo = f.pre_install_no || f.formNo || `PRE-${String(f.formID).padStart(6, '0')}`
+      setImportedFromRef(L('Pre-installation: ', 'ก่อนติดตั้ง: ') + refNo)
+      setPreInstallFormID(f.formID || form.formID)
+      setPowerCalcID(null) // Clear power calc ID
+
       setShowPreInstallModal(false)
     } catch (err) {
       console.error(err)
@@ -364,6 +410,13 @@ export default function QuotationPage() {
         newItems.push({ desc: L('Total Power: ', 'กำลังไฟรวม: ') + c.total_power_kw + ' kW', qty: 1, price: 0 })
       }
       if (newItems.length > 0) setItems(newItems.filter(it => it.desc))
+
+      // Save imported reference and FK
+      const refNo = c.power_calcuNo || c.calcNo || `CALC-${String(c.calcID).padStart(6, '0')}`
+      setImportedFromRef(L('Power Calculator: ', 'คำนวณพลังงาน: ') + refNo)
+      setPowerCalcID(c.calcID || calc.calcID)
+      setPreInstallFormID(null) // Clear pre-install ID
+
       setShowPowerCalcModal(false)
     } catch (err) {
       console.error(err)
@@ -441,6 +494,15 @@ export default function QuotationPage() {
                   {L('Import from Power Calculator', 'นำเข้าจากใบคำนวณพลังงาน')}
                 </button>
               </div>
+              {importedFromRef && (
+                <div style={{ marginTop: 8, padding: 8, background: '#e0f2fe', borderRadius: 6, fontSize: 13, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span style={{ fontWeight: 500 }}>{L('Imported from:', 'นำเข้าจาก:')}</span>
+                  <span style={{ fontWeight: 600 }}>{importedFromRef}</span>
+                </div>
+              )}
             </div>
 
             {/* Customer Section */}
@@ -516,6 +578,19 @@ export default function QuotationPage() {
                 />
               </div>
 
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('Tax ID', 'เลขผู้เสียภาษี')}</label>
+                  <input
+                    value={customer.tax_id || ''}
+                    onChange={e => setCustomer({ ...customer, tax_id: e.target.value })}
+                    className={styles.formInput}
+                    placeholder={L('Tax ID (13 digits)', 'เลขประจำตัวผู้เสียภาษี (13 หลัก)')}
+                    maxLength={13}
+                  />
+                </div>
+              </div>
+
               {(customer.email || customer.company) && (
                 <div style={{ marginTop: 12, padding: 12, border: '1px solid #e6eef6', borderRadius: 8, background: '#fbfeff', fontSize: 13 }}>
                   {customer.email && <div><strong>{L('Email', 'อีเมล')}:</strong> {customer.email}</div>}
@@ -533,7 +608,7 @@ export default function QuotationPage() {
                   <tr>
                     <th>{L('Description', 'รายละเอียด')}</th>
                     <th style={{ width: '100px' }}>{L('Qty', 'จำนวน')}</th>
-                    <th style={{ width: '140px' }}>{L('Price', 'ราคา')}</th>
+                    <th style={{ width: '140px' }}>{L('Price per unit', 'ราคาต่อหน่วย')}</th>
                     <th style={{ width: '140px' }}>{L('Total', 'รวม')}</th>
                     <th style={{ width: '100px' }}></th>
                   </tr>
@@ -558,11 +633,11 @@ export default function QuotationPage() {
                       <td>
                         <input type="number" min={1} value={it.qty} onChange={e => updateItem(i, 'qty', e.target.value)} className={styles.formInput} style={{ textAlign: 'center' }} />
                       </td>
-                      <td>
-                        <input type="number" min={0} value={it.price} onChange={e => updateItem(i, 'price', e.target.value)} className={styles.formInput} style={{ textAlign: 'right' }} />
+                      <td style={{ textAlign: 'right', padding: '8px', fontWeight: 500 }}>
+                        {it.price > 0 ? `${Number(it.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿` : '-'}
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                        {(it.qty * it.price).toFixed(2)} ฿
+                        {(it.qty * it.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿
                       </td>
                       <td>
                         <button type="button" onClick={() => removeItem(i)} className={styles.btnOutline} style={{ padding: '4px 8px' }}>
@@ -608,8 +683,8 @@ export default function QuotationPage() {
             {/* Discount & Summary */}
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>{L('Discount (THB)', 'ส่วนลด (บาท)')}</label>
-                <input type="number" min={0} value={discount} onChange={e => setDiscount(Number(e.target.value))} className={styles.formInput} />
+                <label className={styles.formLabel}>{L('Discount (%)', 'ส่วนลด (%)')}</label>
+                <input type="number" min={0} max={100} value={discount} onChange={e => setDiscount(Number(e.target.value))} className={styles.formInput} />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('VAT (%)', 'ภาษีมูลค่าเพิ่ม (%)')}</label>
@@ -619,19 +694,19 @@ export default function QuotationPage() {
                 <div style={{ fontWeight: 700, marginBottom: '8px' }}>{L('Summary', 'สรุปยอด')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: 14 }}>
                   <span>{L('Subtotal', 'ยอดรวมย่อย')}:</span>
-                  <span>{totals.subtotal.toFixed(2)} ฿</span>
+                  <span>{totals.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: 14 }}>
-                  <span>{L('Discount', 'ส่วนลด')}:</span>
-                  <span>-{Number(discount).toFixed(2)} ฿</span>
+                  <span>{L('Discount', 'ส่วนลด')} ({discount}%):</span>
+                  <span>-{((totals.subtotal * Number(discount || 0)) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: 14 }}>
                   <span>{L('Tax', 'ภาษี')}:</span>
-                  <span>{totals.tax.toFixed(2)} ฿</span>
+                  <span>{totals.tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 800, marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e5e7eb' }}>
                   <span>{L('Total', 'รวม')}:</span>
-                  <span style={{ color: '#255899' }}>{totals.total.toFixed(2)} ฿</span>
+                  <span style={{ color: '#255899' }}>{totals.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</span>
                 </div>
               </div>
             </div>
@@ -700,9 +775,13 @@ export default function QuotationPage() {
                       onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; e.currentTarget.style.borderColor = '#0ea5e9' }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e5e7eb' }}
                     >
-                      <div style={{ fontWeight: 600, color: '#0369a1' }}>{form.formNo || form.reference || `#${form.formID}`}</div>
-                      <div style={{ fontSize: 14, color: '#64748b' }}>{form.customer_name || form.site_name || '-'}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{form.created_at ? new Date(form.created_at).toLocaleDateString() : ''}</div>
+                      <div style={{ fontWeight: 600, color: '#0369a1' }}>{form.pre_install_no || form.formNo || `PRE-${String(form.formID).padStart(6, '0')}`}</div>
+                      <div style={{ fontSize: 14, color: '#64748b' }}>{form.customer_name || form.site_address || '-'}</div>
+                      <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                        {form.customer_phone ? `📞 ${form.customer_phone}` : ''}
+                        {form.customer_phone && form.created_at ? ' • ' : ''}
+                        {form.created_at ? new Date(form.created_at).toLocaleDateString('th-TH') : ''}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -735,10 +814,14 @@ export default function QuotationPage() {
                       onMouseEnter={e => { e.currentTarget.style.background = '#fffbeb'; e.currentTarget.style.borderColor = '#f59e0b' }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e5e7eb' }}
                     >
-                      <div style={{ fontWeight: 600, color: '#d97706' }}>{calc.calcNo || calc.reference || `#${calc.calcID}`}</div>
-                      <div style={{ fontSize: 14, color: '#64748b' }}>{calc.customer_name || calc.site_name || '-'}</div>
-                      <div style={{ fontSize: 13, color: '#64748b' }}>{calc.total_power_kw ? `${calc.total_power_kw} kW` : ''} {calc.recommended_system || ''}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{calc.created_at ? new Date(calc.created_at).toLocaleDateString() : ''}</div>
+                      <div style={{ fontWeight: 600, color: '#d97706' }}>{calc.power_calcuNo || calc.calcNo || `CALC-${String(calc.calcID).padStart(6, '0')}`}</div>
+                      <div style={{ fontSize: 14, color: '#64748b' }}>{calc.customer_name || calc.company_name || '-'}</div>
+                      <div style={{ fontSize: 13, color: '#64748b' }}>
+                        {calc.product_price ? `💰 ${Number(calc.product_price).toLocaleString()} ฿` : ''}
+                        {calc.product_price && calc.avg_monthly_usage ? ' • ' : ''}
+                        {calc.avg_monthly_usage ? `⚡ ${calc.avg_monthly_usage} kWh/เดือน` : ''}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{calc.created_at ? new Date(calc.created_at).toLocaleDateString('th-TH') : ''}</div>
                     </div>
                   ))}
                 </div>

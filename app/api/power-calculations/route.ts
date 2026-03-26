@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
-    const calcID = searchParams.get('calcID')
+    const calcID = searchParams.get('calcID') || searchParams.get('id')
     const cusID = searchParams.get('cusID')
 
     // ตรวจสอบภาษา
@@ -126,8 +126,22 @@ export async function GET(request: NextRequest) {
     const [countResult] = await pool.query(countQuery, countParams)
     const total = (countResult as any)[0].total
 
+    // If requesting single calculation by ID, return it as 'calculation' object
+    if (calcID) {
+      return NextResponse.json({
+        success: true,
+        calculation: (rows as any[])[0] || null,
+        rows,
+        total,
+        limit,
+        offset
+      })
+    }
+
     return NextResponse.json({
       success: true,
+      calculations: rows,
+      powerCalculations: rows,
       rows,
       total,
       limit,
