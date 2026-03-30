@@ -8,7 +8,7 @@ import {
   MapPin, Bell, Wrench, Headphones, BarChart3, FileText, X, Paperclip, Award
 } from 'lucide-react';
 import { useLocale } from '@/lib/LocaleContext';
-import { translations } from '@/lib/translations';
+import { getT } from '@/lib/translations';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import CountryFlag from '@/components/CountryFlag';
 import CompanyLogo from '@/components/CompanyLogo';
@@ -96,7 +96,7 @@ interface BranchData {
 
 export default function ExecutiveDashboard() {
   const { locale } = useLocale();
-  const t = translations[locale];
+  const t = getT(locale);
   
   const [selectedBranch, setSelectedBranch] = useState<Branch>('korea');
   const [selectedBill, setSelectedBill] = useState<BranchData['pendingBills'][0] | null>(null);

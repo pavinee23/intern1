@@ -71,6 +71,7 @@ const texts = {
     approve: '승인',
     reject: '반려',
     view: '보기',
+    hide: '숨기기',
     processing: '처리 중...',
     employee: '직원',
     department: '부서',
@@ -124,6 +125,7 @@ const texts = {
     approve: 'Approve',
     reject: 'Reject',
     view: 'View',
+    hide: 'Hide',
     processing: 'Processing...',
     employee: 'Employee',
     department: 'Department',
@@ -174,6 +176,16 @@ function formatDate(date: string, locale: ApprovalLocale) {
   return d.toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US');
 }
 
+async function parseJsonSafe(res: Response) {
+  const raw = await res.text();
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    const snippet = raw.replace(/\s+/g, ' ').slice(0, 160);
+    throw new Error(`Invalid API response (${res.status}): ${snippet || 'empty response'}`);
+  }
+}
+
 export default function ApprovalReviewPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -186,6 +198,7 @@ export default function ApprovalReviewPage() {
   const [message, setMessage] = useState('');
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [processingPurchaseId, setProcessingPurchaseId] = useState<number | null>(null);
+  const [openedPurchaseId, setOpenedPurchaseId] = useState<number | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<BranchKey | null>(null);
 
   const t = useMemo(() => texts[pageLocale], [pageLocale]);
@@ -228,6 +241,7 @@ export default function ApprovalReviewPage() {
       setLeaveRows([]);
       setPurchaseRows([]);
       setSuggestionRows([]);
+      setOpenedPurchaseId(null);
       setLoading(false);
       setError('');
       return;
@@ -244,9 +258,9 @@ export default function ApprovalReviewPage() {
       ]);
 
       const [leaveData, purchaseData, suggestionData] = await Promise.all([
-        leaveRes.json(),
-        purchaseRes.json(),
-        suggestionRes.json()
+        parseJsonSafe(leaveRes),
+        parseJsonSafe(purchaseRes),
+        parseJsonSafe(suggestionRes)
       ]);
 
       if (!leaveRes.ok || !leaveData.success) {
@@ -306,7 +320,7 @@ export default function ApprovalReviewPage() {
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafe(res);
       if (!res.ok || !data.success) {
         throw new Error(data.error || t.actionError);
       }
@@ -339,17 +353,15 @@ export default function ApprovalReviewPage() {
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafe(res);
       if (!res.ok || !data.success) {
         throw new Error(data.error || t.purchaseActionError);
       }
 
       setPurchaseRows((prev) => {
-        if (status === 'rejected') {
-          return prev.filter((item) => item.prID !== row.prID);
-        }
-        return prev.map((item) => (item.prID === row.prID ? { ...item, status } : item));
+        return prev.filter((item) => item.prID !== row.prID);
       });
+      setOpenedPurchaseId((prev) => (prev === row.prID ? null : prev));
       setMessage(t.purchaseActionSuccess);
     } catch (err: any) {
       setError(err.message || t.purchaseActionError);
@@ -474,21 +486,25 @@ export default function ApprovalReviewPage() {
                     return (
                       <div key={row.prID} className="rounded-xl border border-blue-100 p-3 sm:p-4 bg-white">
                         <p className="font-semibold text-gray-900 break-words">{row.prNo}</p>
-                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          <p><span className="text-gray-500">{t.requestDate}: </span><span className="text-gray-900">{formatDate(row.prDate, pageLocale)}</span></p>
-                          <p><span className="text-gray-500">{t.department}: </span><span className="text-gray-900">{row.department || '-'}</span></p>
-                          <p><span className="text-gray-500">{t.purchaseRequester}: </span><span className="text-gray-900">{row.requested_by || row.requester_name || '-'}</span></p>
-                          <p><span className="text-gray-500">{t.amount}: </span><span className="text-gray-900">{Number(row.total_amount || 0).toLocaleString(pageLocale === 'ko' ? 'ko-KR' : 'en-US')}</span></p>
-                          <p className="sm:col-span-2"><span className="text-gray-500">{t.purchasePurpose}: </span><span className="text-gray-900">{row.purpose || '-'}</span></p>
-                        </div>
+                        {openedPurchaseId === row.prID && (
+                          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                            <p><span className="text-gray-500">{t.requestDate}: </span><span className="text-gray-900">{formatDate(row.prDate, pageLocale)}</span></p>
+                            <p><span className="text-gray-500">{t.department}: </span><span className="text-gray-900">{row.department || '-'}</span></p>
+                            <p><span className="text-gray-500">{t.purchaseRequester}: </span><span className="text-gray-900">{row.requested_by || row.requester_name || '-'}</span></p>
+                            <p><span className="text-gray-500">{t.amount}: </span><span className="text-gray-900">{Number(row.total_amount || 0).toLocaleString(pageLocale === 'ko' ? 'ko-KR' : 'en-US')}</span></p>
+                            <p className="sm:col-span-2"><span className="text-gray-500">{t.purchasePurpose}: </span><span className="text-gray-900">{row.purpose || '-'}</span></p>
+                          </div>
+                        )}
 
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <button
                             type="button"
-                            onClick={() => window.open(`/KR-Thailand/Admin-Login/purchase-requests/print?prID=${row.prID}`, '_blank')}
+                            onClick={() => {
+                              setOpenedPurchaseId((prev) => (prev === row.prID ? null : row.prID));
+                            }}
                             className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-700"
                           >
-                            {t.view}
+                            {openedPurchaseId === row.prID ? t.hide : t.view}
                           </button>
                           <button
                             type="button"
