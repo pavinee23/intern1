@@ -121,8 +121,8 @@ function PurchaseRequestPrintContent() {
   const requesterPhone = doc.requester_phone || doc.phone || '-'
   const requesterEmail = doc.requester_email || doc.email || '-'
   const supplierName = doc.supplier_name || doc.supplierName || '-'
-  const purpose = doc.purpose || '-'
-  const supplierComparison = doc.notes || '-'
+  const purpose = doc.purpose || doc.reason || doc.purchase_reason || doc.request_reason || '-'
+  const supplierComparison = doc.notes || doc.supplier_comparison || doc.comparison_notes || doc.supplierComparison || '-'
 
   return (
     <>
@@ -265,7 +265,7 @@ function PurchaseRequestPrintContent() {
         </div>
 
         <div className="text-box">
-          <div className="text-box-title">{L('Reason and Necessity for Purchase', 'เหตุผลการขอซื้อและความจำเป็น')}</div>
+          <div className="text-box-title">{L('Reason and Necessity for Purchase *', 'เหตุผลการขอซื้อและความจำเป็น *')}</div>
           <div className="text-box-content">{purpose}</div>
         </div>
 
