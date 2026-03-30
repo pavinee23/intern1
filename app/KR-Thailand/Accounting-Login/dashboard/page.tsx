@@ -240,6 +240,32 @@ export default function AccountingDashboardPage() {
     fetchPendingPRCount()
   }
 
+  async function handlePendingPRAction(prID: number | undefined, action: 'rejected' | 'submitted') {
+    if (!prID) return
+
+    try {
+      const res = await fetch('/api/purchase-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prID,
+          status: action
+        })
+      })
+
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.success) {
+        alert(L('Failed to update status', 'อัปเดตสถานะไม่สำเร็จ'))
+        return
+      }
+
+      await fetchPendingPRCount()
+    } catch (err) {
+      console.error('Failed to update PR status:', err)
+      alert(L('Failed to update status', 'อัปเดตสถานะไม่สำเร็จ'))
+    }
+  }
+
   async function fetchKoreaInvoices() {
     try {
       const res = await fetch('/api/korea-invoices?status=unpaid')
@@ -772,6 +798,7 @@ export default function AccountingDashboardPage() {
                           <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('Items', 'รายการ')}</th>
                           <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('Status', 'สถานะ')}</th>
                           <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('Action', 'ดำเนินการ')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#1f2937' }}>{L('View', 'ดูรายละเอียดบิล')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -809,14 +836,55 @@ export default function AccountingDashboardPage() {
                               </span>
                             </td>
                             <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => handlePendingPRAction(pr.prID, 'rejected')}
+                                  style={{
+                                    padding: '6px 12px',
+                                    background: '#dc2626',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#b91c1c'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#dc2626'}
+                                >
+                                  {L('Reject', 'ไม่อนุมัติ')}
+                                </button>
+
+                                <button
+                                  onClick={() => handlePendingPRAction(pr.prID, 'submitted')}
+                                  style={{
+                                    padding: '6px 12px',
+                                    background: '#2563eb',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
+                                >
+                                  {L('Send to Executive', 'ส่งให้ผู้บริหารอนุมัติ')}
+                                </button>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                               <button
                                 onClick={() => {
-                                  setShowPendingPRModal(false)
-                                  router.push(`/KR-Thailand/Admin-Login/documents/purchase-requests?id=${pr.prID}`)
+                                  const url = `/KR-Thailand/Admin-Login/purchase-requests/print?prID=${pr.prID}`
+                                  window.open(url, '_blank')
                                 }}
                                 style={{
                                   padding: '6px 16px',
-                                  background: '#0ea5e9',
+                                  background: '#16a34a',
                                   color: '#fff',
                                   border: 'none',
                                   borderRadius: 6,
@@ -825,10 +893,10 @@ export default function AccountingDashboardPage() {
                                   cursor: 'pointer',
                                   transition: 'all 0.2s'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#0284c7'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = '#0ea5e9'}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#15803d'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = '#16a34a'}
                               >
-                                {L('View', 'ดู')}
+                                {L('View Bill', 'ดูรายละเอียดบิล')}
                               </button>
                             </td>
                           </tr>

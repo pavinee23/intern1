@@ -7,11 +7,11 @@ import { getT } from '@/lib/translations';
 import CountryFlag from '@/components/CountryFlag';
 import CompanyLogo from '@/components/CompanyLogo';
 
-type KoreaMainLocale = 'th' | 'en';
+type KoreaMainLocale = 'ko' | 'en';
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
-  const [pageLocale, setPageLocale] = useState<KoreaMainLocale>('th');
+  const [pageLocale, setPageLocale] = useState<KoreaMainLocale>('ko');
   const [currentUser, setCurrentUser] = useState<{
     userId: number;
     username: string;
@@ -27,7 +27,7 @@ export default function HomePage() {
     setMounted(true);
 
     const savedLocale = localStorage.getItem('korea-main-locale') || localStorage.getItem('locale');
-    if (savedLocale === 'th' || savedLocale === 'en') {
+    if (savedLocale === 'ko' || savedLocale === 'en') {
       setPageLocale(savedLocale);
     }
 
@@ -42,7 +42,7 @@ export default function HomePage() {
   }, []);
 
   const toggleLanguage = () => {
-    const nextLocale: KoreaMainLocale = pageLocale === 'th' ? 'en' : 'th';
+    const nextLocale: KoreaMainLocale = pageLocale === 'ko' ? 'en' : 'ko';
     setPageLocale(nextLocale);
     localStorage.setItem('korea-main-locale', nextLocale);
   };
@@ -120,8 +120,8 @@ export default function HomePage() {
     },
     { 
       icon: Users, 
-      title: pageLocale === 'th' ? 'ระบบจัดการลูกค้า' : 'Customer Management System',
-      description: pageLocale === 'th' ? 'จัดการข้อมูลลูกค้า ประวัติคำสั่งซื้อ และความสัมพันธ์' : 'Manage customer information, order history, and relationships',
+      title: pageLocale === 'ko' ? '고객 관리 시스템' : 'Customer Management System',
+      description: pageLocale === 'ko' ? '고객 정보, 주문 이력 및 관계를 관리합니다' : 'Manage customer information, order history, and relationships',
       href: '/customers',
       color: 'bg-blue-600'
     },
@@ -155,8 +155,8 @@ export default function HomePage() {
     },
     { 
       icon: Network, 
-      title: pageLocale === 'th' ? 'เชื่อมต่อระบบ Flow' : 'Connect to Flow System',
-      description: pageLocale === 'th' ? 'เชื่อมต่อและทำงานร่วมกับระบบเวิร์กโฟลว์ Flow' : 'Integration and connection with Flow workflow system',
+      title: pageLocale === 'ko' ? 'Flow 시스템 연결' : 'Connect to Flow System',
+      description: pageLocale === 'ko' ? 'Flow 워크플로 시스템과 연동 및 연결' : 'Integration and connection with Flow workflow system',
       href: 'https://flow.team/signin.act',
       color: 'bg-pink-500',
       external: true
@@ -198,12 +198,12 @@ export default function HomePage() {
               <button
                 onClick={toggleLanguage}
                 className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label={pageLocale === 'th' ? 'เปลี่ยนภาษา' : 'Change language'}
+                aria-label={pageLocale === 'ko' ? '언어 변경' : 'Change language'}
                 type="button"
               >
                 <Globe className="w-5 h-5 text-gray-600" />
                 <span className="text-sm font-medium text-gray-700">
-                  {pageLocale === 'th' ? 'ไทย' : 'English'}
+                  {pageLocale === 'ko' ? '한국어' : 'English'}
                 </span>
               </button>
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -312,7 +312,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="KR" size="md" />
                   <span suppressHydrationWarning className="text-lg font-bold text-green-600">
-                    ₩{new Intl.NumberFormat((mounted ? pageLocale : 'th') === 'th' ? 'th-TH' : 'en-US', { 
+                    ₩{new Intl.NumberFormat((mounted ? pageLocale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(42180000000)}
@@ -321,7 +321,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="TH" size="md" />
                   <span suppressHydrationWarning className="text-lg font-bold text-green-600">
-                    ฿{new Intl.NumberFormat((mounted ? pageLocale : 'th') === 'th' ? 'th-TH' : 'en-US', { 
+                    ฿{new Intl.NumberFormat((mounted ? pageLocale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(67320000)}
@@ -337,7 +337,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="KR" size="md" />
                   <span suppressHydrationWarning className="text-lg font-bold text-orange-600">
-                    ₩{new Intl.NumberFormat((mounted ? pageLocale : 'th') === 'th' ? 'th-TH' : 'en-US', { 
+                    ₩{new Intl.NumberFormat((mounted ? pageLocale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(116240000000)}
@@ -346,7 +346,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-center gap-2">
                   <CountryFlag country="VN" size="md" />
                   <span suppressHydrationWarning className="text-lg font-bold text-orange-600">
-                    ₫{new Intl.NumberFormat((mounted ? pageLocale : 'th') === 'th' ? 'th-TH' : 'en-US', { 
+                    ₫{new Intl.NumberFormat((mounted ? pageLocale : 'ko') === 'ko' ? 'ko-KR' : 'en-US', { 
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0
                     }).format(62230000000)}
@@ -381,7 +381,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h4 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{t.korea}</h4>
-                  <p className="text-sm text-gray-500">{pageLocale === 'th' ? 'เกาหลี' : 'Korea'}</p>
+                  <p className="text-sm text-gray-500">{pageLocale === 'ko' ? '한국' : 'Korea'}</p>
                 </div>
               </div>
               <div className="space-y-3 mb-4">
@@ -406,7 +406,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h4 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{t.brunei}</h4>
-                  <p className="text-sm text-gray-500">{pageLocale === 'th' ? 'บรูไนดารุสซาลาม' : 'Brunei Darussalam'}</p>
+                  <p className="text-sm text-gray-500">{pageLocale === 'ko' ? '브루나이 다루살람' : 'Brunei Darussalam'}</p>
                 </div>
               </div>
               <div className="space-y-3 mb-4">
@@ -431,7 +431,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h4 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{t.thailand}</h4>
-                  <p className="text-sm text-gray-500">{pageLocale === 'th' ? 'ประเทศไทย' : 'Thailand'}</p>
+                  <p className="text-sm text-gray-500">{pageLocale === 'ko' ? '태국' : 'Thailand'}</p>
                 </div>
               </div>
               <div className="space-y-3 mb-4">
@@ -456,7 +456,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h4 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{t.vietnam}</h4>
-                  <p className="text-sm text-gray-500">{pageLocale === 'th' ? 'เวียดนาม' : 'Vietnam'}</p>
+                  <p className="text-sm text-gray-500">{pageLocale === 'ko' ? '베트남' : 'Vietnam'}</p>
                 </div>
               </div>
               <div className="space-y-3 mb-4">

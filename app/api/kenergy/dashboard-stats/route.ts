@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 type RawRecentDevice = {
   deviceID: string
   deviceName: string
+  customerName: string | null
   location: string | null
   ipAddress: string | null
   ksaveID: string | null
@@ -14,9 +15,14 @@ type RawRecentDevice = {
   before_L1: number | string | null
   before_L2: number | string | null
   before_L3: number | string | null
+  before_current_L1: number | string | null
+  before_current_L2: number | string | null
+  before_current_L3: number | string | null
   metrics_L1: number | string | null
   metrics_L2: number | string | null
   metrics_L3: number | string | null
+  before_THD: number | string | null
+  metrics_THD: number | string | null
 }
 
 export async function GET(request: NextRequest) {
@@ -60,6 +66,7 @@ export async function GET(request: NextRequest) {
       `SELECT
         d.deviceID,
         d.deviceName,
+        d.customerName,
         d.location,
         d.ipAddress,
         d.ksaveID,
@@ -67,13 +74,19 @@ export async function GET(request: NextRequest) {
         p.before_L1,
         p.before_L2,
         p.before_L3,
+        p.before_current_L1,
+        p.before_current_L2,
+        p.before_current_L3,
         p.metrics_L1,
         p.metrics_L2,
-        p.metrics_L3
+        p.metrics_L3,
+        p.before_THD,
+        p.metrics_THD
        FROM devices d
        LEFT JOIN (
          SELECT device_id, record_time, before_L1, before_L2, before_L3,
-                metrics_L1, metrics_L2, metrics_L3
+                before_current_L1, before_current_L2, before_current_L3,
+                metrics_L1, metrics_L2, metrics_L3, before_THD, metrics_THD
          FROM power_records
          WHERE (device_id, record_time) IN (
            SELECT device_id, MAX(record_time)
@@ -102,9 +115,21 @@ export async function GET(request: NextRequest) {
         toNullableNumber(device.metrics_L2),
         toNullableNumber(device.metrics_L3)
       ]
+      const beforeCurrentABC = [
+        toNullableNumber(device.before_current_L1),
+        toNullableNumber(device.before_current_L2),
+        toNullableNumber(device.before_current_L3)
+      ]
       const validCurrents = currentABC.filter((value): value is number => value !== null)
+      const validBeforeCurrents = beforeCurrentABC.filter((value): value is number => value !== null)
       const avgCurrent = validCurrents.length > 0
         ? Number((validCurrents.reduce((sum, value) => sum + value, 0) / validCurrents.length).toFixed(1))
+        : null
+      const avgBeforeCurrent = validBeforeCurrents.length > 0
+        ? Number((validBeforeCurrents.reduce((sum, value) => sum + value, 0) / validBeforeCurrents.length).toFixed(1))
+        : null
+      const currentReduction = avgBeforeCurrent && avgCurrent
+        ? Number((((avgBeforeCurrent - avgCurrent) / avgBeforeCurrent) * 100).toFixed(1))
         : null
       const maxCurrent = validCurrents.length > 0 ? Math.max(...validCurrents) : null
       const minCurrent = validCurrents.length > 0 ? Math.min(...validCurrents) : null
@@ -112,22 +137,34 @@ export async function GET(request: NextRequest) {
         ? Number((((maxCurrent - minCurrent) / maxCurrent) * 100).toFixed(1))
         : null
 
+      // Process THD values
+      const metricsTHD = toNullableNumber(device.metrics_THD)
+      const avgThd = metricsTHD !== null ? Number(metricsTHD.toFixed(1)) : null
+      // Use average THD for each phase as approximation (since we don't have per-phase THD in DB)
+      const thdABC = avgThd !== null ? [avgThd, avgThd, avgThd] : [null, null, null]
+
       return {
         deviceID: device.deviceID,
         deviceName: device.deviceName,
+        customerName: device.customerName,
         location: device.location,
         ipAddress: device.ipAddress,
         ksaveID: device.ksaveID,
         isOnline,
         lastUpdate: device.record_time,
-        voltageLL: isOnline ? [
-          device.before_L1 || 0,
-          device.before_L2 || 0,
-          device.before_L3 || 0
-        ] : [0, 0, 0],
+        voltageLL: [
+          toNullableNumber(device.before_L1) || 0,
+          toNullableNumber(device.before_L2) || 0,
+          toNullableNumber(device.before_L3) || 0
+        ],
         currentABC,
+        beforeCurrentABC,
         avgCurrent,
-        imbalancePercent
+        avgBeforeCurrent,
+        currentReduction,
+        imbalancePercent,
+        avgThd,
+        thdABC
       }
     })
 

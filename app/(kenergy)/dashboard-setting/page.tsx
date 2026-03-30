@@ -15,31 +15,58 @@ interface Project {
   status: string;
   devices: number;
   tables: number;
+  country?: string;
 }
-
-// Mock project data
-const projectsData: Project[] = [
-  {
-    no: 1,
-    projectName: 'PTT',
-    owner: 'info@kenergy-save.com',
-    viewer: 0,
-    contentFolder: 'customtemplate-bg',
-    registerDate: '2026-01-14 17:17:06',
-    lastUpdate: '2026-02-04 15:51:54',
-    status: 'Enable',
-    devices: 1,
-    tables: 1
-  }
-];
 
 export default function DashboardSettingPage() {
   const { t } = useLocale();
+  const [projects, setProjects] = useState<Project[]>([
+    {
+      no: 1,
+      projectName: 'PTT',
+      owner: 'info@kenergy-save.com',
+      viewer: 0,
+      contentFolder: 'customtemplate-bg',
+      registerDate: '2026-01-14 17:17:06',
+      lastUpdate: '2026-02-04 15:51:54',
+      status: 'Enable',
+      devices: 1,
+      tables: 1,
+      country: 'Thailand',
+    },
+    {
+      no: 2,
+      projectName: 'Zera',
+      owner: 'info@zera-energy.com',
+      viewer: 2,
+      contentFolder: 'zera-folder',
+      registerDate: '2026-01-20 10:00:00',
+      lastUpdate: '2026-02-10 12:00:00',
+      status: 'Enable',
+      devices: 2,
+      tables: 2,
+      country: 'Korea',
+    },
+  ]);
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [projectNameFilter, setProjectNameFilter] = useState('all');
   const [searchCriteria, setSearchCriteria] = useState('');
   const [searchText, setSearchText] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
+
+  // Country options (mock)
+  const countryOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Thailand', value: 'Thailand' },
+    { label: 'Korea', value: 'Korea' },
+  ];
+
+  // Filter projects by selected country
+  const filteredProjects = selectedCountry === 'all'
+    ? projects
+    : projects.filter((p) => p.country === selectedCountry);
 
   return (
     <div className="p-5 space-y-5 bg-gray-50 min-h-screen">
@@ -58,10 +85,13 @@ export default function DashboardSettingPage() {
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-center bg-white/15 backdrop-blur-sm rounded-2xl px-5 py-3 border border-white/20">
               <FolderOpen className="w-4 h-4 text-white/70 mb-1" />
-              <span className="text-2xl font-black text-white leading-none">{projectsData.length}</span>
+              <span className="text-2xl font-black text-white leading-none">{projects.length}</span>
               <span className="text-cyan-100 text-xs mt-0.5">Projects</span>
             </div>
-            <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-teal-700 font-bold text-sm rounded-xl hover:bg-teal-50 transition-all shadow-md">
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-teal-700 font-bold text-sm rounded-xl hover:bg-teal-50 transition-all shadow-md"
+              onClick={() => setShowAddModal(true)}
+            >
               <Plus className="w-4 h-4" /> {t('addNew') || 'Add New'}
             </button>
           </div>
@@ -71,6 +101,18 @@ export default function DashboardSettingPage() {
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="flex flex-wrap gap-3 items-center">
+          {/* Country Selector */}
+          <div>
+            <select
+              className="px-4 py-2 border rounded-md bg-gray-100"
+              value={selectedCountry}
+              onChange={e => setSelectedCountry(e.target.value)}
+            >
+              {countryOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
           {/* Owner Dropdown */}
           <div className="relative">
             <button className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2 min-w-[140px]">
@@ -104,7 +146,10 @@ export default function DashboardSettingPage() {
           </button>
 
           {/* Add New Button */}
-          <button className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md font-medium transition-colors">
+          <button
+            className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md font-medium transition-colors"
+            onClick={() => setShowAddModal(true)}
+          >
             {t('addNew')}
           </button>
         </div>
@@ -186,7 +231,7 @@ export default function DashboardSettingPage() {
                 </tr>
               </thead>
               <tbody>
-                {projectsData.map((project) => (
+                {filteredProjects.map((project) => (
                   <tr key={project.no} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {project.no}
@@ -244,7 +289,7 @@ export default function DashboardSettingPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">
-              {t('showing')} 1 {t('to')} 1 {t('of')} 1 {t('entry')}
+              {t('showing')} 1 {t('to')} {filteredProjects.length} {t('of')} {filteredProjects.length} {t('entry')}
             </div>
             <div className="flex gap-2">
               <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm">
@@ -266,6 +311,29 @@ export default function DashboardSettingPage() {
           </div>
         </div>
       </div>
+      {/* Add New Modal (UI only) */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-8 min-w-[320px] relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+              onClick={() => setShowAddModal(false)}
+            >
+              ×
+            </button>
+            <h2 className="text-xl font-bold mb-4">{t('addNew') || 'Add New Project'}</h2>
+            <div className="space-y-3">
+              <input className="w-full border rounded px-3 py-2" placeholder="Project Name" />
+              <input className="w-full border rounded px-3 py-2" placeholder="Owner Email" />
+              <input className="w-full border rounded px-3 py-2" placeholder="Content Folder" />
+              {/* Add more fields as needed */}
+              <button className="w-full bg-teal-600 text-white py-2 rounded font-bold mt-2" disabled>
+                {t('save') || 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

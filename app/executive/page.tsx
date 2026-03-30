@@ -481,18 +481,28 @@ export default function ExecutiveDashboard() {
       {/* Header */}
       <header className="bg-white shadow-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <CompanyLogo size="2xl" />
-              <div className="border-l-2 border-gray-200 pl-4">
-                <h1 className="text-xl font-bold text-slate-700">{t.executiveDepartment}</h1>
-                <p className="text-sm text-gray-500">{t.executiveDashboardTitle}</p>
+              <div className="border-l-2 border-gray-200 pl-3 sm:pl-4 min-w-0">
+                <h1 className="text-base sm:text-xl font-bold text-slate-700 truncate">{t.executiveDepartment}</h1>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">{t.executiveDashboardTitle}</p>
               </div>
             </div>
-            <LanguageSwitcher />
+            <div className="flex w-full sm:w-auto items-center justify-end gap-2 sm:gap-3">
+              <Link
+                href="/executive/approval-review-login"
+                className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs sm:text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="sm:hidden">{locale === 'ko' ? '모바일 승인' : 'Approve by Phone'}</span>
+                <span className="hidden sm:inline">{locale === 'ko' ? '모바일 승인 검토 로그인' : 'Approval Review Login by Phone'}</span>
+              </Link>
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </header>

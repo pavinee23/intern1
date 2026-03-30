@@ -4,6 +4,18 @@ import { queryUser } from '@/lib/mysql-user'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+const BRANCH_KEYWORDS: Record<string, string[]> = {
+  korea: ['korea', 'korean', '한국', '대한민국', '코리아', 'kr'],
+  thailand: ['thailand', 'thai', 'ไทย', 'ประเทศไทย', 'th'],
+  vietnam: ['vietnam', 'vietnamese', 'เวียดนาม', 'vn'],
+  malaysia: ['malaysia', 'malay', 'มาเล', 'มาเลเซีย', 'my'],
+  brunei: ['brunei', 'บรูไน', 'bn']
+}
+
+async function ensureFeedbackBranchColumn() {
+  await queryUser(`ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS branch VARCHAR(50) DEFAULT NULL`)
+}
+
 /**
  * POST /api/kenergy/user-feedback
  * บันทึก feedback จากผู้ใช้
@@ -17,8 +29,10 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(req: NextRequest) {
   try {
+    await ensureFeedbackBranchColumn()
+
     const body = await req.json()
-    const { userId, category, subject, message, rating } = body
+    const { userId, category, subject, message, rating, branch } = body
 
     // Validate required fields
     if (!category || !subject || !message) {
@@ -48,14 +62,15 @@ export async function POST(req: NextRequest) {
 
     // Insert feedback
     const result = await queryUser(`
-      INSERT INTO user_feedback (user_id, category, subject, message, rating, created_by)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO user_feedback (user_id, category, subject, message, rating, branch, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
       userId || null,
       category,
       subject,
       message,
       numRating,
+      branch || null,
       userId ? `user_${userId}` : 'anonymous'
     ])
 
@@ -82,9 +97,12 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
+    await ensureFeedbackBranchColumn()
+
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const category = searchParams.get('category')
+    const branch = (searchParams.get('branch') || '').toLowerCase()
 
     let sql = `
       SELECT
@@ -94,6 +112,7 @@ export async function GET(req: NextRequest) {
         f.subject,
         f.message,
         f.rating,
+        f.branch,
         f.status,
         f.created_at,
         u.name as user_name,
@@ -112,6 +131,19 @@ export async function GET(req: NextRequest) {
     if (category) {
       sql += ' AND f.category = ?'
       params.push(category)
+    }
+
+    if (branch && BRANCH_KEYWORDS[branch]) {
+      const tokens = BRANCH_KEYWORDS[branch]
+      const branchLikeConditions = tokens.map(() => '(f.subject LIKE ? OR f.message LIKE ? OR u.name LIKE ? OR u.email LIKE ?)').join(' OR ')
+
+      sql += ` AND (LOWER(COALESCE(f.branch, '')) = ? OR (${branchLikeConditions}))`
+      params.push(branch)
+
+      tokens.forEach((token) => {
+        const like = `%${token}%`
+        params.push(like, like, like, like)
+      })
     }
 
     sql += ' ORDER BY f.created_at DESC LIMIT 100'

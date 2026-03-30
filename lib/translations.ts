@@ -91,12 +91,14 @@ export const translations = {
     vietnam: '베트남',
     korea: '한국',
     republicOfKorea: '대한민국',
+    malaysia: '말레이시아',
 
     // System Labels
     bruneiSystem: 'Brunei System',
     thailandSystem: 'Thailand System',
     vietnamSystem: 'Vietnam System',
     koreaSystem: 'Korea System',
+    malaysiaSystem: 'Malaysia System',
     
     // Branch Updates
     bruneiUpdate: '새로운 에너지 절약 프로그램 출시',

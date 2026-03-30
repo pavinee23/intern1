@@ -214,6 +214,7 @@ export default function CreatePurchaseRequestPage() {
     if (!requesterName) errs.push(L('Requester name is required', 'กรุณาระบุชื่อผู้ขอซื้อ'))
     if (!department) errs.push(L('Department is required', 'กรุณาระบุแผนก'))
     if (!requiredDate) errs.push(L('Required date is required', 'กรุณาระบุวันที่ต้องการ'))
+    if (!purpose.trim()) errs.push(L('Reason and necessity for purchase is required', 'กรุณาระบุเหตุผลการขอซื้อและความจำเป็น'))
 
     if (requiredDate && new Date(requiredDate) < new Date(prDate)) {
       errs.push(L('Required date must be >= request date', 'วันที่ต้องการต้อง >= วันที่ขอซื้อ'))
@@ -242,9 +243,12 @@ export default function CreatePurchaseRequestPage() {
       const payload = {
         prDate,
         requester_name: requesterName,
+        requested_by: requesterName,
         department,
         purpose,
         required_date: requiredDate,
+        supplier_id: supplierId,
+        supplier_name: supplierName,
         items: items.map(item => ({
           product_code: item.product_code,
           product_name: item.product_name,
@@ -254,6 +258,7 @@ export default function CreatePurchaseRequestPage() {
           total_price: item.quantity * item.estimated_price
         })),
         notes,
+        branch: 'thailand',
         created_by
       }
 
@@ -384,8 +389,14 @@ export default function CreatePurchaseRequestPage() {
             </div>
 
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>{L('Purpose', 'วัตถุประสงค์')}</label>
-              <textarea value={purpose} onChange={e => setPurpose(e.target.value)} className={styles.formInput} rows={2} placeholder={L('Why is this needed...', 'เหตุผลที่ต้องการ...')} />
+              <label className={styles.formLabel}>{L('Reason and Necessity for Purchase', 'เหตุผลการขอซื้อและความจำเป็น')} <span style={{ color: '#dc2626' }}>*</span></label>
+              <textarea
+                value={purpose}
+                onChange={e => setPurpose(e.target.value)}
+                className={styles.formInput}
+                rows={3}
+                placeholder={L('Please explain the reason and business necessity for this purchase', 'กรุณาระบุเหตุผลการขอซื้อและความจำเป็นของการใช้งาน')}
+              />
             </div>
 
             {/* Supplier Selection */}
@@ -547,8 +558,17 @@ export default function CreatePurchaseRequestPage() {
             </div>
 
             <div className={styles.formGroup} style={{ marginTop: 20 }}>
-              <label className={styles.formLabel}>{L('Notes', 'หมายเหตุ')}</label>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} className={styles.formInput} rows={2} placeholder={L('Additional notes...', 'หมายเหตุเพิ่มเติม...')} />
+              <label className={styles.formLabel}>{L('Supplier Comparison Information', 'ข้อมูลการเปรียบเทียบซัพพลายเออร์')}</label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className={styles.formInput}
+                rows={3}
+                placeholder={L(
+                  'Please provide supplier comparison details from multiple companies',
+                  'ระบุข้อมูลการเปรียบเทียบ เช็คซัพพลายเออ หลายๆ บริษัท'
+                )}
+              />
             </div>
 
             {errors.length > 0 && (

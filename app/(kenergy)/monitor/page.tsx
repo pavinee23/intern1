@@ -17,6 +17,14 @@ interface Device {
   location: string;
 }
 
+interface Customer {
+  customerName: string;
+  site: string;
+  deviceCount: number;
+  deviceIds: string[];
+  deviceNames: string[];
+}
+
 interface MonitoringMetrics {
   voltageLL: number[];
   current: number[];
@@ -37,9 +45,13 @@ interface MonitoringMetrics {
 export default function MonitorPage() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>("");
   const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
+  const [customersLoading, setCustomersLoading] = useState(true);
   const [monitoringData, setMonitoringData] = useState<MonitoringMetrics | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -100,7 +112,7 @@ export default function MonitorPage() {
   ];
   const activeMetric = metricOptions.find(([key]) => key === trendMetric) ?? metricOptions[0];
 
-  useEffect(() => { fetchDevices(); }, []);
+  useEffect(() => { fetchCustomers(); }, [selectedSite]);
 
   useEffect(() => {
     if (selectedDevice) {
@@ -119,15 +131,40 @@ export default function MonitorPage() {
     }
   }, [selectedDevice]);
 
-  const fetchDevices = async () => {
+  const fetchCustomers = async () => {
     try {
-      setDevicesLoading(true);
-      const res = await fetch('/api/devices');
+      setCustomersLoading(true);
+      const res = await fetch(`/api/kenergy/customers-by-site?site=${selectedSite}`);
       const json = await res.json();
       if (json.success) {
-        setDevices(json.devices || []);
-        if (json.devices?.length > 0 && !selectedDevice) {
-          setSelectedDevice(json.devices[0].deviceID);
+        setCustomers(json.customers || []);
+        setSelectedCustomer("");
+        setSelectedDevice("");
+        setDevices([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+    } finally {
+      setCustomersLoading(false);
+    }
+  };
+
+  const fetchDevicesForCustomer = async (customerName: string) => {
+    try {
+      setDevicesLoading(true);
+      const res = await fetch(`/api/kenergy/devices-setting?site=${selectedSite}`);
+      const json = await res.json();
+      if (json.success) {
+        const customerDevices = json.devices.filter((d: any) => d.customerName === customerName);
+        setDevices(customerDevices.map((d: any) => ({
+          deviceID: String(d.deviceID),
+          deviceName: d.deviceName,
+          location: d.location
+        })));
+        if (customerDevices.length === 1) {
+          setSelectedDevice(String(customerDevices[0].deviceID));
+        } else {
+          setSelectedDevice("");
         }
       }
     } catch (err) {
@@ -243,43 +280,87 @@ export default function MonitorPage() {
       {/* ── Controls ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Device dropdown */}
+          {/* Customer dropdown */}
           <div className="relative">
             <button
-              onClick={() => setShowDeviceDropdown(!showDeviceDropdown)}
-              className="flex items-center gap-2 pl-4 pr-3 py-2.5 border-2 border-gray-200 hover:border-blue-400 rounded-xl bg-gray-50 hover:bg-blue-50 transition-all min-w-[260px]"
-              disabled={devicesLoading}
+              onClick={() => setShowCustomerDropdown(!showCustomerDropdown)}
+              className="flex items-center gap-2 pl-4 pr-3 py-2.5 border-2 border-gray-200 hover:border-green-400 rounded-xl bg-gray-50 hover:bg-green-50 transition-all min-w-[260px]"
+              disabled={customersLoading}
             >
-              <Wifi className="w-4 h-4 text-blue-500 shrink-0" />
+              <Activity className="w-4 h-4 text-green-500 shrink-0" />
               <span className="flex-1 text-sm font-medium text-gray-700 text-left">
-                {currentDevice?.deviceName ?? (devicesLoading ? "Loading…" : "Select device")}
+                {selectedCustomer || (customersLoading ? "Loading…" : "Select Customer")}
               </span>
-              {selectedDevice && !devicesLoading && (
+              {selectedCustomer && !customersLoading && (
                 <X
                   className="w-4 h-4 text-gray-400 hover:text-red-500 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); setSelectedDevice(""); setMonitoringData(null); setIsLive(false); }}
+                  onClick={(e) => { e.stopPropagation(); setSelectedCustomer(""); setSelectedDevice(""); setDevices([]); setMonitoringData(null); setIsLive(false); }}
                 />
               )}
-              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDeviceDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showCustomerDropdown ? 'rotate-180' : ''}`} />
             </button>
 
-            {showDeviceDropdown && devices.length > 0 && (
+            {showCustomerDropdown && customers.length > 0 && (
               <div className="absolute top-full left-0 mt-2 min-w-full bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 max-h-64 overflow-y-auto">
-                {devices.map((device) => (
+                {customers.map((customer) => (
                   <button
-                    key={device.deviceID}
-                    onClick={() => { setSelectedDevice(device.deviceID); setShowDeviceDropdown(false); }}
-                    className={`w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors ${
-                      selectedDevice === device.deviceID ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    key={customer.customerName}
+                    onClick={() => {
+                      setSelectedCustomer(customer.customerName);
+                      setShowCustomerDropdown(false);
+                      fetchDevicesForCustomer(customer.customerName);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 hover:bg-green-50 transition-colors ${
+                      selectedCustomer === customer.customerName ? 'bg-green-50 text-green-700' : 'text-gray-700'
                     }`}
                   >
-                    <p className="text-sm font-semibold">{device.deviceName}</p>
-                    <p className="text-xs text-gray-400">{device.location || 'No location'}</p>
+                    <p className="text-sm font-semibold">{customer.customerName}</p>
+                    <p className="text-xs text-gray-400">{customer.deviceCount} device{customer.deviceCount > 1 ? 's' : ''}</p>
                   </button>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Device dropdown - only show if customer is selected */}
+          {selectedCustomer && (
+            <div className="relative">
+              <button
+                onClick={() => setShowDeviceDropdown(!showDeviceDropdown)}
+                className="flex items-center gap-2 pl-4 pr-3 py-2.5 border-2 border-gray-200 hover:border-blue-400 rounded-xl bg-gray-50 hover:bg-blue-50 transition-all min-w-[260px]"
+                disabled={devicesLoading}
+              >
+                <Wifi className="w-4 h-4 text-blue-500 shrink-0" />
+                <span className="flex-1 text-sm font-medium text-gray-700 text-left">
+                  {devices.find(d => d.deviceID === selectedDevice)?.deviceName ?? (devicesLoading ? "Loading…" : "Select Device")}
+                </span>
+                {selectedDevice && !devicesLoading && (
+                  <X
+                    className="w-4 h-4 text-gray-400 hover:text-red-500 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setSelectedDevice(""); setMonitoringData(null); setIsLive(false); }}
+                  />
+                )}
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDeviceDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showDeviceDropdown && devices.length > 0 && (
+                <div className="absolute top-full left-0 mt-2 min-w-full bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 max-h-64 overflow-y-auto">
+                  {devices.map((device) => (
+                    <button
+                      key={device.deviceID}
+                      onClick={() => { setSelectedDevice(device.deviceID); setShowDeviceDropdown(false); }}
+                      className={`w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors ${
+                        selectedDevice === device.deviceID ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold">{device.deviceName}</p>
+                      <p className="text-xs text-gray-400">{device.location || 'No location'}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             onClick={() => { fetchMonitoringData(); fetchHistory(); }}

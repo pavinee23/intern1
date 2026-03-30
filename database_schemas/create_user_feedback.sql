@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `user_feedback` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT DEFAULT NULL COMMENT 'NULL = anonymous feedback',
   `category` VARCHAR(100) NOT NULL COMMENT 'ประเภท: Suggestion, Bug Report, Feature Request, General Feedback',
+  `branch` VARCHAR(50) DEFAULT NULL COMMENT 'สาขา/ประเทศ',
   `subject` VARCHAR(255) NOT NULL COMMENT 'หัวข้อ',
   `message` TEXT NOT NULL COMMENT 'ข้อความ feedback',
   `rating` INT DEFAULT 0 COMMENT 'คะแนน 0-5 ดาว',

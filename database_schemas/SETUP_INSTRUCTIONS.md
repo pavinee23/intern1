@@ -4,7 +4,7 @@
 
 ---
 
-## 🗂️ ระบบเอกสารทั้งหมด (11 ประเภท)
+## 🗂️ ระบบเอกสารทั้งหมด (12 ประเภท)
 
 ### 1️⃣ การจัดซื้อ (Purchase & Procurement)
 - **PR** - Purchase Request (ใบขอซื้อ)
@@ -27,13 +27,16 @@
 ### 5️⃣ บริการหลังการขาย (After Sales)
 - **WT** - Warranty (ใบรับประกัน)
 
+### 6️⃣ ทรัพยากรบุคคล (Human Resources)
+- **VLR** - Vacation Leave Request (คำขออนุมัติลาพักร้อน)
+
 ---
 
 ## 📊 โครงสร้างฐานข้อมูล
 
-ระบบนี้ใช้ **23 ตาราง**:
+ระบบนี้ใช้ **24 ตาราง**:
 - 1 ตาราง `document_counters` - สำหรับจัดการเลขที่เอกสาร
-- 11 ตารางหลัก - เอกสารแต่ละประเภท
+- 12 ตารางหลัก - เอกสารแต่ละประเภท
 - 11 ตารางรายละเอียด - items/materials/steps
 
 ---
@@ -86,7 +89,7 @@ credit_notes                  0               ✅ EXISTS
 credit_note_items             0               ✅ EXISTS
 goods_receipts                0               ✅ EXISTS
 ...
-total_tables: 23
+total_tables: 24
 ```
 
 ---

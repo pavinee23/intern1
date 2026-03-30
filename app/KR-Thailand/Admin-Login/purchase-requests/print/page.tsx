@@ -92,13 +92,26 @@ function PurchaseRequestPrintContent() {
 
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
 
+  const toNumber = (value: any): number => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+    if (typeof value === 'string') {
+      const cleaned = value.replace(/[,\s฿]/g, '').trim()
+      if (!cleaned) return 0
+      const n = Number(cleaned)
+      return Number.isFinite(n) ? n : 0
+    }
+    const n = Number(value)
+    return Number.isFinite(n) ? n : 0
+  }
+
   const items = Array.isArray(doc.items) ? doc.items : []
   const subtotal = items.reduce((s: number, it: any) => {
-    const qty = Number(it.quantity || 0)
-    const price = Number(it.unit_price || it.unitPrice || 0)
-    return s + (qty * price)
+    const qty = toNumber(it.quantity || it.qty || 1)
+    const unitPrice = toNumber(it.unit_price || it.unitPrice || it.price || it.estimated_price)
+    const lineAmount = toNumber(it.total_price || it.amount || it.total)
+    return s + (lineAmount > 0 ? lineAmount : (qty * unitPrice))
   }, 0)
-  const discount = Number(doc.discount || 0)
+  const discount = toNumber(doc.discount)
   const afterDiscount = subtotal - discount
   const vat = (afterDiscount * 7) / 100
   const grandTotal = afterDiscount + vat
@@ -107,6 +120,9 @@ function PurchaseRequestPrintContent() {
   const department = doc.department || '-'
   const requesterPhone = doc.requester_phone || doc.phone || '-'
   const requesterEmail = doc.requester_email || doc.email || '-'
+  const supplierName = doc.supplier_name || doc.supplierName || '-'
+  const purpose = doc.purpose || '-'
+  const supplierComparison = doc.notes || '-'
 
   return (
     <>
@@ -141,17 +157,22 @@ function PurchaseRequestPrintContent() {
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt; }
         .items-table th { background: #0891b2; color: white; padding: 8px 10px; text-align: left; font-weight: 600; }
         .items-table th:nth-child(1) { width: 40px; text-align: center; }
-        .items-table th:nth-child(3) { width: 70px; text-align: right; }
-        .items-table th:nth-child(4) { width: 100px; text-align: right; }
-        .items-table th:nth-child(5) { width: 110px; text-align: right; }
+        .items-table th:nth-child(4) { width: 70px; text-align: right; }
+        .items-table th:nth-child(5) { width: 70px; text-align: center; }
+        .items-table th:nth-child(6) { width: 100px; text-align: right; }
+        .items-table th:nth-child(7) { width: 110px; text-align: right; }
         .items-table td { padding: 8px 10px; border-bottom: 1px solid #eee; }
         .items-table td:nth-child(1) { text-align: center; }
-        .items-table td:nth-child(3), .items-table td:nth-child(4), .items-table td:nth-child(5) { text-align: right; }
+        .items-table td:nth-child(4), .items-table td:nth-child(6), .items-table td:nth-child(7) { text-align: right; }
+        .items-table td:nth-child(5) { text-align: center; }
         .items-table tbody tr:nth-child(even) { background: #f9f9f9; }
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 20px; }
         .summary-table { width: 280px; font-size: 10pt; }
         .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
         .summary-row.total { font-weight: 700; font-size: 12pt; color: #0891b2; border-top: 2px solid #0891b2; border-bottom: none; padding-top: 10px; margin-top: 4px; }
+        .text-box { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #fafafa; margin-bottom: 16px; }
+        .text-box-title { font-weight: 700; font-size: 10pt; color: #16a34a; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
+        .text-box-content { font-size: 10pt; color: #333; white-space: pre-wrap; word-break: break-word; min-height: 20px; }
         .signature-section { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; }
         .signature-box { width: 30%; text-align: center; }
         .signature-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 8px; }
@@ -217,6 +238,10 @@ function PurchaseRequestPrintContent() {
               <span className="info-label">{L('Status:', 'สถานะ:')}</span>
               <span className="info-value" style={{ color: doc.status === 'approved' ? '#16a34a' : '#666' }}>{doc.status || 'pending'}</span>
             </div>
+            <div className="info-row">
+              <span className="info-label">{L('Supplier:', 'ซัพพลายเออร์:')}</span>
+              <span className="info-value">{supplierName}</span>
+            </div>
           </div>
           <div className="info-box">
             <div className="info-box-title">{L('Requester Information', 'ข้อมูลผู้ขอ')}</div>
@@ -239,28 +264,37 @@ function PurchaseRequestPrintContent() {
           </div>
         </div>
 
+        <div className="text-box">
+          <div className="text-box-title">{L('Reason and Necessity for Purchase', 'เหตุผลการขอซื้อและความจำเป็น')}</div>
+          <div className="text-box-content">{purpose}</div>
+        </div>
+
         <table className="items-table">
           <thead>
             <tr>
               <th>{L('No.', 'ลำดับ')}</th>
+              <th>{L('Product Code', 'รหัสสินค้า')}</th>
               <th>{L('Description', 'รายการ')}</th>
               <th>{L('Qty', 'จำนวน')}</th>
+              <th>{L('Unit', 'หน่วย')}</th>
               <th>{L('Unit Price', 'ราคา/หน่วย')}</th>
               <th>{L('Amount', 'จำนวนเงิน')}</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: '#999', padding: 20 }}>-</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: '#999', padding: 20 }}>-</td></tr>
             ) : items.map((it: any, idx: number) => {
-              const qty = Number(it.quantity || it.qty || 1)
-              const unitPrice = Number(it.unit_price || it.unitPrice || it.price || 0)
-              const amount = Number(it.total_price || it.total || (qty * unitPrice))
+              const qty = toNumber(it.quantity || it.qty || 1)
+              const unitPrice = toNumber(it.unit_price || it.unitPrice || it.price || it.estimated_price)
+              const amount = toNumber(it.total_price || it.amount || it.total || (qty * unitPrice))
               return (
                 <tr key={idx}>
                   <td>{idx + 1}</td>
+                  <td>{it.product_code || it.code || '-'}</td>
                   <td>{it.description || it.product_name || it.desc || '-'}</td>
                   <td>{qty}</td>
+                  <td>{it.unit || '-'}</td>
                   <td>{unitPrice.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
                   <td>{amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
                 </tr>
@@ -268,6 +302,11 @@ function PurchaseRequestPrintContent() {
             })}
           </tbody>
         </table>
+
+        <div className="text-box">
+          <div className="text-box-title">{L('Supplier Comparison Information', 'ข้อมูลการเปรียบเทียบซัพพลายเออร์')}</div>
+          <div className="text-box-content">{supplierComparison}</div>
+        </div>
 
         <div className="summary-section">
           <div className="summary-table">

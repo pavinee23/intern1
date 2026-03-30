@@ -4,6 +4,31 @@ import { queryKsave } from '@/lib/mysql-ksave'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+async function getDevicesColumnSet(): Promise<Set<string>> {
+  const rows = await queryKsave(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'devices'`
+  )
+
+  return new Set((rows as any[]).map((row) => String(row.COLUMN_NAME)))
+}
+
+async function isDeviceIdAutoIncrement(): Promise<boolean> {
+  const rows = await queryKsave(
+    `SELECT EXTRA
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'devices'
+       AND COLUMN_NAME = 'deviceID'
+     LIMIT 1`
+  )
+
+  const extra = String((rows as any[])[0]?.EXTRA || '').toLowerCase()
+  return extra.includes('auto_increment')
+}
+
 /**
  * GET /api/kenergy/devices-setting
  * ดึงข้อมูลอุปกรณ์พร้อมสถานะ realtime
@@ -14,6 +39,29 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const site = searchParams.get('site') || 'thailand'
+    const deviceColumns = await getDevicesColumnSet()
+    const hasCustomerName = deviceColumns.has('customerName')
+    const hasCustomerPhone = deviceColumns.has('customerPhone')
+    const hasCustomerAddress = deviceColumns.has('customerAddress')
+    const hasCustomerId = deviceColumns.has('customer_id')
+
+    const customerSelectFields = [
+      hasCustomerId ? 'd.customer_id,' : '',
+      hasCustomerName ? 'd.customerName,' : '',
+      hasCustomerPhone ? 'd.customerPhone,' : '',
+      hasCustomerAddress ? 'd.customerAddress,' : ''
+    ]
+      .filter(Boolean)
+      .join('\n        ')
+
+    const customerGroupByFields = [
+      hasCustomerId ? 'd.customer_id,' : '',
+      hasCustomerName ? 'd.customerName,' : '',
+      hasCustomerPhone ? 'd.customerPhone,' : '',
+      hasCustomerAddress ? 'd.customerAddress,' : ''
+    ]
+      .filter(Boolean)
+      .join('\n               ')
 
     const devices = await queryKsave(`
       SELECT
@@ -21,14 +69,13 @@ export async function GET(req: NextRequest) {
         d.deviceName,
         d.ksaveID,
         d.U_email as owner,
-        d.customerName,
-        d.customerPhone,
-        d.customerAddress,
+        ${customerSelectFields}
         d.location,
-        d.ipAddress,
         d.latitude,
         d.longitude,
+        d.ipAddress,
         d.site,
+        d.phone,
         d.created_at as registerDate,
         MAX(p.record_time) as lastUpdate,
         TIMESTAMPDIFF(SECOND, MAX(p.record_time), NOW()) as secondsSinceUpdate,
@@ -39,11 +86,16 @@ export async function GET(req: NextRequest) {
       FROM devices d
       LEFT JOIN power_records p ON d.deviceID = p.device_id
       WHERE d.location LIKE ? OR ? = 'all'
-      GROUP BY d.deviceID, d.deviceName, d.ksaveID, d.U_email, d.customerName, d.customerPhone, d.customerAddress,
-               d.location, d.ipAddress, d.latitude, d.longitude, d.site, d.created_at
+      GROUP BY d.deviceID, d.deviceName, d.ksaveID, d.U_email,
+               ${customerGroupByFields}
+               d.location, d.latitude, d.longitude, d.ipAddress, d.site, d.phone, d.created_at
       ORDER BY d.deviceName ASC
     `, [
-      site === 'thailand' ? '%Thailand%' : (site === 'korea' ? '%Korea%' : '%'),
+      site === 'thailand' ? '%Thailand%'
+        : site === 'korea' ? '%Korea%'
+        : site === 'vietnam' ? '%Vietnam%'
+        : site === 'malaysia' ? '%Malaysia%'
+        : '%',
       site
     ])
 
@@ -80,7 +132,10 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerPhone, customerAddress } = body
+    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerPhone, customerAddress, customerId } = body
+    const deviceColumns = await getDevicesColumnSet()
+    const missingCustomerColumns: string[] = []
+    const hasCustomerId = deviceColumns.has('customer_id')
 
     if (!deviceId) {
       return NextResponse.json({
@@ -118,16 +173,44 @@ export async function PUT(req: NextRequest) {
       params.push(longitude)
     }
     if (customerName !== undefined) {
-      updates.push('customerName = ?')
-      params.push(customerName)
+      if (deviceColumns.has('customerName')) {
+        updates.push('customerName = ?')
+        params.push(customerName)
+      } else {
+        missingCustomerColumns.push('customerName')
+      }
     }
     if (customerPhone !== undefined) {
-      updates.push('customerPhone = ?')
-      params.push(customerPhone)
+      if (deviceColumns.has('customerPhone')) {
+        updates.push('customerPhone = ?')
+        params.push(customerPhone)
+      } else {
+        missingCustomerColumns.push('customerPhone')
+      }
     }
     if (customerAddress !== undefined) {
-      updates.push('customerAddress = ?')
-      params.push(customerAddress)
+      if (deviceColumns.has('customerAddress')) {
+        updates.push('customerAddress = ?')
+        params.push(customerAddress)
+      } else {
+        missingCustomerColumns.push('customerAddress')
+      }
+    }
+    if (customerId !== undefined) {
+      if (hasCustomerId) {
+        updates.push('customer_id = ?')
+        params.push(customerId || null)
+      } else {
+        missingCustomerColumns.push('customer_id')
+      }
+    }
+
+    if (missingCustomerColumns.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: `Missing column(s) in devices table: ${missingCustomerColumns.join(', ')}`,
+        hint: 'Run database_schemas/alter_devices_add_customer_info.sql on K-Save database'
+      }, { status: 400 })
     }
 
     if (updates.length === 0) {
@@ -152,9 +235,231 @@ export async function PUT(req: NextRequest) {
     })
   } catch (err: any) {
     console.error('Update device error:', err)
+
+    // Handle duplicate KSAVE ID error
+    if (err.code === 'ER_DUP_ENTRY' && err.message?.includes('unique_ksaveID')) {
+      return NextResponse.json({
+        success: false,
+        error: 'KSAVE ID already exists. Please use a unique KSAVE ID.'
+      }, { status: 400 })
+    }
+
     return NextResponse.json({
       success: false,
       error: err.message || 'Failed to update device'
+    }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/kenergy/devices-setting
+ * เพิ่มอุปกรณ์ใหม่
+ * Body: { deviceName, ksaveID?, location?, site?, owner?, ipAddress?, customerName?, customerPhone?, customerAddress? }
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const {
+      deviceName,
+      ksaveID,
+      location,
+      site,
+      owner,
+      ipAddress,
+      latitude,
+      longitude,
+      customerName,
+      customerPhone,
+      customerAddress,
+      phone,
+      passPhone,
+      seriesNo,
+      status,
+      customerId
+    } = body
+
+    if (!deviceName || !String(deviceName).trim()) {
+      return NextResponse.json({
+        success: false,
+        error: 'deviceName is required'
+      }, { status: 400 })
+    }
+
+    const deviceColumns = await getDevicesColumnSet()
+    const hasCustomerName = deviceColumns.has('customerName')
+    const hasCustomerPhone = deviceColumns.has('customerPhone')
+    const hasCustomerAddress = deviceColumns.has('customerAddress')
+    const hasSeriesNo = deviceColumns.has('series_no')
+    const hasLatitude = deviceColumns.has('latitude')
+    const hasLongitude = deviceColumns.has('longitude')
+    const hasCreateBy = deviceColumns.has('create_by')
+    const hasCustomerId = deviceColumns.has('customer_id')
+    const missingColumns: string[] = []
+    const autoIncrementDeviceId = await isDeviceIdAutoIncrement()
+
+    const normalizedSite = String(site || 'thailand').trim() || 'thailand'
+    const normalizedOwner = String(owner || '').trim() || 'no-reply@ksave.local'
+    const normalizedPhone = String(phone ?? customerPhone ?? '-').trim() || '-'
+    const normalizedPassPhone = String(passPhone ?? normalizedPhone).trim() || normalizedPhone
+    const normalizedLocation = String(location || '').trim() || (
+      normalizedSite === 'korea'
+        ? 'Korea'
+        : normalizedSite === 'vietnam'
+          ? 'Vietnam'
+          : normalizedSite === 'malaysia'
+            ? 'Malaysia'
+            : 'Thailand'
+    )
+
+    const columns: string[] = []
+    const values: any[] = []
+    let newDeviceId: number | null = null
+
+    if (!autoIncrementDeviceId) {
+      const nextIdRows = await queryKsave('SELECT COALESCE(MAX(deviceID), 0) + 1 AS nextId FROM devices')
+      newDeviceId = Number((nextIdRows as any[])[0]?.nextId || 1)
+      columns.push('deviceID')
+      values.push(newDeviceId)
+    }
+
+    columns.push('deviceName')
+    values.push(String(deviceName).trim())
+
+    columns.push('ksaveID')
+    values.push(String(ksaveID || '').trim() || String(deviceName).trim())
+
+    if (hasSeriesNo && seriesNo !== undefined) {
+      columns.push('series_no')
+      values.push(seriesNo)
+    }
+
+    columns.push('ipAddress')
+    values.push(String(ipAddress || '').trim() || null)
+
+    columns.push('location')
+    values.push(normalizedLocation)
+
+    columns.push('site')
+    values.push(normalizedSite)
+
+    columns.push('status')
+    values.push(String(status || 'inactive'))
+
+    columns.push('U_email')
+    values.push(normalizedOwner)
+
+    columns.push('P_email')
+    values.push(normalizedOwner)
+
+    columns.push('phone')
+    values.push(normalizedPhone)
+
+    columns.push('pass_phone')
+    values.push(normalizedPassPhone)
+
+    if (hasCreateBy) {
+      columns.push('create_by')
+      values.push('administrator')
+    }
+
+    if (hasLatitude && latitude !== undefined) {
+      columns.push('latitude')
+      values.push(latitude)
+    }
+
+    if (hasLongitude && longitude !== undefined) {
+      columns.push('longitude')
+      values.push(longitude)
+    }
+
+    if (hasCustomerName && customerName !== undefined) {
+      columns.push('customerName')
+      values.push(customerName)
+    } else if (customerName !== undefined && !hasCustomerName) {
+      missingColumns.push('customerName')
+    }
+    if (hasCustomerPhone && customerPhone !== undefined) {
+      columns.push('customerPhone')
+      values.push(customerPhone)
+    } else if (customerPhone !== undefined && !hasCustomerPhone) {
+      missingColumns.push('customerPhone')
+    }
+    if (hasCustomerAddress && customerAddress !== undefined) {
+      columns.push('customerAddress')
+      values.push(customerAddress)
+    } else if (customerAddress !== undefined && !hasCustomerAddress) {
+      missingColumns.push('customerAddress')
+    }
+    if (hasCustomerId && customerId !== undefined) {
+      columns.push('customer_id')
+      values.push(customerId || null)
+    } else if (customerId !== undefined && !hasCustomerId) {
+      missingColumns.push('customer_id')
+    }
+
+    if (missingColumns.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: `Missing column(s) in devices table: ${missingColumns.join(', ')}`,
+        hint: 'Run database_schemas/alter_devices_add_customer_info.sql and alter_devices_add_customer_fk_and_power_records_fk.sql on K-Save database'
+      }, { status: 400 })
+    }
+
+    await queryKsave(
+      `INSERT INTO devices (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      values
+    )
+
+    if (autoIncrementDeviceId) {
+      const latestRows = await queryKsave('SELECT MAX(deviceID) AS lastId FROM devices')
+      newDeviceId = Number((latestRows as any[])[0]?.lastId || 0)
+    }
+
+    const customerSelectFields = [
+      hasCustomerName ? 'customerName,' : '',
+      hasCustomerPhone ? 'customerPhone,' : '',
+      hasCustomerAddress ? 'customerAddress,' : ''
+    ]
+      .filter(Boolean)
+      .join('\n        ')
+
+    const createdDeviceRows = await queryKsave(
+      `SELECT
+        deviceID,
+        deviceName,
+        ksaveID,
+        U_email as owner,
+        ${customerSelectFields}
+        location,
+        ipAddress,
+        site,
+        created_at as registerDate,
+        'OFFLINE' as connection
+      FROM devices
+      WHERE deviceID = ?
+      LIMIT 1`,
+      [newDeviceId]
+    )
+
+    return NextResponse.json({
+      success: true,
+      message: 'Device created successfully',
+      device: (createdDeviceRows as any[])[0] || null
+    })
+  } catch (err: any) {
+    console.error('Create device error:', err)
+
+    // Handle duplicate KSAVE ID error
+    if (err.code === 'ER_DUP_ENTRY' && err.message?.includes('unique_ksaveID')) {
+      return NextResponse.json({
+        success: false,
+        error: 'KSAVE ID already exists. Please use a unique KSAVE ID.'
+      }, { status: 400 })
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: err.message || 'Failed to create device'
     }, { status: 500 })
   }
 }

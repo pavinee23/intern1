@@ -129,12 +129,16 @@ UNION ALL SELECT
 UNION ALL SELECT
     'production_order_steps',
     (SELECT COUNT(*) FROM production_order_steps),
+    '✅ EXISTS'
+UNION ALL SELECT
+    'vacation_leave_requests',
+    (SELECT COUNT(*) FROM vacation_leave_requests),
     '✅ EXISTS';
 
 -- Summary
 SELECT
     COUNT(*) AS total_tables,
-    '23 tables expected (11 main + 11 items/details + 1 counter)' AS expected
+    '24 tables expected (12 main + 11 items/details + 1 counter)' AS expected
 FROM information_schema.tables
 WHERE table_schema = 'k-system'
 AND (
@@ -149,5 +153,6 @@ AND (
     OR table_name LIKE '%stock_adjustment%'
     OR table_name LIKE '%expense_bill%'
     OR table_name LIKE '%production_order%'
+    OR table_name LIKE '%vacation_leave_request%'
     OR table_name = 'document_counters'
 );

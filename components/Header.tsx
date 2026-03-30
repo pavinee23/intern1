@@ -6,13 +6,14 @@ import { useSite } from "@/lib/SiteContext";
 import { useState, useRef, useEffect } from "react";
 import CountryFlag from "./CountryFlag";
 
-type Site = "thailand" | "korea" | "vietnam";
+type Site = "thailand" | "korea" | "vietnam" | "malaysia";
 type Locale = "ko" | "en" | "th" | "cn" | "vn";
 
-const siteConfig: { value: Site; flagCode: "TH" | "KR" | "VN"; nameKey: string }[] = [
+const siteConfig: { value: Site; flagCode: "TH" | "KR" | "VN" | "MY"; nameKey: string }[] = [
   { value: "thailand", flagCode: "TH", nameKey: "thailand" },
   { value: "korea", flagCode: "KR", nameKey: "republicOfKorea" },
   { value: "vietnam", flagCode: "VN", nameKey: "vietnam" },
+  { value: "malaysia", flagCode: "MY", nameKey: "malaysia" },
 ];
 
 const languageConfig: { value: Locale; label: string; flagCode: "KR" | "GB" | "TH" | "CN" | "VN" }[] = [
@@ -36,18 +37,70 @@ export default function Header() {
   const currentSite = siteConfig.find((s) => s.value === selectedSite) ?? siteConfig[0];
   const currentLang = languageConfig.find((l) => l.value === locale) ?? languageConfig[1];
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: "alert", title: "Device Offline", message: "Device K-001 has gone offline", time: "2 min ago", read: false },
-    { id: 2, type: "info", title: "Energy Report Ready", message: "Monthly energy report for January is ready", time: "15 min ago", read: false },
-    { id: 3, type: "warning", title: "High Consumption", message: "Zone B exceeds threshold by 12%", time: "1 hr ago", read: false },
-    { id: 4, type: "success", title: "Maintenance Complete", message: "Scheduled maintenance finished successfully", time: "3 hrs ago", read: true },
-    { id: 5, type: "info", title: "New Firmware Available", message: "Firmware v2.3.1 is available for K-Series", time: "1 day ago", read: true },
-  ]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Fetch notifications from API
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/kenergy/notifications?site=${selectedSite}&limit=10`);
+      const json = await res.json();
+      if (json.success) {
+        setNotifications(json.data.notifications);
+        setUnreadCount(json.data.unreadCount);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markRead = (id: number) => setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  // Mark all as read
+  const markAllRead = async () => {
+    try {
+      const res = await fetch('/api/kenergy/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAll: true })
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
+
+  // Mark single notification as read
+  const markRead = async (id: number) => {
+    try {
+      const res = await fetch('/api/kenergy/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id })
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
+  };
+
+  // Fetch notifications on mount and when site changes
+  useEffect(() => {
+    setMounted(true);
+    fetchNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [selectedSite]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -141,7 +194,7 @@ export default function Header() {
               className="p-2.5 hover:bg-orange-50 rounded-lg transition-all duration-200 hover:shadow-sm relative group"
             >
               <Bell className={`w-5 h-5 transition-colors ${showNotifications ? "text-orange-600" : "text-gray-500 group-hover:text-orange-600"}`} />
-              {unreadCount > 0 && (
+              {mounted && unreadCount > 0 && (
                 <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white animate-pulse">
                   {unreadCount}
                 </span>
@@ -155,7 +208,7 @@ export default function Header() {
                   <div className="flex items-center gap-2">
                     <Bell className="w-4 h-4 text-orange-600" />
                     <span className="text-sm font-semibold text-gray-800">Notifications</span>
-                    {unreadCount > 0 && (
+                    {mounted && unreadCount > 0 && (
                       <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
                     )}
                   </div>

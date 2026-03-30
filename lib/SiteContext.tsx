@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type Site = "thailand" | "korea" | "vietnam";
+type Site = "thailand" | "korea" | "vietnam" | "malaysia";
 
 interface SiteContextType {
   selectedSite: Site;
@@ -17,7 +17,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("selectedSite") as Site;
-    const valid: Site[] = ["thailand", "korea", "vietnam"];
+    const valid: Site[] = ["thailand", "korea", "vietnam", "malaysia"];
     if (saved && valid.includes(saved)) {
       setSelectedSiteState(saved);
     }

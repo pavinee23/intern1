@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
       'create_stock_transfers.sql',
       'create_stock_adjustments.sql',
       'create_expense_bills.sql',
-      'create_production_orders.sql'
+      'create_production_orders.sql',
+      'create_vacation_leave_requests.sql'
     ]
 
     const results = []

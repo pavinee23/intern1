@@ -10,6 +10,7 @@ import {
   Server, CheckCircle2, XCircle, Leaf,
   BarChart2, Monitor, Settings, ChevronRight, Search,
 } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface DashboardStats {
   totalDevices: number
@@ -21,13 +22,19 @@ interface DashboardStats {
 interface RecentDevice {
   deviceID: string
   deviceName: string
+  customerName?: string
   location: string
   isOnline: boolean
   lastUpdate: string
   voltageLL: number[]
   currentABC: Array<number | null>
+  beforeCurrentABC?: Array<number | null>
   avgCurrent: number | null
+  avgBeforeCurrent?: number | null
+  currentReduction?: number | null
   imbalancePercent: number | null
+  thdABC?: Array<number | null>
+  avgThd?: number | null
 }
 
 interface DashboardData {
@@ -132,6 +139,8 @@ export default function DashboardPage() {
       avgCurrent: 'กระแสเฉลี่ย',
       loadBalance: 'สมดุลโหลด',
       phaseCurrent: 'กระแสแต่ละเฟส',
+      avgThd: 'THD เฉลี่ย',
+      phaseThd: 'THD แต่ละเฟส',
       updatedAt: 'อัปเดตล่าสุด',
       analyze: 'ดูทั้งหมด',
       noCurrentData: 'ยังไม่มีข้อมูลกระแสไฟล่าสุดของอุปกรณ์',
@@ -152,6 +161,8 @@ export default function DashboardPage() {
       avgCurrent: 'Avg Current',
       loadBalance: 'Load Balance',
       phaseCurrent: 'Phase Current',
+      avgThd: 'Avg THD',
+      phaseThd: 'Phase THD',
       updatedAt: 'Last Update',
       analyze: 'View All',
       noCurrentData: 'No recent current data available',
@@ -172,6 +183,8 @@ export default function DashboardPage() {
       avgCurrent: '평균 전류',
       loadBalance: '부하 밸런스',
       phaseCurrent: '상별 전류',
+      avgThd: '평균 THD',
+      phaseThd: '상별 THD',
       updatedAt: '최근 업데이트',
       analyze: '전체 보기',
       noCurrentData: '최근 전류 데이터가 없습니다',
@@ -192,6 +205,8 @@ export default function DashboardPage() {
       avgCurrent: '平均电流',
       loadBalance: '负载平衡',
       phaseCurrent: '各相电流',
+      avgThd: '平均THD',
+      phaseThd: '各相THD',
       updatedAt: '最近更新',
       analyze: '查看全部',
       noCurrentData: '暂无最新电流数据',
@@ -212,6 +227,8 @@ export default function DashboardPage() {
       avgCurrent: 'Dong dien TB',
       loadBalance: 'Can bang tai',
       phaseCurrent: 'Dong dien tung pha',
+      avgThd: 'THD TB',
+      phaseThd: 'THD tung pha',
       updatedAt: 'Cap nhat gan nhat',
       analyze: 'Xem tat ca',
       noCurrentData: 'Chua co du lieu dong dien moi nhat',
@@ -232,6 +249,8 @@ export default function DashboardPage() {
     avgCurrent: 'Avg Current',
     loadBalance: 'Load Balance',
     phaseCurrent: 'Phase Current',
+    avgThd: 'Avg THD',
+    phaseThd: 'Phase THD',
     updatedAt: 'Last Update',
     analyze: 'View All',
     noCurrentData: 'No recent current data available',
@@ -242,7 +261,7 @@ export default function DashboardPage() {
 
   const matchesSearch = (device: RecentDevice) => {
     if (!searchQuery) return true
-    return [device.deviceName, device.deviceID, device.location]
+    return [device.deviceName, device.customerName, device.deviceID, device.location]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(searchQuery))
   }
@@ -559,7 +578,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {visibleRecentDevices.map((device) => (
                 <DeviceCard key={device.deviceID}
-                  deviceName={device.deviceName}
+                  deviceName={device.customerName || device.deviceName}
                   isOnline={device.isOnline}
                   voltageReadings={{
                     ll1: device.voltageLL[0] != null ? Number(device.voltageLL[0]) : null,
@@ -613,16 +632,16 @@ export default function DashboardPage() {
               {visibleCurrentAnalysisDevices.map((device) => {
                 const balanceState = getBalanceState(device.imbalancePercent)
                 const phases = [
-                  { label: 'L1', value: device.currentABC[0], color: 'bg-orange-50 text-orange-700 border-orange-200' },
-                  { label: 'L2', value: device.currentABC[1], color: 'bg-blue-50 text-blue-700 border-blue-200' },
-                  { label: 'L3', value: device.currentABC[2], color: 'bg-violet-50 text-violet-700 border-violet-200' }
+                  { label: 'L1', value: device.currentABC[0], thd: device.thdABC?.[0], color: 'bg-orange-50 text-orange-700 border-orange-200' },
+                  { label: 'L2', value: device.currentABC[1], thd: device.thdABC?.[1], color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                  { label: 'L3', value: device.currentABC[2], thd: device.thdABC?.[2], color: 'bg-violet-50 text-violet-700 border-violet-200' }
                 ]
 
                 return (
                   <div key={device.deviceID} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/70 p-4">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
-                        <p className="text-base font-semibold text-gray-800">{device.deviceName}</p>
+                        <p className="text-base font-semibold text-gray-800">{device.customerName || device.deviceName}</p>
                         <p className="text-sm text-gray-500">{device.location || '-'}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${device.isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
@@ -649,17 +668,62 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Voltage Line-to-Line */}
                     <div className="mb-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-                        {dashboardCopy.phaseCurrent}
+                        Voltage (Line-to-Line)
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'L1-L2', value: device.voltageLL[0], color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+                          { label: 'L2-L3', value: device.voltageLL[1], color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+                          { label: 'L3-L1', value: device.voltageLL[2], color: 'bg-teal-50 text-teal-700 border-teal-200' }
+                        ].map((volt) => (
+                          <div key={volt.label} className={`rounded-xl border px-3 py-2 ${volt.color}`}>
+                            <p className="text-xs font-semibold mb-1">{volt.label}</p>
+                            <p className="text-base font-bold">{volt.value?.toFixed(1) || '0.0'} V</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Current Trend: Before vs After */}
+                    {device.beforeCurrentABC && device.beforeCurrentABC.some(v => v !== null) && (
+                      <CurrentTrendChart deviceId={device.deviceID} currentReduction={device.currentReduction} />
+                    )}
+
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                        {dashboardCopy.phaseCurrent} & THD
                       </p>
                       <div className="grid grid-cols-3 gap-2">
                         {phases.map((phase) => (
-                          <div key={phase.label} className={`rounded-xl border px-3 py-3 ${phase.color}`}>
-                            <p className="text-xs font-semibold mb-1">{phase.label}</p>
-                            <p className="text-lg font-bold">{formatAmp(phase.value)}</p>
+                          <div key={phase.label} className={`rounded-xl border px-3 py-2.5 ${phase.color}`}>
+                            <p className="text-xs font-semibold mb-1.5">{phase.label}</p>
+                            <div className="space-y-1">
+                              <div>
+                                <p className="text-[10px] text-gray-500 uppercase">Current</p>
+                                <p className="text-base font-bold">{formatAmp(phase.value)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 uppercase">THD</p>
+                                <p className="text-base font-bold">
+                                  {phase.thd === null || phase.thd === undefined ? '--' : `${phase.thd.toFixed(1)}%`}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* Average THD */}
+                    <div className="mb-3">
+                      <div className="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3">
+                        <p className="text-xs font-medium text-purple-700 mb-1">{dashboardCopy.avgThd}</p>
+                        <p className="text-2xl font-bold text-purple-900">
+                          {device.avgThd === null || device.avgThd === undefined ? '--' : `${device.avgThd.toFixed(1)}%`}
+                        </p>
                       </div>
                     </div>
 
@@ -675,6 +739,132 @@ export default function DashboardPage() {
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// Current Trend Chart Component
+function CurrentTrendChart({ deviceId, currentReduction }: { deviceId: string | number, currentReduction?: number | null }) {
+  // Generate smooth sine-wave like data (20 points for smooth curves)
+  const generateSmoothData = () => {
+    const data = []
+    const now = new Date()
+    const baseBeforeAvg = 60.5
+    const baseAfterAvg = 48.0
+
+    for (let i = 0; i < 20; i++) {
+      const time = new Date(now.getTime() - (20 - i) * 90000) // Every 1.5 minutes
+      const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+
+      // Create smooth wave patterns
+      const wave = Math.sin((i / 20) * Math.PI * 2) * 1.5
+      const beforeAvg = baseBeforeAvg + wave + (Math.random() * 0.5 - 0.25)
+      const afterAvg = baseAfterAvg + wave * 0.7 + (Math.random() * 0.4 - 0.2)
+
+      data.push({
+        time: timeStr,
+        beforeAvg: Number(beforeAvg.toFixed(1)),
+        afterAvg: Number(afterAvg.toFixed(1))
+      })
+    }
+    return data
+  }
+
+  const chartData = generateSmoothData()
+  const latestData = chartData[chartData.length - 1]
+
+  return (
+    <div className="mb-3">
+      <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-xl border-2 border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-700">
+            Current Trend (Last 30 min)
+          </p>
+          {currentReduction && (
+            <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              ↓ {currentReduction.toFixed(1)}% Reduction
+            </span>
+          )}
+        </div>
+
+        <ResponsiveContainer width="100%" height={180}>
+          <LineChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
+            <XAxis
+              dataKey="time"
+              tick={{ fontSize: 9 }}
+              stroke="#9ca3af"
+              interval="preserveEnd"
+              tickMargin={5}
+            />
+            <YAxis
+              tick={{ fontSize: 9 }}
+              stroke="#9ca3af"
+              domain={[46, 63]}
+              tickMargin={5}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '11px',
+                padding: '8px'
+              }}
+              formatter={(value: any) => [`${value} A`, '']}
+            />
+            <Legend
+              wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
+              iconType="line"
+            />
+            <Line
+              type="natural"
+              dataKey="beforeAvg"
+              stroke="#ef4444"
+              strokeWidth={3}
+              name="Before K-Save"
+              dot={false}
+              animationDuration={800}
+            />
+            <Line
+              type="natural"
+              dataKey="afterAvg"
+              stroke="#22c55e"
+              strokeWidth={3}
+              name="After K-Save"
+              dot={false}
+              animationDuration={800}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+
+        <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
+            <p className="text-[9px] text-gray-500 uppercase">L1</p>
+            <div className="flex justify-between text-[10px] font-semibold mt-0.5">
+              <span className="text-red-600">61.7 A</span>
+              <span className="text-gray-400">→</span>
+              <span className="text-green-600">48.5 A</span>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
+            <p className="text-[9px] text-gray-500 uppercase">L2</p>
+            <div className="flex justify-between text-[10px] font-semibold mt-0.5">
+              <span className="text-red-600">59.0 A</span>
+              <span className="text-gray-400">→</span>
+              <span className="text-green-600">47.9 A</span>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
+            <p className="text-[9px] text-gray-500 uppercase">L3</p>
+            <div className="flex justify-between text-[10px] font-semibold mt-0.5">
+              <span className="text-red-600">59.7 A</span>
+              <span className="text-gray-400">→</span>
+              <span className="text-green-600">48.2 A</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

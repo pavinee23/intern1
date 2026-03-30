@@ -1,7 +1,7 @@
 -- ============================================
 -- K-System Document Management Setup Script
 -- ============================================
--- This script creates all 11 document tables + document_counters table
+-- This script creates all 12 document tables + document_counters table
 -- Run this script once to set up the complete document management system
 -- ============================================
 
@@ -167,7 +167,9 @@ CREATE TABLE IF NOT EXISTS `purchase_requests` (
   `prNo` varchar(50) NOT NULL UNIQUE COMMENT 'Format: PR-YYYYMMDD-####',
   `prDate` date NOT NULL,
   `requester_name` varchar(100) NOT NULL,
+  `requested_by` varchar(150) DEFAULT NULL,
   `department` varchar(100) NOT NULL,
+  `branch` varchar(50) DEFAULT NULL,
   `purpose` text,
   `required_date` date NOT NULL,
   `notes` text,
@@ -424,6 +426,39 @@ CREATE TABLE IF NOT EXISTS `production_order_steps` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
+-- 13. Vacation Leave Requests (VLR)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS `vacation_leave_requests` (
+  `vlrID` int NOT NULL AUTO_INCREMENT,
+  `vlrNo` varchar(64) NOT NULL UNIQUE COMMENT 'Format: VLR-YYYYMMDD-####',
+  `requestDate` date DEFAULT NULL,
+  `employeeName` varchar(150) NOT NULL,
+  `employeeId` varchar(100) NOT NULL,
+  `department` varchar(150) NOT NULL,
+  `branch` varchar(50) DEFAULT NULL,
+  `leaveType` enum('annual_leave','personal_leave','sick_leave','other') DEFAULT 'annual_leave',
+  `startDate` date NOT NULL,
+  `endDate` date NOT NULL,
+  `totalDays` int DEFAULT 0,
+  `reason` text,
+  `contactPhone` varchar(50) DEFAULT NULL,
+  `backupPerson` varchar(150) DEFAULT NULL,
+  `approver` varchar(150) DEFAULT NULL,
+  `status` enum('pending','approved','rejected','cancelled') DEFAULT 'pending',
+  `approved_by` varchar(150) DEFAULT NULL,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `notes` text,
+  `created_by` varchar(150) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`vlrID`),
+  INDEX `idx_employee_id` (`employeeId`),
+  INDEX `idx_department` (`department`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
 -- END OF SETUP SCRIPT
 -- ============================================
 
@@ -439,6 +474,7 @@ SHOW TABLES LIKE '%stock_transfers%';
 SHOW TABLES LIKE '%stock_adjustments%';
 SHOW TABLES LIKE '%expense_bills%';
 SHOW TABLES LIKE '%production_orders%';
+SHOW TABLES LIKE '%vacation_leave_requests%';
 SHOW TABLES LIKE '%document_counters%';
 
 SELECT '✅ Document Management System database setup completed!' AS status;
