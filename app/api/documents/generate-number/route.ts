@@ -65,16 +65,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // PDO ใช้ตัวนับกลางแบบ atomic เพื่อให้ได้เลขใหม่ทุกครั้งที่กด Refresh
+    // PDO/SH ใช้ตัวนับกลางแบบ atomic เพื่อให้เลขไม่ซ้ำแม้มีผู้ใช้พร้อมกันหลายคน
     // และลดโอกาสชนเลขจากการใช้งานพร้อมกันหลายคน
-    if (normalizedType === 'pdo') {
-      const docNo = await generateDocumentNumber('PDO', 'production_orders', 'pdoNo')
+    if (normalizedType === 'pdo' || normalizedType === 'sh') {
+      const prefix = normalizedType === 'pdo' ? 'PDO' : 'SH'
+      const table = normalizedType === 'pdo' ? 'production_orders' : 'kr_shipment_updates'
+      const field = normalizedType === 'pdo' ? 'pdoNo' : 'shipmentNumber'
+      const docNo = await generateDocumentNumber(prefix, table, field)
       return NextResponse.json({
         success: true,
         docNo,
-        prefix: 'PDO',
-        type: 'PDO',
-        field: 'pdoNo'
+        prefix,
+        type: prefix,
+        field
       })
     }
 

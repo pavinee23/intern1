@@ -246,6 +246,7 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json()
     const { id, prID, status, approved_by } = body
+    const branch = String(body?.branch || '').toLowerCase()
     const recordId = id || prID
 
     if (!recordId) {
@@ -273,10 +274,21 @@ export async function PATCH(request: NextRequest) {
     updateQuery += ' WHERE prID = ?'
     params.push(recordId)
 
+    if (branch && BRANCH_KEYWORDS[branch]) {
+      const tokens = BRANCH_KEYWORDS[branch]
+      const branchLikeConditions = tokens.map(() => '(department LIKE ? OR purpose LIKE ? OR notes LIKE ? OR requested_by LIKE ? OR requester_name LIKE ? OR prNo LIKE ?)').join(' OR ')
+      updateQuery += ` AND (LOWER(COALESCE(branch, '')) = ? OR (${branchLikeConditions}))`
+      params.push(branch)
+      tokens.forEach((token) => {
+        const like = `%${token}%`
+        params.push(like, like, like, like, like, like)
+      })
+    }
+
     const [result]: any = await pool.query(updateQuery, params)
 
     if (result.affectedRows === 0) {
-      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'Not found or branch mismatch' }, { status: 404 })
     }
 
     return NextResponse.json({ success: true, message: 'Updated successfully' })

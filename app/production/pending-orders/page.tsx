@@ -18,13 +18,13 @@ interface ProductItem {
 interface Order {
   id: string;
   orderNumber: string;
-  branch: 'Korea' | 'Brunei' | 'Thailand' | 'Vietnam';
-  branchCode: 'KR' | 'BN' | 'TH' | 'VN';
+  branch: 'Korea' | 'Brunei' | 'Thailand' | 'Vietnam' | 'Malaysia';
+  branchCode: 'KR' | 'BN' | 'TH' | 'VN' | 'MY';
   product: string;
   quantity: number;
-  status: 'pending' | 'in-progress' | 'ready';
+  status: string;
   dueDate: string;
-  priority: 'high' | 'medium' | 'low';
+  priority: string;
   customerName: string;
   orderDate: string;
   productionNote?: string;
@@ -40,114 +40,82 @@ export default function PendingOrdersPage() {
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const branchMeta: Array<{ name: Order['branch']; code: Order['branchCode'] }> = [
+    { name: 'Korea', code: 'KR' },
+    { name: 'Thailand', code: 'TH' },
+    { name: 'Vietnam', code: 'VN' },
+    { name: 'Malaysia', code: 'MY' },
+    { name: 'Brunei', code: 'BN' },
+  ];
 
   useEffect(() => {
-    fetch('/api/korea/production-orders')
-      .then(r => r.json())
-      .then(data => setOrders(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  }, []);
+    let active = true;
+    const branchConfigs: Array<{ key: string; branch: Order['branch']; branchCode: Order['branchCode'] }> = [
+      { key: 'korea', branch: 'Korea', branchCode: 'KR' },
+      { key: 'thailand', branch: 'Thailand', branchCode: 'TH' },
+      { key: 'vietnam', branch: 'Vietnam', branchCode: 'VN' },
+      { key: 'malaysia', branch: 'Malaysia', branchCode: 'MY' },
+      { key: 'brunei', branch: 'Brunei', branchCode: 'BN' },
+    ];
 
-  const _staticOrders: Order[] = [
-    {
-      id: '1',
-      orderNumber: 'PO-2026-001',
-      branch: 'Korea',
-      branchCode: 'KR',
-      product: 'Energy Saving System Model A-2024',
-      quantity: 50,
-      status: 'in-progress',
-      dueDate: '2026-02-20',
-      priority: 'high',
-      customerName: 'Seoul Energy Corp.',
-      orderDate: '2026-02-10',
-      productionNote: 'Urgent order - expedite production',
-      items: [
-        { name: 'Main Control Unit', code: 'MCU-A2024', quantity: 50, unit: 'pcs', description: 'Central processing unit' },
-        { name: 'Power Module', code: 'PM-500W', quantity: 50, unit: 'pcs', description: '500W power supply' },
-        { name: 'Display Panel', code: 'DP-LCD7', quantity: 50, unit: 'pcs', description: '7-inch LCD touchscreen' },
-        { name: 'Sensor Array', code: 'SA-V3', quantity: 50, unit: 'sets', description: 'Temperature & humidity sensors' },
-        { name: 'Mounting Kit', code: 'MK-STD', quantity: 50, unit: 'sets', description: 'Standard wall mount' },
-      ]
-    },
-    {
-      id: '2',
-      orderNumber: 'PO-2026-002',
-      branch: 'Thailand',
-      branchCode: 'TH',
-      product: 'Solar Panel Controller Pro',
-      quantity: 100,
-      status: 'pending',
-      dueDate: '2026-02-25',
-      priority: 'medium',
-      customerName: 'Bangkok Solar Solutions',
-      orderDate: '2026-02-12',
-      items: [
-        { name: 'Controller Board', code: 'CB-SOLAR-PRO', quantity: 100, unit: 'pcs' },
-        { name: 'Cooling Fan', code: 'CF-12V', quantity: 100, unit: 'pcs' },
-        { name: 'Cable Harness', code: 'CH-SOLAR', quantity: 100, unit: 'sets' },
-        { name: 'Enclosure', code: 'ENC-IP65', quantity: 100, unit: 'pcs' },
-      ]
-    },
-    {
-      id: '3',
-      orderNumber: 'PO-2026-003',
-      branch: 'Brunei',
-      branchCode: 'BN',
-      product: 'Energy Monitor Display X500',
-      quantity: 30,
-      status: 'in-progress',
-      dueDate: '2026-02-18',
-      priority: 'high',
-      customerName: 'Brunei Smart Home Ltd.',
-      orderDate: '2026-02-08',
-      productionNote: 'VIP customer - premium packaging required',
-      items: [
-        { name: 'Display Unit X500', code: 'DU-X500', quantity: 30, unit: 'pcs' },
-        { name: 'Wireless Module', code: 'WM-5GHz', quantity: 30, unit: 'pcs' },
-        { name: 'Power Adapter', code: 'PA-12V2A', quantity: 30, unit: 'pcs' },
-        { name: 'Premium Box', code: 'BOX-PREM', quantity: 30, unit: 'pcs' },
-      ]
-    },
-    {
-      id: '4',
-      orderNumber: 'PO-2026-004',
-      branch: 'Vietnam',
-      branchCode: 'VN',
-      product: 'Smart Energy Hub',
-      quantity: 75,
-      status: 'pending',
-      dueDate: '2026-03-01',
-      priority: 'low',
-      customerName: 'Hanoi Tech Distribution',
-      orderDate: '2026-02-13',
-      items: [
-        { name: 'Hub Main Board', code: 'HMB-2026', quantity: 75, unit: 'pcs' },
-        { name: 'Antennas', code: 'ANT-DUAL', quantity: 150, unit: 'pcs' },
-        { name: 'Power Supply', code: 'PS-24V', quantity: 75, unit: 'pcs' },
-        { name: 'Standard Packaging', code: 'PKG-STD', quantity: 75, unit: 'sets' },
-      ]
-    },
-    {
-      id: '5',
-      orderNumber: 'PO-2026-005',
-      branch: 'Thailand',
-      branchCode: 'TH',
-      product: 'Wireless Sensor Module',
-      quantity: 200,
-      status: 'pending',
-      dueDate: '2026-02-28',
-      priority: 'medium',
-      customerName: 'Chiang Mai Industrial',
-      orderDate: '2026-02-14',
-      items: [
-        { name: 'Sensor PCB', code: 'PCB-SENS-V2', quantity: 200, unit: 'pcs' },
-        { name: 'Battery Holder', code: 'BH-CR2032', quantity: 200, unit: 'pcs' },
-        { name: 'Plastic Casing', code: 'CS-WS-WHT', quantity: 200, unit: 'pcs' },
-        { name: 'CR2032 Battery', code: 'BAT-CR2032', quantity: 200, unit: 'pcs' as const },
-      ]
-    },
-  ];
+    const toDateOnly = (value: unknown) => {
+      const text = String(value || '');
+      if (!text) return '-';
+      return text.includes('T') ? text.split('T')[0] : text.slice(0, 10);
+    };
+
+    const toPriority = (value: unknown): string => {
+      const normalized = String(value || '').toLowerCase();
+      if (normalized === 'high' || normalized === 'urgent' || normalized === 'critical') return 'high';
+      if (normalized === 'low') return 'low';
+      return 'medium';
+    };
+
+    (async () => {
+      setLoadingOrders(true);
+      setLoadError('');
+      try {
+        const responses = await Promise.all(
+          branchConfigs.map(async (cfg) => {
+            const res = await fetch(`/api/korea/production-orders?branchKey=${encodeURIComponent(cfg.key)}&branch=${encodeURIComponent(cfg.branch)}`, { cache: 'no-store' });
+            const json = await res.json().catch(() => ([]));
+            const rows = Array.isArray(json) ? json : Array.isArray(json?.rows) ? json.rows : [];
+            return { cfg, rows };
+          })
+        );
+
+        const mappedOrders: Order[] = responses.flatMap(({ cfg, rows }) => {
+          return rows.map((row: Record<string, unknown>) => ({
+            id: String(row.id ?? row.poID ?? row.pdoID ?? ''),
+            orderNumber: String(row.orderNumber ?? row.pdoNo ?? row.poNo ?? '-'),
+            branch: cfg.branch,
+            branchCode: cfg.branchCode,
+            product: String(row.product ?? row.product_name ?? '-'),
+            quantity: Number.parseFloat(String(row.quantity ?? row.quantity_ordered ?? row.target_qty ?? row.targetQty ?? 0)) || 0,
+            status: String(row.status ?? 'pending'),
+            dueDate: toDateOnly(row.dueDate ?? row.due_date),
+            priority: toPriority(row.priority),
+            customerName: String(row.customerName ?? row.customer_name ?? '-'),
+            orderDate: toDateOnly(row.orderDate ?? row.pdoDate ?? row.poDate ?? row.created_at),
+            productionNote: String(row.notes ?? row.productionNote ?? ''),
+            items: Array.isArray(row.items) ? row.items : [],
+          }));
+        });
+
+        if (active) setOrders(mappedOrders);
+      } catch {
+        if (active) setLoadError(locale === 'ko' ? 'PDO 목록을 불러오지 못했습니다.' : 'Failed to load PDO list.');
+      } finally {
+        if (active) setLoadingOrders(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [locale]);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -189,11 +157,10 @@ export default function PendingOrdersPage() {
     );
   };
 
-  const groupedOrders = orders.reduce((acc, order) => {
-    if (!acc[order.branch]) acc[order.branch] = [];
-    acc[order.branch].push(order);
+  const groupedOrders = branchMeta.reduce((acc, branch) => {
+    acc[branch.name] = orders.filter((order) => order.branch === branch.name);
     return acc;
-  }, {} as Record<string, Order[]>);
+  }, {} as Record<Order['branch'], Order[]>);
 
   const handleViewDetails = (order: Order) => {
     setSelectedOrder(order);
@@ -281,36 +248,51 @@ export default function PendingOrdersPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {loadingOrders && (
+          <div className="mb-6 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700">
+            {locale === 'ko' ? 'PDO 목록을 불러오는 중...' : 'Loading PDO list...'}
+          </div>
+        )}
+        {loadError && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          {Object.entries(groupedOrders).map(([branch, branchOrders]) => (
-            <div key={branch} className="bg-white rounded-lg shadow-md p-4">
+          {branchMeta.map((branch) => {
+            const branchOrders = groupedOrders[branch.name] || [];
+            return (
+            <div key={branch.name} className="bg-white rounded-lg shadow-md p-4">
               <div className="flex items-center gap-3 mb-2">
                 <CountryFlag 
-                  country={branchOrders[0].branchCode} 
+                  country={branch.code} 
                   size="md" 
                 />
-                <span className="font-semibold text-gray-800">{branch}</span>
+                <span className="font-semibold text-gray-800">{branch.name}</span>
               </div>
               <p className="text-2xl font-bold text-orange-600">{branchOrders.length}</p>
               <p className="text-xs text-gray-600">{t.totalOrders}</p>
             </div>
-          ))}
+          )})}
         </div>
 
         {/* Orders by Branch */}
         <div className="space-y-6">
-          {Object.entries(groupedOrders).map(([branch, branchOrders]) => (
-            <div key={branch} className="bg-white rounded-xl shadow-md overflow-hidden">
+          {branchMeta.map((branch) => {
+            const branchOrders = groupedOrders[branch.name] || [];
+            return (
+            <div key={branch.name} className="bg-white rounded-xl shadow-md overflow-hidden">
               {/* Branch Header */}
               <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <CountryFlag 
-                    country={branchOrders[0].branchCode} 
+                    country={branch.code} 
                     size="lg" 
                   />
                   <div>
-                    <h2 className="text-xl font-bold text-white">{branch}</h2>
+                    <h2 className="text-xl font-bold text-white">{branch.name}</h2>
                     <p className="text-sm text-orange-100">
                       {branchOrders.length} {t.totalOrders}
                     </p>
@@ -347,7 +329,13 @@ export default function PendingOrdersPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {branchOrders.map((order) => (
+                    {branchOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-5 text-sm text-gray-500 text-center">
+                          {locale === 'ko' ? '아직 PDO가 없습니다.' : 'No PDO yet for this branch.'}
+                        </td>
+                      </tr>
+                    ) : branchOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">
@@ -383,7 +371,7 @@ export default function PendingOrdersPage() {
                 </table>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
 

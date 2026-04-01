@@ -194,6 +194,7 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json()
     const { id, vlrID, status, approved_by, notes } = body
+    const branch = String(body?.branch || '').toLowerCase()
     const recordId = id || vlrID
 
     if (!recordId) {
@@ -223,8 +224,24 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No updates provided' }, { status: 400 })
     }
 
+    let updateQuery = `UPDATE vacation_leave_requests SET ${updates.join(', ')} WHERE vlrID = ?`
     params.push(recordId)
-    await pool.query(`UPDATE vacation_leave_requests SET ${updates.join(', ')} WHERE vlrID = ?`, params)
+
+    if (branch && BRANCH_KEYWORDS[branch]) {
+      const tokens = BRANCH_KEYWORDS[branch]
+      const branchLikeConditions = tokens.map(() => '(department LIKE ? OR reason LIKE ? OR notes LIKE ? OR approver LIKE ? OR employeeId LIKE ?)').join(' OR ')
+      updateQuery += ` AND (LOWER(COALESCE(branch, '')) = ? OR (${branchLikeConditions}))`
+      params.push(branch)
+      tokens.forEach((token) => {
+        const like = `%${token}%`
+        params.push(like, like, like, like, like)
+      })
+    }
+
+    const [result]: any = await pool.query(updateQuery, params)
+    if (result?.affectedRows === 0) {
+      return NextResponse.json({ success: false, error: 'Not found or branch mismatch' }, { status: 404 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

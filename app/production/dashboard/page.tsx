@@ -24,6 +24,34 @@ import {
   Users,
 } from 'lucide-react';
 
+type StatShape = {
+  totalOrders: number;
+  inProduction: number;
+  readyToShip: number;
+  shipped: number;
+  qualityTests: number;
+  materialsNeeded: number;
+  efficiency: number;
+  dailyOutput: number;
+  qaReports: number;
+  dailyIssues: number;
+};
+
+type BranchKey = 'korea' | 'thailand' | 'vietnam' | 'malaysia' | 'brunei';
+
+const EMPTY_STATS: StatShape = {
+  totalOrders: 0,
+  inProduction: 0,
+  readyToShip: 0,
+  shipped: 0,
+  qualityTests: 0,
+  materialsNeeded: 0,
+  efficiency: 0,
+  dailyOutput: 0,
+  qaReports: 0,
+  dailyIssues: 0,
+};
+
 export default function ProductionDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -31,6 +59,16 @@ export default function ProductionDashboardPage() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [summaryStats, setSummaryStats] = useState<StatShape>(EMPTY_STATS);
+  const [branchStats, setBranchStats] = useState<Record<BranchKey, StatShape>>({
+    korea: EMPTY_STATS,
+    thailand: EMPTY_STATS,
+    vietnam: EMPTY_STATS,
+    malaysia: EMPTY_STATS,
+    brunei: EMPTY_STATS,
+  });
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState('');
 
   const branchInvoiceCards = [
     {
@@ -97,82 +135,61 @@ export default function ProductionDashboardPage() {
     }
   }, []);
 
-  // Department data
+  useEffect(() => {
+    let active = true;
+    const loadDashboard = async () => {
+      setDashboardLoading(true);
+      setDashboardError('');
+      try {
+        const res = await fetch('/api/production/dashboard', { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) {
+          throw new Error(json?.error || 'Failed to load production dashboard data');
+        }
+        if (!active) return;
+        setSummaryStats({ ...EMPTY_STATS, ...(json.summary || {}) });
+        setBranchStats({
+          korea: { ...EMPTY_STATS, ...(json?.branches?.korea || {}) },
+          thailand: { ...EMPTY_STATS, ...(json?.branches?.thailand || {}) },
+          vietnam: { ...EMPTY_STATS, ...(json?.branches?.vietnam || {}) },
+          malaysia: { ...EMPTY_STATS, ...(json?.branches?.malaysia || {}) },
+          brunei: { ...EMPTY_STATS, ...(json?.branches?.brunei || {}) },
+        });
+      } catch (err: any) {
+        if (!active) return;
+        setDashboardError(err?.message || 'Failed to load production dashboard data');
+      } finally {
+        if (active) setDashboardLoading(false);
+      }
+    };
+    loadDashboard();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // View options
   const departments = [
     { id: 'all', name: locale === 'ko' ? '전체' : 'All', emoji: '🏭' },
-    { id: 'electronics', name: locale === 'ko' ? '전자부품' : 'Electronics', emoji: '⚡' },
-    { id: 'assembly', name: locale === 'ko' ? '조립' : 'Assembly', emoji: '🔧' },
-    { id: 'quality', name: locale === 'ko' ? '품질관리' : 'Quality Control', emoji: '🔍' },
-    { id: 'packaging', name: locale === 'ko' ? '포장' : 'Packaging', emoji: '📦' },
-    { id: 'shipping', name: locale === 'ko' ? '배송' : 'Shipping', emoji: '🚛' }
+    { id: 'korea', name: locale === 'ko' ? '한국' : 'Korea', emoji: '🇰🇷' },
+    { id: 'thailand', name: locale === 'ko' ? '태국' : 'Thailand', emoji: '🇹🇭' },
+    { id: 'vietnam', name: locale === 'ko' ? '베트남' : 'Vietnam', emoji: '🇻🇳' },
+    { id: 'malaysia', name: locale === 'ko' ? '말레이시아' : 'Malaysia', emoji: '🇲🇾' },
+    { id: 'brunei', name: locale === 'ko' ? '브루나이' : 'Brunei', emoji: '🇧🇳' }
   ];
 
-  // Production data by department
-  const departmentData = {
-    all: {
-      totalOrders: 342,
-      inProduction: 89,
-      readyToShip: 67,
-      shipped: 186,
-      qualityTests: 45,
-      materialsNeeded: 23,
-      efficiency: 92.5,
-      dailyOutput: 156
-    },
-    electronics: {
-      totalOrders: 78,
-      inProduction: 18,
-      readyToShip: 15,
-      shipped: 45,
-      qualityTests: 12,
-      materialsNeeded: 5,
-      efficiency: 88.2,
-      dailyOutput: 35
-    },
-    assembly: {
-      totalOrders: 86,
-      inProduction: 22,
-      readyToShip: 18,
-      shipped: 46,
-      qualityTests: 8,
-      materialsNeeded: 6,
-      efficiency: 94.1,
-      dailyOutput: 42
-    },
-    quality: {
-      totalOrders: 65,
-      inProduction: 16,
-      readyToShip: 12,
-      shipped: 37,
-      qualityTests: 15,
-      materialsNeeded: 4,
-      efficiency: 96.8,
-      dailyOutput: 28
-    },
-    packaging: {
-      totalOrders: 72,
-      inProduction: 19,
-      readyToShip: 14,
-      shipped: 39,
-      qualityTests: 6,
-      materialsNeeded: 5,
-      efficiency: 90.3,
-      dailyOutput: 32
-    },
-    shipping: {
-      totalOrders: 41,
-      inProduction: 14,
-      readyToShip: 8,
-      shipped: 19,
-      qualityTests: 4,
-      materialsNeeded: 3,
-      efficiency: 87.6,
-      dailyOutput: 19
-    }
-  };
+  const stats =
+    selectedDepartment === 'all'
+      ? summaryStats
+      : branchStats[selectedDepartment as BranchKey] || EMPTY_STATS;
 
-  // Get current stats based on selected department
-  const stats = departmentData[selectedDepartment];
+  const branchEntries: Array<{ key: BranchKey; name: string; emoji: string; stats: StatShape }> = [
+    { key: 'korea', name: locale === 'ko' ? '한국' : 'Korea', emoji: '🇰🇷', stats: branchStats.korea || EMPTY_STATS },
+    { key: 'thailand', name: locale === 'ko' ? '태국' : 'Thailand', emoji: '🇹🇭', stats: branchStats.thailand || EMPTY_STATS },
+    { key: 'vietnam', name: locale === 'ko' ? '베트남' : 'Vietnam', emoji: '🇻🇳', stats: branchStats.vietnam || EMPTY_STATS },
+    { key: 'malaysia', name: locale === 'ko' ? '말레이시아' : 'Malaysia', emoji: '🇲🇾', stats: branchStats.malaysia || EMPTY_STATS },
+    { key: 'brunei', name: locale === 'ko' ? '브루나이' : 'Brunei', emoji: '🇧🇳', stats: branchStats.brunei || EMPTY_STATS },
+  ];
 
   const menuCards = [
     {
@@ -213,7 +230,7 @@ export default function ProductionDashboardPage() {
       description: locale === 'ko' ? '구매 대기 중인 필수 자재 목록' : 'Essential materials awaiting purchase',
       href: '/production/materials-list',
       color: 'bg-purple-500',
-      count: 12
+      count: stats.materialsNeeded
     },
     {
       icon: AlertTriangle,
@@ -221,7 +238,7 @@ export default function ProductionDashboardPage() {
       description: locale === 'ko' ? '매일 발견된 문제점 업데이트' : 'Daily discovered issues update',
       href: '/production/daily-issues',
       color: 'bg-red-500',
-      count: 3
+      count: stats.dailyIssues
     },
     {
       icon: Settings,
@@ -237,7 +254,7 @@ export default function ProductionDashboardPage() {
       description: locale === 'ko' ? '생산 후 기기 테스트 결과 업데이트' : 'Post-production device test results',
       href: '/production/test-results',
       color: 'bg-cyan-500',
-      count: 15
+      count: stats.qualityTests
     },
     {
       icon: ClipboardCheck,
@@ -245,7 +262,7 @@ export default function ProductionDashboardPage() {
       description: locale === 'ko' ? 'QA/QC 품질 검사 보고서' : 'QA/QC quality inspection reports',
       href: '/production/qa-reports',
       color: 'bg-emerald-500',
-      count: 8
+      count: stats.qaReports
     },
     {
       icon: Workflow,
@@ -315,7 +332,7 @@ export default function ProductionDashboardPage() {
         {/* Department Selection */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            {locale === 'ko' ? '부서 선택' : 'Select Department'}
+            {locale === 'ko' ? '지점 선택' : 'Select Branch'}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             {departments.map((dept) => (
@@ -375,12 +392,17 @@ export default function ProductionDashboardPage() {
         </div>
 
         {/* Stats Overview */}
+        {dashboardError && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {dashboardError}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t.totalOrders}</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.totalOrders}</p>
+                <p className="text-3xl font-bold text-gray-800">{dashboardLoading ? '-' : stats.totalOrders}</p>
               </div>
               <Package className="w-12 h-12 text-blue-500" />
             </div>
@@ -390,7 +412,7 @@ export default function ProductionDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t.inProduction}</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.inProduction}</p>
+                <p className="text-3xl font-bold text-orange-600">{dashboardLoading ? '-' : stats.inProduction}</p>
               </div>
               <Factory className="w-12 h-12 text-orange-500" />
             </div>
@@ -400,7 +422,7 @@ export default function ProductionDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t.readyToShip}</p>
-                <p className="text-3xl font-bold text-green-600">{stats.readyToShip}</p>
+                <p className="text-3xl font-bold text-green-600">{dashboardLoading ? '-' : stats.readyToShip}</p>
               </div>
               <Truck className="w-12 h-12 text-green-500" />
             </div>
@@ -410,7 +432,7 @@ export default function ProductionDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t.shipped}</p>
-                <p className="text-3xl font-bold text-gray-800">{stats.shipped}</p>
+                <p className="text-3xl font-bold text-gray-800">{dashboardLoading ? '-' : stats.shipped}</p>
               </div>
               <Ship className="w-12 h-12 text-teal-500" />
             </div>
@@ -427,21 +449,20 @@ export default function ProductionDashboardPage() {
                 {locale === 'ko' ? '부서별 생산량 비교' : 'Production Comparison by Department'}
               </h3>
               <div className="space-y-4">
-                {Object.entries(departmentData).slice(1).map(([deptId, data]) => {
-                  const dept = departments.find(d => d.id === deptId);
-                  const percentage = (data.dailyOutput / departmentData.all.dailyOutput) * 100;
+                {branchEntries.map((entry) => {
+                  const percentage = summaryStats.dailyOutput > 0 ? (entry.stats.dailyOutput / summaryStats.dailyOutput) * 100 : 0;
                   return (
-                    <div key={deptId} className="flex items-center gap-3">
+                    <div key={entry.key} className="flex items-center gap-3">
                       <div className="w-16 text-sm font-medium flex items-center gap-1">
-                        <span>{dept?.emoji}</span>
-                        <span className="text-xs">{dept?.name}</span>
+                        <span>{entry.emoji}</span>
+                        <span className="text-xs">{entry.name}</span>
                       </div>
                       <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
                         <div
                           className="bg-gradient-to-r from-orange-400 to-orange-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-300"
                           style={{ width: `${Math.max(percentage, 15)}%` }}
                         >
-                          <span className="text-white text-xs font-bold">{data.dailyOutput}</span>
+                          <span className="text-white text-xs font-bold">{entry.stats.dailyOutput}</span>
                         </div>
                       </div>
                     </div>
@@ -485,15 +506,14 @@ export default function ProductionDashboardPage() {
               <div className="flex items-center justify-center">
                 <div className="relative w-40 h-40">
                   <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 100 100">
-                    {Object.entries(departmentData).slice(1).map(([deptId, data], index) => {
-                      const dept = departments.find(d => d.id === deptId);
+                    {branchEntries.map((entry, index) => {
                       const colors = ['#f97316', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
-                      const percentage = data.efficiency;
+                      const percentage = entry.stats.efficiency;
                       const strokeDasharray = `${percentage * 2.51} 251`;
                       const rotation = index * 72;
                       return (
                         <circle
-                          key={deptId}
+                          key={entry.key}
                           cx="50"
                           cy="50"
                           r="40"
@@ -517,13 +537,12 @@ export default function ProductionDashboardPage() {
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-1 gap-2">
-                {Object.entries(departmentData).slice(1).map(([deptId, data], index) => {
-                  const dept = departments.find(d => d.id === deptId);
+                {branchEntries.map((entry, index) => {
                   const colors = ['bg-orange-500', 'bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-red-500'];
                   return (
-                    <div key={deptId} className="flex items-center gap-2">
+                    <div key={entry.key} className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${colors[index]}`}></div>
-                      <span className="text-sm flex-1">{dept?.name}: {data.efficiency}%</span>
+                      <span className="text-sm flex-1">{entry.name}: {entry.stats.efficiency}%</span>
                     </div>
                   );
                 })}
@@ -546,25 +565,24 @@ export default function ProductionDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(departmentData).slice(1).map(([deptId, data]) => {
-                      const dept = departments.find(d => d.id === deptId);
+                    {branchEntries.map((entry) => {
                       return (
-                        <tr key={deptId} className="border-b border-gray-100 hover:bg-gray-50">
+                        <tr key={entry.key} className="border-b border-gray-100 hover:bg-gray-50">
                           <td className="py-3 px-2 flex items-center gap-2">
-                            <span>{dept?.emoji}</span>
-                            <span className="font-medium">{dept?.name}</span>
+                            <span>{entry.emoji}</span>
+                            <span className="font-medium">{entry.name}</span>
                           </td>
-                          <td className="text-right py-3 px-2 font-medium">{data.dailyOutput}</td>
+                          <td className="text-right py-3 px-2 font-medium">{entry.stats.dailyOutput}</td>
                           <td className="text-right py-3 px-2">
                             <span className={`px-2 py-1 rounded-full text-xs ${
-                              data.efficiency >= 95 ? 'bg-green-100 text-green-600' :
-                              data.efficiency >= 90 ? 'bg-yellow-100 text-yellow-600' :
+                              entry.stats.efficiency >= 95 ? 'bg-green-100 text-green-600' :
+                              entry.stats.efficiency >= 90 ? 'bg-yellow-100 text-yellow-600' :
                               'bg-red-100 text-red-600'
                             }`}>
-                              {data.efficiency}%
+                              {entry.stats.efficiency}%
                             </span>
                           </td>
-                          <td className="text-right py-3 px-2 text-gray-600">{data.shipped}</td>
+                          <td className="text-right py-3 px-2 text-gray-600">{entry.stats.shipped}</td>
                         </tr>
                       );
                     })}

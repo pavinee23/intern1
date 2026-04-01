@@ -20,8 +20,8 @@ interface Shipment {
   id: string;
   shipmentNumber: string;
   orderNumber: string;
-  destination: 'Korea' | 'Brunei' | 'Thailand' | 'Vietnam';
-  destinationCode: 'KR' | 'BN' | 'TH' | 'VN';
+  destination: 'Korea' | 'Brunei' | 'Thailand' | 'Vietnam' | 'Malaysia';
+  destinationCode: 'KR' | 'BN' | 'TH' | 'VN' | 'ML';
   destinationAddress: string;
   status: 'packed' | 'ready-to-ship' | 'in-transit' | 'delivered';
   shipDate?: string;
@@ -45,6 +45,67 @@ interface Shipment {
   }[];
 }
 
+type QaBill = {
+  id: string;
+  date?: string;
+  station?: string;
+  status?: string;
+  notes?: string;
+  product?: string;
+  qty?: number;
+  orderNumber?: string;
+  productionNumber?: string;
+  billId?: string;
+  isLocked?: boolean;
+};
+
+type RawShipment = Record<string, unknown> & {
+  id?: string;
+  shipmentNumber?: string;
+  orderNumber?: string;
+  destination?: string;
+  destinationCode?: string;
+  destinationAddress?: string;
+  status?: string;
+  shipDate?: string;
+  estimatedDelivery?: string;
+  carrier?: string;
+  trackingNumber?: string;
+  priority?: string;
+  customerName?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  items?: ShipmentItem[];
+  packagingNote?: string;
+  totalWeight?: string;
+  totalBoxes?: number;
+  shipmentMethod?: 'sea' | 'land' | 'air';
+  updates?: Shipment['updates'];
+};
+
+const BRANCHES = [
+  { code: 'KR', name: 'Korea' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'VT', name: 'Vietnam' },
+  { code: 'ML', name: 'Malaysia' },
+  { code: 'BN', name: 'Brunei' },
+] as const;
+
+function branchCodeFromOrderNo(orderNo?: string) {
+  const m = String(orderNo || '').toUpperCase().match(/^PDO([A-Z]{2})/);
+  if (m?.[1]) return m[1];
+  return 'KR';
+}
+
+function formatDateOnly(value?: string) {
+  if (!value) return '-';
+  const asText = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(asText)) return asText;
+  const d = new Date(asText);
+  if (Number.isNaN(d.getTime())) return asText;
+  return d.toISOString().slice(0, 10);
+}
+
 export default function PendingShipmentsPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -54,10 +115,16 @@ export default function PendingShipmentsPage() {
 
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [qaBills, setQaBills] = useState<QaBill[]>([]);
+  const [qaLoading, setQaLoading] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<'KR' | 'TH' | 'VT' | 'ML' | 'BN'>('KR');
+  const [creatingShipmentId, setCreatingShipmentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/korea/production-shipments').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setShipments(data.map((r: any) => ({
+  const loadShipments = async () => {
+    const res = await fetch('/api/korea/production-shipments');
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      setShipments(data.map((r: RawShipment) => ({
         ...r,
         items: r.items ?? [],
         updates: r.updates ?? [],
@@ -68,7 +135,29 @@ export default function PendingShipmentsPage() {
         totalBoxes: r.totalBoxes ?? 0,
         shipmentMethod: r.shipmentMethod ?? 'sea',
       })));
-    });
+    }
+  };
+
+  const loadQaBills = async () => {
+    try {
+      setQaLoading(true);
+      const res = await fetch('/api/korea/qa-reports', { cache: 'no-store' });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setQaBills(data);
+      } else if (Array.isArray(data?.data)) {
+        setQaBills(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to load QA bills:', error);
+    } finally {
+      setQaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadShipments();
+    loadQaBills();
   }, []);
 
   const getStatusBadge = (status: string) => {
@@ -111,6 +200,107 @@ export default function PendingShipmentsPage() {
         {labels[priority as keyof typeof labels]}
       </span>
     );
+  };
+
+  const destinationFromBranch = (branchCode: string) => {
+    const found = BRANCHES.find(b => b.code === branchCode);
+    return found?.name || 'Korea';
+  };
+
+  const shipmentOrderSet = new Set(shipments.map((s) => String(s.orderNumber || '').trim()).filter(Boolean));
+  const filteredQaBills = qaBills.filter((b) => {
+    const orderNo = String(b.orderNumber || '').trim();
+    const branchCode = branchCodeFromOrderNo(orderNo);
+    if (branchCode !== selectedBranch) return false;
+    if (!orderNo) return false;
+    if (shipmentOrderSet.has(orderNo)) return false;
+    if (b.isLocked) return false;
+    return true;
+  });
+
+  const createShipmentFromQa = async (bill: QaBill) => {
+    const orderNo = String(bill.orderNumber || '').trim();
+    if (!orderNo) return;
+    try {
+      setCreatingShipmentId(String(bill.id));
+
+      const numberRes = await fetch('/api/documents/generate-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'sh' }),
+      });
+      const numberJson = await numberRes.json();
+      if (!numberRes.ok || !numberJson?.success || !numberJson?.docNo) {
+        throw new Error(numberJson?.error || 'Failed to generate shipment number');
+      }
+      const shipmentNumber = String(numberJson.docNo);
+
+      const branchCode = branchCodeFromOrderNo(orderNo);
+      const destination = destinationFromBranch(branchCode);
+      const today = new Date().toISOString().slice(0, 10);
+      const estDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+      const payload = {
+        id: `ship-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        shipmentNumber,
+        orderNumber: orderNo,
+        destination,
+        destinationCode: branchCode,
+        destinationAddress: `${destination} Branch`,
+        status: 'ready-to-ship',
+        shipDate: today,
+        estimatedDelivery: estDate,
+        carrier: null,
+        trackingNumber: null,
+        priority: String(bill.notes || '').toLowerCase().includes('urgent') ? 'urgent' : 'normal',
+        items: [
+          {
+            productName: bill.product || '-',
+            productCode: orderNo,
+            quantity: Number(bill.qty || 0),
+            unit: 'pcs',
+            weight: '-',
+          },
+        ],
+      };
+
+      let createRes = await fetch('/api/korea/production-shipments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      let createJson = await createRes.json();
+
+      if (createRes.status === 409) {
+        const retryNoRes = await fetch('/api/documents/generate-number', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'sh' }),
+        });
+        const retryNoJson = await retryNoRes.json();
+        if (retryNoRes.ok && retryNoJson?.success && retryNoJson?.docNo) {
+          createRes = await fetch('/api/korea/production-shipments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, shipmentNumber: String(retryNoJson.docNo) }),
+          });
+          createJson = await createRes.json();
+        }
+      }
+
+      if (!createRes.ok || !createJson?.success) {
+        throw new Error(createJson?.error || 'Failed to create shipment');
+      }
+
+      await loadShipments();
+      await loadQaBills();
+      alert(locale === 'ko' ? '출고 문서가 생성되었습니다.' : 'Shipment document created.');
+    } catch (error) {
+      console.error('createShipmentFromQa', error);
+      alert(locale === 'ko' ? '출고 생성에 실패했습니다.' : 'Failed to create shipment.');
+    } finally {
+      setCreatingShipmentId(null);
+    }
   };
 
   const groupedShipments = shipments.reduce((acc, shipment) => {
@@ -537,6 +727,91 @@ export default function PendingShipmentsPage() {
           </div>
         </div>
 
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">
+              {locale === 'ko' ? 'QA 청구서로 출고 생성' : 'Create Shipment from QA Bills'}
+            </h2>
+            <button
+              onClick={loadQaBills}
+              className="px-3 py-1.5 text-sm bg-white/20 text-white rounded hover:bg-white/30"
+            >
+              {locale === 'ko' ? '새로고침' : 'Refresh'}
+            </button>
+          </div>
+          <div className="p-4 border-b bg-emerald-50">
+            <div className="flex flex-wrap gap-2">
+              {BRANCHES.map((branch) => (
+                <button
+                  key={branch.code}
+                  onClick={() => setSelectedBranch(branch.code)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                    selectedBranch === branch.code
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  }`}
+                >
+                  {branch.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">QA No.</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order No.</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{locale === 'ko' ? '제품' : 'Product'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{locale === 'ko' ? '수량' : 'Qty'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{locale === 'ko' ? '상태' : 'Status'}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{locale === 'ko' ? '작업' : 'Action'}</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {qaLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
+                      {locale === 'ko' ? 'QA 청구서를 불러오는 중...' : 'Loading QA bills...'}
+                    </td>
+                  </tr>
+                ) : filteredQaBills.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
+                      {locale === 'ko' ? '선택된 지점에서 생성 가능한 QA 청구서가 없습니다.' : 'No available QA bills for selected branch.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredQaBills.map((bill) => (
+                    <tr key={bill.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{bill.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{bill.orderNumber || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{bill.product || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{Number(bill.qty || 0)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{String(bill.status || '-')}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => createShipmentFromQa(bill)}
+                          disabled={creatingShipmentId === bill.id}
+                          className={`px-3 py-1.5 text-sm rounded ${
+                            creatingShipmentId === bill.id
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          }`}
+                        >
+                          {creatingShipmentId === bill.id
+                            ? (locale === 'ko' ? '생성 중...' : 'Creating...')
+                            : (locale === 'ko' ? '출고 생성' : 'Create Shipment')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Shipments by Destination */}
         <div className="space-y-6">
           {Object.entries(groupedShipments).map(([destination, shipmentList]) => (
@@ -566,9 +841,6 @@ export default function PendingShipmentsPage() {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         {locale === 'ko' ? '배송예정일' : 'Est. Delivery'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        {locale === 'ko' ? '총 무게' : 'Weight'}
                       </th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                         {locale === 'ko' ? '우선순위' : 'Priority'}
@@ -612,11 +884,10 @@ export default function PendingShipmentsPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{shipment.estimatedDelivery}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{shipment.totalWeight}</div>
-                          <div className="text-xs text-gray-500">{shipment.totalBoxes} {locale === 'ko' ? '박스' : 'boxes'}</div>
+                          <div className="text-sm text-gray-900">{formatDateOnly(shipment.estimatedDelivery)}</div>
+                          {Number(shipment.totalBoxes || 0) > 0 && (
+                            <div className="text-xs text-gray-500">{shipment.totalBoxes} {locale === 'ko' ? '박스' : 'boxes'}</div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {getPriorityBadge(shipment.priority)}
@@ -679,7 +950,7 @@ export default function PendingShipmentsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{locale === 'ko' ? '배송예정일' : 'Est. Delivery'}</p>
-                  <p className="font-semibold text-gray-800">{selectedShipment.estimatedDelivery}</p>
+                  <p className="font-semibold text-gray-800">{formatDateOnly(selectedShipment.estimatedDelivery)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{t.status}</p>
@@ -690,12 +961,12 @@ export default function PendingShipmentsPage() {
                   <div className="mt-1">{getPriorityBadge(selectedShipment.priority)}</div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">{locale === 'ko' ? '총 무게' : 'Total Weight'}</p>
-                  <p className="font-semibold text-gray-800">{selectedShipment.totalWeight}</p>
-                </div>
-                <div>
                   <p className="text-sm text-gray-600">{locale === 'ko' ? '박스 수' : 'Total Boxes'}</p>
-                  <p className="font-semibold text-gray-800">{selectedShipment.totalBoxes} {locale === 'ko' ? '박스' : 'boxes'}</p>
+                  <p className="font-semibold text-gray-800">
+                    {Number(selectedShipment.totalBoxes || 0) > 0
+                      ? `${selectedShipment.totalBoxes} ${locale === 'ko' ? '박스' : 'boxes'}`
+                      : '-'}
+                  </p>
                 </div>
               </div>
 
@@ -721,7 +992,7 @@ export default function PendingShipmentsPage() {
                           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                             <div className="flex justify-between items-start mb-2">
                               <p className="font-semibold text-gray-900">{update.location}</p>
-                              <span className="text-xs text-gray-500 whitespace-nowrap ml-4">{update.timestamp}</span>
+                              <span className="text-xs text-gray-500 whitespace-nowrap ml-4">{formatDateOnly(update.timestamp)}</span>
                             </div>
                             <p className="text-sm font-medium text-blue-600 mb-1">{update.status}</p>
                             <p className="text-sm text-gray-600">{update.notes}</p>

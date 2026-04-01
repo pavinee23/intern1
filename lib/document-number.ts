@@ -49,7 +49,7 @@ export async function generateDocumentNumber(
     await connection.commit()
 
     const counter = rows[0].counter
-    const counterStr = String(counter).padStart(prefix === 'PDO' ? 5 : 4, '0')
+    const counterStr = String(counter).padStart(prefix === 'PDO' || prefix === 'SH' ? 5 : 4, '0')
 
     // สร้างเลขเอกสารตามรูปแบบของแต่ละประเภท
     let docNumber: string

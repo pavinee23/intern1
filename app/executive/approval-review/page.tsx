@@ -44,6 +44,37 @@ interface PurchaseRequest {
   notes?: string | null;
 }
 
+type PurchaseClickAction = 'view' | 'approved' | 'rejected';
+type LeaveClickAction = 'approved' | 'rejected';
+type SuggestionClickAction = 'view';
+
+interface ClickedPurchaseBill {
+  prID: number;
+  prNo: string;
+  action: PurchaseClickAction;
+  clickedAt: string;
+  department: string;
+  requester: string;
+  totalAmount: number;
+}
+
+interface ClickedLeaveBill {
+  vlrID: number;
+  vlrNo: string;
+  action: LeaveClickAction;
+  clickedAt: string;
+  employeeName: string;
+  department: string;
+}
+
+interface ClickedSuggestionItem {
+  id: number;
+  subject: string;
+  action: SuggestionClickAction;
+  clickedAt: string;
+  userName: string;
+}
+
 function normalizeStatus(value: string | null | undefined) {
   return String(value || '').trim().toLowerCase();
 }
@@ -56,6 +87,16 @@ interface SuggestionRequest {
   status: string;
   created_at: string;
   user_name?: string | null;
+}
+
+interface ApprovedPdoRow {
+  id: string;
+  pdoNo: string;
+  product: string;
+  customerName: string;
+  dueDate: string;
+  priority: string;
+  status: string;
 }
 
 const texts = {
@@ -95,6 +136,7 @@ const texts = {
     purchaseNo: '문서번호',
     purchaseRequester: '요청자',
     purchasePurpose: '목적',
+    purchaseNotes: '비고',
     amount: '금액',
     suggestionSubject: '제목',
     suggestionMessage: '내용',
@@ -111,7 +153,27 @@ const texts = {
     actionError: '상태 업데이트에 실패했습니다.',
     purchaseActionSuccess: '구매요청 상태가 업데이트되었습니다.',
     purchaseActionError: '구매요청 상태 업데이트에 실패했습니다.',
-    fetchError: '데이터를 불러오지 못했습니다.'
+    fetchError: '데이터를 불러오지 못했습니다.',
+    clickedPurchaseSectionTitle: '클릭한 구매 요청 목록',
+    clickedAt: '클릭 시각',
+    lastAction: '최근 동작',
+    noClickedPurchase: '아직 클릭한 구매 요청이 없습니다.'
+    ,
+    clickedLeaveSectionTitle: '클릭한 휴가 요청 목록',
+    noClickedLeave: '아직 클릭한 휴가 요청이 없습니다.',
+    clickedSuggestionSectionTitle: '클릭한 제안 요청 목록',
+    noClickedSuggestion: '아직 클릭한 제안 요청이 없습니다.'
+    ,
+    approvedPdoSectionTitle: '승인 완료 PDO(생산지시서) 목록',
+    approvedPdoButton: '승인 완료 PDO(생산지시서) 보기',
+    approvedPdoHideButton: '승인 완료 PDO(생산지시서) 숨기기',
+    approvedPdoByBranchTitle: '지점별 승인 완료 PDO(생산지시서)',
+    approvedPdoNoData: '해당 지점의 승인 완료 PDO가 없습니다.',
+    approvedPdoFetchError: 'PDO 목록을 불러오지 못했습니다.',
+    pdoNo: 'PDO(생산지시서) 번호',
+    product: '제품',
+    customer: '고객',
+    dueDate: '납기일'
   },
   en: {
     title: 'Approval Review',
@@ -149,6 +211,7 @@ const texts = {
     purchaseNo: 'Document No.',
     purchaseRequester: 'Requester',
     purchasePurpose: 'Purpose',
+    purchaseNotes: 'Notes',
     amount: 'Amount',
     suggestionSubject: 'Subject',
     suggestionMessage: 'Message',
@@ -165,7 +228,27 @@ const texts = {
     actionError: 'Failed to update request status.',
     purchaseActionSuccess: 'Purchase request status updated successfully.',
     purchaseActionError: 'Failed to update purchase request status.',
-    fetchError: 'Failed to load requests.'
+    fetchError: 'Failed to load requests.',
+    clickedPurchaseSectionTitle: 'Clicked Purchase Bills',
+    clickedAt: 'Clicked At',
+    lastAction: 'Last Action',
+    noClickedPurchase: 'No purchase bills have been clicked yet.'
+    ,
+    clickedLeaveSectionTitle: 'Clicked Leave Requests',
+    noClickedLeave: 'No leave requests have been clicked yet.',
+    clickedSuggestionSectionTitle: 'Clicked Suggestion Requests',
+    noClickedSuggestion: 'No suggestion requests have been clicked yet.'
+    ,
+    approvedPdoSectionTitle: 'Approved PDO (Production Order) Bills',
+    approvedPdoButton: 'Show Approved PDO (Production Order)',
+    approvedPdoHideButton: 'Hide Approved PDO (Production Order)',
+    approvedPdoByBranchTitle: 'Approved PDO (Production Order) by Branch',
+    approvedPdoNoData: 'No approved PDO bills for this branch.',
+    approvedPdoFetchError: 'Failed to load PDO list.',
+    pdoNo: 'PDO (Production Order) No.',
+    product: 'Product',
+    customer: 'Customer',
+    dueDate: 'Due Date'
   }
 } as const;
 
@@ -199,7 +282,15 @@ export default function ApprovalReviewPage() {
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [processingPurchaseId, setProcessingPurchaseId] = useState<number | null>(null);
   const [openedPurchaseId, setOpenedPurchaseId] = useState<number | null>(null);
+  const [openedSuggestionId, setOpenedSuggestionId] = useState<number | null>(null);
+  const [clickedPurchaseBills, setClickedPurchaseBills] = useState<ClickedPurchaseBill[]>([]);
+  const [clickedLeaveBills, setClickedLeaveBills] = useState<ClickedLeaveBill[]>([]);
+  const [clickedSuggestionItems, setClickedSuggestionItems] = useState<ClickedSuggestionItem[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<BranchKey | null>(null);
+  const [showApprovedPdo, setShowApprovedPdo] = useState(false);
+  const [approvedPdoRows, setApprovedPdoRows] = useState<ApprovedPdoRow[]>([]);
+  const [loadingApprovedPdo, setLoadingApprovedPdo] = useState(false);
+  const [approvedPdoError, setApprovedPdoError] = useState('');
 
   const t = useMemo(() => texts[pageLocale], [pageLocale]);
 
@@ -279,8 +370,8 @@ export default function ApprovalReviewPage() {
       const allPurchaseRows: PurchaseRequest[] = Array.isArray(purchaseData.rows) ? purchaseData.rows : [];
       const purchaseRowsForApproval = allPurchaseRows.filter((pr) => {
         const status = normalizeStatus(pr.status);
-        // Match Accounting dashboard pending logic + include approved so records approved there can still be displayed here.
-        return status === 'pending' || status === 'submitted' || status === 'draft' || status === 'approved';
+        // Show only actionable requests. Approved/Rejected items must stay hidden from this list.
+        return status === 'pending' || status === 'submitted' || status === 'draft';
       });
       setPurchaseRows(purchaseRowsForApproval);
       setSuggestionRows(Array.isArray(suggestionData.feedbacks) ? suggestionData.feedbacks : []);
@@ -294,6 +385,110 @@ export default function ApprovalReviewPage() {
   useEffect(() => {
     loadRows();
   }, [loadRows]);
+
+  useEffect(() => {
+    setShowApprovedPdo(false);
+    setApprovedPdoRows([]);
+    setApprovedPdoError('');
+    setClickedPurchaseBills([]);
+    setClickedLeaveBills([]);
+    setClickedSuggestionItems([]);
+    setOpenedSuggestionId(null);
+  }, [selectedBranch]);
+
+  const markPurchaseClicked = useCallback((row: PurchaseRequest, action: PurchaseClickAction) => {
+    const next: ClickedPurchaseBill = {
+      prID: row.prID,
+      prNo: row.prNo,
+      action,
+      clickedAt: new Date().toISOString(),
+      department: row.department || '-',
+      requester: row.requested_by || row.requester_name || '-',
+      totalAmount: Number(row.total_amount || 0)
+    };
+
+    setClickedPurchaseBills((prev) => {
+      const others = prev.filter((item) => item.prID !== row.prID);
+      return [next, ...others];
+    });
+  }, []);
+
+  const markLeaveClicked = useCallback((row: LeaveRequest, action: LeaveClickAction) => {
+    const next: ClickedLeaveBill = {
+      vlrID: row.vlrID,
+      vlrNo: row.vlrNo,
+      action,
+      clickedAt: new Date().toISOString(),
+      employeeName: row.employeeName || '-',
+      department: row.department || '-'
+    };
+    setClickedLeaveBills((prev) => {
+      const others = prev.filter((item) => item.vlrID !== row.vlrID);
+      return [next, ...others];
+    });
+  }, []);
+
+  const markSuggestionClicked = useCallback((row: SuggestionRequest) => {
+    const next: ClickedSuggestionItem = {
+      id: row.id,
+      subject: row.subject || '-',
+      action: 'view',
+      clickedAt: new Date().toISOString(),
+      userName: row.user_name || '-'
+    };
+    setClickedSuggestionItems((prev) => {
+      const others = prev.filter((item) => item.id !== row.id);
+      return [next, ...others];
+    });
+  }, []);
+
+  const loadApprovedPdoRows = useCallback(async (branchOverride?: BranchKey) => {
+    const targetBranch = branchOverride || selectedBranch;
+    if (!targetBranch) return;
+    setLoadingApprovedPdo(true);
+    setApprovedPdoError('');
+    try {
+      const branchNameMap: Record<BranchKey, string> = {
+        korea: 'Korea',
+        thailand: 'Thailand',
+        vietnam: 'Vietnam',
+        malaysia: 'Malaysia',
+        brunei: 'Brunei'
+      };
+
+      const res = await fetch(
+        `/api/korea/production-orders?branchKey=${encodeURIComponent(targetBranch)}&branch=${encodeURIComponent(branchNameMap[targetBranch])}`,
+        { cache: 'no-store' }
+      );
+      const data = await parseJsonSafe(res);
+      if (!res.ok) {
+        throw new Error(data.error || t.approvedPdoFetchError);
+      }
+
+      const rows = Array.isArray(data) ? data : Array.isArray(data.rows) ? data.rows : [];
+      const approvedStatuses = new Set(['approved', 'completed', 'done']);
+      const filtered = rows.filter((row: any) => approvedStatuses.has(normalizeStatus(row.status)));
+
+      const mapped: ApprovedPdoRow[] = filtered.map((row: any) => ({
+        id: String(row.id ?? row.poID ?? row.pdoID ?? ''),
+        pdoNo: String(row.orderNumber ?? row.pdoNo ?? row.poNo ?? '-'),
+        product: String(row.product ?? row.product_name ?? '-'),
+        customerName: String(row.customerName ?? row.customer_name ?? '-'),
+        dueDate: String(row.dueDate ?? row.due_date ?? ''),
+        priority: String(row.priority ?? '-'),
+        status: String(row.status ?? '-')
+      }));
+
+      setApprovedPdoRows(mapped);
+      setShowApprovedPdo(true);
+    } catch (err: any) {
+      setApprovedPdoError(err?.message || t.approvedPdoFetchError);
+      setShowApprovedPdo(true);
+      setApprovedPdoRows([]);
+    } finally {
+      setLoadingApprovedPdo(false);
+    }
+  }, [selectedBranch, t.approvedPdoFetchError]);
 
   const toggleLanguage = () => {
     const nextLocale: ApprovalLocale = pageLocale === 'ko' ? 'en' : 'ko';
@@ -316,7 +511,8 @@ export default function ApprovalReviewPage() {
         body: JSON.stringify({
           id: row.vlrID,
           status,
-          approved_by: user?.name || user?.username || 'approver'
+          approved_by: user?.name || user?.username || 'approver',
+          branch: selectedBranch || undefined
         })
       });
 
@@ -349,7 +545,8 @@ export default function ApprovalReviewPage() {
         body: JSON.stringify({
           prID: row.prID,
           status,
-          approved_by: user?.name || user?.username || 'approver'
+          approved_by: user?.name || user?.username || 'approver',
+          branch: selectedBranch || undefined
         })
       });
 
@@ -446,16 +643,60 @@ export default function ApprovalReviewPage() {
           </div>
 
           <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => {
-                loadRows();
-              }}
-              className="inline-flex w-full sm:w-auto justify-center items-center gap-2 min-h-[44px] px-4 rounded-xl border border-indigo-700 bg-indigo-700 text-white hover:bg-indigo-800 text-sm font-medium"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {t.refresh}
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  loadRows();
+                }}
+                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 min-h-[44px] px-4 rounded-xl border border-indigo-700 bg-indigo-700 text-white hover:bg-indigo-800 text-sm font-medium"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {t.refresh}
+              </button>
+              <button
+                type="button"
+                disabled={!selectedBranch || loadingApprovedPdo}
+                onClick={() => {
+                  if (showApprovedPdo) {
+                    setShowApprovedPdo(false);
+                    return;
+                  }
+                  loadApprovedPdoRows();
+                }}
+                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 min-h-[44px] px-4 rounded-xl border border-sky-700 bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-60 text-sm font-medium"
+              >
+                {loadingApprovedPdo ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t.processing}
+                  </>
+                ) : showApprovedPdo ? t.approvedPdoHideButton : t.approvedPdoButton}
+              </button>
+            </div>
+            <div className="mt-2">
+              <p className="text-xs font-semibold text-sky-700 mb-2">{t.approvedPdoByBranchTitle}</p>
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                {branchOptions.map((branch) => (
+                  <button
+                    key={`approved-pdo-${branch}`}
+                    type="button"
+                    disabled={loadingApprovedPdo}
+                    onClick={() => {
+                      setSelectedBranch(branch);
+                      loadApprovedPdoRows(branch);
+                    }}
+                    className={`inline-flex whitespace-nowrap min-h-[40px] items-center rounded-xl px-3 text-xs font-medium border transition-colors disabled:opacity-60 ${
+                      selectedBranch === branch
+                        ? 'bg-sky-700 border-sky-700 text-white'
+                        : 'border-sky-300 text-sky-800 bg-sky-100 hover:bg-sky-200'
+                    }`}
+                  >
+                    {t.branches[branch]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {message && <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{message}</div>}
@@ -473,6 +714,65 @@ export default function ApprovalReviewPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {showApprovedPdo && (
+              <div className="bg-gradient-to-br from-sky-50 to-white rounded-2xl border border-sky-200 shadow-sm p-4 sm:p-5">
+                <h2 className="text-base sm:text-lg font-semibold text-sky-900 mb-3">{t.approvedPdoSectionTitle} - {selectedBranchLabel}</h2>
+
+                {approvedPdoError ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{approvedPdoError}</div>
+                ) : approvedPdoRows.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-sky-300 bg-sky-50 p-4 text-sm text-sky-700">{t.approvedPdoNoData}</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-sky-200">
+                          <th className="text-left py-2 pr-3 text-sky-700">{t.pdoNo}</th>
+                          <th className="text-left py-2 pr-3 text-sky-700">{t.product}</th>
+                          <th className="text-left py-2 pr-3 text-sky-700">{t.customer}</th>
+                          <th className="text-left py-2 pr-3 text-sky-700">{t.dueDate}</th>
+                          <th className="text-left py-2 pr-3 text-sky-700">Priority</th>
+                          <th className="text-left py-2 pr-3 text-sky-700">Status</th>
+                          <th className="text-left py-2 text-sky-700">{t.view}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {approvedPdoRows.map((row) => (
+                          <tr key={`${row.id}-${row.pdoNo}`} className="border-b border-sky-100">
+                            <td className="py-2 pr-3 font-medium text-gray-900">{row.pdoNo}</td>
+                            <td className="py-2 pr-3 text-gray-700">{row.product}</td>
+                            <td className="py-2 pr-3 text-gray-700">{row.customerName || '-'}</td>
+                            <td className="py-2 pr-3 text-gray-700">{formatDate(row.dueDate, pageLocale)}</td>
+                            <td className="py-2 pr-3 text-gray-700">{row.priority}</td>
+                            <td className="py-2 pr-3">
+                              <span className="inline-flex rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-semibold">
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="py-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const branchKeyForRow = selectedBranch || 'thailand'
+                                  window.open(
+                                    `/KR-Thailand/Admin-Login/production-orders/print?pdoID=${encodeURIComponent(row.id)}&pdoNo=${encodeURIComponent(row.pdoNo)}&branchKey=${encodeURIComponent(branchKeyForRow)}`,
+                                    '_blank'
+                                  )
+                                }}
+                                className="inline-flex items-center justify-center min-h-[36px] rounded-lg bg-slate-700 text-white px-3 text-xs font-medium hover:bg-slate-800"
+                              >
+                                {t.view}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-200 shadow-sm p-4 sm:p-5">
               <h2 className="text-base sm:text-lg font-semibold text-blue-900 mb-3">{t.purchaseSectionTitle} - {selectedBranchLabel}</h2>
 
@@ -485,21 +785,29 @@ export default function ApprovalReviewPage() {
 
                     return (
                       <div key={row.prID} className="rounded-xl border border-blue-100 p-3 sm:p-4 bg-white">
-                        <p className="font-semibold text-gray-900 break-words">{row.prNo}</p>
-                        {openedPurchaseId === row.prID && (
-                          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                            <p><span className="text-gray-500">{t.requestDate}: </span><span className="text-gray-900">{formatDate(row.prDate, pageLocale)}</span></p>
-                            <p><span className="text-gray-500">{t.department}: </span><span className="text-gray-900">{row.department || '-'}</span></p>
-                            <p><span className="text-gray-500">{t.purchaseRequester}: </span><span className="text-gray-900">{row.requested_by || row.requester_name || '-'}</span></p>
-                            <p><span className="text-gray-500">{t.amount}: </span><span className="text-gray-900">{Number(row.total_amount || 0).toLocaleString(pageLocale === 'ko' ? 'ko-KR' : 'en-US')}</span></p>
-                            <p className="sm:col-span-2"><span className="text-gray-500">{t.purchasePurpose}: </span><span className="text-gray-900">{row.purpose || '-'}</span></p>
-                          </div>
-                        )}
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-gray-900 break-words">{row.prNo}</p>
+                          <span className="inline-flex rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-semibold">
+                            {row.status || 'pending'}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <p><span className="text-gray-500">{t.requestDate}: </span><span className="text-gray-900">{formatDate(row.prDate, pageLocale)}</span></p>
+                          <p><span className="text-gray-500">{t.department}: </span><span className="text-gray-900">{row.department || '-'}</span></p>
+                          <p><span className="text-gray-500">{t.purchaseRequester}: </span><span className="text-gray-900">{row.requested_by || row.requester_name || '-'}</span></p>
+                          <p><span className="text-gray-500">{t.amount}: </span><span className="text-gray-900">{Number(row.total_amount || 0).toLocaleString(pageLocale === 'ko' ? 'ko-KR' : 'en-US')}</span></p>
+                          <p className="sm:col-span-2"><span className="text-gray-500">{t.purchasePurpose}: </span><span className="text-gray-900">{row.purpose || '-'}</span></p>
+                          {openedPurchaseId === row.prID && (
+                            <p className="sm:col-span-2"><span className="text-gray-500">{t.purchaseNotes}: </span><span className="text-gray-900">{row.notes || '-'}</span></p>
+                          )}
+                        </div>
 
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <button
                             type="button"
                             onClick={() => {
+                              markPurchaseClicked(row, 'view');
                               setOpenedPurchaseId((prev) => (prev === row.prID ? null : row.prID));
                             }}
                             className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-700"
@@ -509,7 +817,10 @@ export default function ApprovalReviewPage() {
                           <button
                             type="button"
                             disabled={purchaseBusy}
-                            onClick={() => handlePurchaseUpdateStatus(row, 'approved')}
+                            onClick={() => {
+                              markPurchaseClicked(row, 'approved');
+                              handlePurchaseUpdateStatus(row, 'approved');
+                            }}
                             className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-60"
                           >
                             {purchaseBusy ? t.processing : t.approve}
@@ -517,7 +828,10 @@ export default function ApprovalReviewPage() {
                           <button
                             type="button"
                             disabled={purchaseBusy}
-                            onClick={() => handlePurchaseUpdateStatus(row, 'rejected')}
+                            onClick={() => {
+                              markPurchaseClicked(row, 'rejected');
+                              handlePurchaseUpdateStatus(row, 'rejected');
+                            }}
                             className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-rose-600 text-white font-medium hover:bg-rose-700 disabled:opacity-60"
                           >
                             {purchaseBusy ? t.processing : t.reject}
@@ -528,6 +842,32 @@ export default function ApprovalReviewPage() {
                   })}
                 </div>
               )}
+
+              <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-semibold text-indigo-900 mb-2">{t.clickedPurchaseSectionTitle}</h3>
+                {clickedPurchaseBills.length === 0 ? (
+                  <div className="text-sm text-indigo-700">{t.noClickedPurchase}</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clickedPurchaseBills.map((item) => (
+                      <div key={`clicked-pr-${item.prID}`} className="rounded-lg border border-indigo-100 bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-semibold text-gray-900">{item.prNo}</p>
+                          <span className="inline-flex rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs font-semibold">
+                            {t.lastAction}: {item.action === 'view' ? t.view : item.action === 'approved' ? t.approve : t.reject}
+                          </span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <p><span className="text-gray-500">{t.department}: </span><span className="text-gray-900">{item.department}</span></p>
+                          <p><span className="text-gray-500">{t.purchaseRequester}: </span><span className="text-gray-900">{item.requester}</span></p>
+                          <p><span className="text-gray-500">{t.amount}: </span><span className="text-gray-900">{item.totalAmount.toLocaleString(pageLocale === 'ko' ? 'ko-KR' : 'en-US')}</span></p>
+                          <p><span className="text-gray-500">{t.clickedAt}: </span><span className="text-gray-900">{formatDate(item.clickedAt, pageLocale)}</span></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl border border-emerald-200 shadow-sm p-4 sm:p-5">
@@ -571,7 +911,10 @@ export default function ApprovalReviewPage() {
                           <button
                             type="button"
                             disabled={disabled}
-                            onClick={() => handleUpdateStatus(row, 'approved')}
+                            onClick={() => {
+                              markLeaveClicked(row, 'approved');
+                              handleUpdateStatus(row, 'approved');
+                            }}
                             className="inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-60"
                           >
                             {disabled ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
@@ -580,7 +923,10 @@ export default function ApprovalReviewPage() {
                           <button
                             type="button"
                             disabled={disabled}
-                            onClick={() => handleUpdateStatus(row, 'rejected')}
+                            onClick={() => {
+                              markLeaveClicked(row, 'rejected');
+                              handleUpdateStatus(row, 'rejected');
+                            }}
                             className="inline-flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-rose-600 text-white font-medium hover:bg-rose-700 disabled:opacity-60"
                           >
                             {disabled ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
@@ -592,6 +938,31 @@ export default function ApprovalReviewPage() {
                   })}
                 </div>
               )}
+
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-semibold text-emerald-900 mb-2">{t.clickedLeaveSectionTitle}</h3>
+                {clickedLeaveBills.length === 0 ? (
+                  <div className="text-sm text-emerald-700">{t.noClickedLeave}</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clickedLeaveBills.map((item) => (
+                      <div key={`clicked-vlr-${item.vlrID}`} className="rounded-lg border border-emerald-100 bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-semibold text-gray-900">{item.vlrNo}</p>
+                          <span className="inline-flex rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-semibold">
+                            {t.lastAction}: {item.action === 'approved' ? t.approve : t.reject}
+                          </span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <p><span className="text-gray-500">{t.employee}: </span><span className="text-gray-900">{item.employeeName}</span></p>
+                          <p><span className="text-gray-500">{t.department}: </span><span className="text-gray-900">{item.department}</span></p>
+                          <p><span className="text-gray-500">{t.clickedAt}: </span><span className="text-gray-900">{formatDate(item.clickedAt, pageLocale)}</span></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-violet-200 shadow-sm p-4 sm:p-5">
@@ -603,11 +974,25 @@ export default function ApprovalReviewPage() {
                 <div className="space-y-3">
                   {filteredSuggestionRows.map((row) => (
                     <div key={row.id} className="rounded-xl border border-violet-100 p-3 sm:p-4 bg-white">
-                      <p className="font-semibold text-gray-900 break-words">{row.subject || '-'}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-gray-900 break-words">{row.subject || '-'}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            markSuggestionClicked(row);
+                            setOpenedSuggestionId((prev) => (prev === row.id ? null : row.id));
+                          }}
+                          className="inline-flex items-center justify-center min-h-[36px] rounded-lg bg-violet-600 text-white px-3 text-xs font-medium hover:bg-violet-700"
+                        >
+                          {openedSuggestionId === row.id ? t.hide : t.view}
+                        </button>
+                      </div>
                       <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                         <p><span className="text-gray-500">{t.suggestionSubject}: </span><span className="text-gray-900">{row.subject || '-'}</span></p>
                         <p><span className="text-gray-500">{t.requester}: </span><span className="text-gray-900">{row.user_name || '-'}</span></p>
-                        <p className="sm:col-span-2 break-words"><span className="text-gray-500">{t.suggestionMessage}: </span><span className="text-gray-900">{row.message || '-'}</span></p>
+                        {openedSuggestionId === row.id && (
+                          <p className="sm:col-span-2 break-words"><span className="text-gray-500">{t.suggestionMessage}: </span><span className="text-gray-900">{row.message || '-'}</span></p>
+                        )}
                         <p><span className="text-gray-500">{t.createdAt}: </span><span className="text-gray-900">{formatDate(row.created_at, pageLocale)}</span></p>
                         <p><span className="text-gray-500">Status: </span><span className="text-gray-900">{row.status || '-'}</span></p>
                       </div>
@@ -615,6 +1000,30 @@ export default function ApprovalReviewPage() {
                   ))}
                 </div>
               )}
+
+              <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-semibold text-violet-900 mb-2">{t.clickedSuggestionSectionTitle}</h3>
+                {clickedSuggestionItems.length === 0 ? (
+                  <div className="text-sm text-violet-700">{t.noClickedSuggestion}</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clickedSuggestionItems.map((item) => (
+                      <div key={`clicked-suggestion-${item.id}`} className="rounded-lg border border-violet-100 bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-semibold text-gray-900">{item.subject}</p>
+                          <span className="inline-flex rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-xs font-semibold">
+                            {t.lastAction}: {t.view}
+                          </span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <p><span className="text-gray-500">{t.requester}: </span><span className="text-gray-900">{item.userName}</span></p>
+                          <p><span className="text-gray-500">{t.clickedAt}: </span><span className="text-gray-900">{formatDate(item.clickedAt, pageLocale)}</span></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

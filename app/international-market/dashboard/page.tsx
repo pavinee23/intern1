@@ -24,6 +24,8 @@ import {
   Workflow,
   Shield,
   Users,
+  BellRing,
+  Factory,
 } from 'lucide-react';
 
 export default function InternationalMarketDashboardPage() {
@@ -31,8 +33,23 @@ export default function InternationalMarketDashboardPage() {
   const { locale } = useLocale();
   const t = translations[locale];
   const [selectedBranch, setSelectedBranch] = useState('all');
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<{ name?: string; username?: string } | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [pendingProductionOrdersByBranch, setPendingProductionOrdersByBranch] = useState<Record<string, number>>({});
+  const [alertsLoaded, setAlertsLoaded] = useState(false);
+  const [selectedAlertBranch, setSelectedAlertBranch] = useState<string | null>(null);
+  const [pendingPdoRows, setPendingPdoRows] = useState<Array<{
+    id: string | number;
+    orderNumber: string;
+    product: string;
+    customerName: string;
+    dueDate: string | null;
+    priority: string;
+    status: string;
+  }>>([]);
+  const [pendingPdoLoading, setPendingPdoLoading] = useState(false);
+  const [pendingPdoError, setPendingPdoError] = useState<string | null>(null);
+  const [approvingPdoId, setApprovingPdoId] = useState<string | number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -46,23 +63,57 @@ export default function InternationalMarketDashboardPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const loadProductionOrderAlerts = async () => {
+      try {
+        const response = await fetch('/api/korea/production-orders/alerts');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data?.success || !data?.branches) return;
+
+        setPendingProductionOrdersByBranch((prev) => ({
+          ...prev,
+          ...data.branches,
+        }));
+      } catch (error) {
+        console.error('Failed to load production order alerts:', error);
+      } finally {
+        setAlertsLoaded(true);
+      }
+    };
+
+    loadProductionOrderAlerts();
+  }, []);
+
   const branches = [
     { id: 'all', name: locale === 'ko' ? '전체 지점' : 'All Branches', country: 'All', countryCode: null as null },
     { id: 'vietnam', name: locale === 'ko' ? '베트남 지점' : 'Vietnam Branch', country: 'Vietnam', countryCode: 'VN' as const },
     { id: 'thailand', name: locale === 'ko' ? '태국 지점' : 'Thailand Branch', country: 'Thailand', countryCode: 'TH' as const },
     { id: 'brunei', name: locale === 'ko' ? '브루나이 지점' : 'Brunei Branch', country: 'Brunei', countryCode: 'BN' as const },
+    { id: 'malaysia', name: locale === 'ko' ? '말레이시아 지점' : 'Malaysia Branch', country: 'Malaysia', countryCode: 'MY' as const },
   ];
 
-  const branchData: Record<string, any> = {
+  const branchData: Record<string, {
+    salesApprovals: number;
+    electricityCost: number;
+    siteInspection: number;
+    salesContracts: number;
+    equipmentTest: number;
+    quotations: number;
+    totalSales: number;
+    pendingApprovals: number;
+    pendingProductionOrders: number;
+  }> = {
     all: {
-      salesApprovals: 35,
-      electricityCost: 22,
-      siteInspection: 25,
-      salesContracts: 27,
-      equipmentTest: 20,
-      quotations: 38,
-      totalSales: 66700000,
-      pendingApprovals: 9,
+      salesApprovals: 44,
+      electricityCost: 28,
+      siteInspection: 32,
+      salesContracts: 35,
+      equipmentTest: 26,
+      quotations: 49,
+      totalSales: 85600000,
+      pendingApprovals: 12,
+      pendingProductionOrders: 14,
     },
     vietnam: {
       salesApprovals: 12,
@@ -73,6 +124,7 @@ export default function InternationalMarketDashboardPage() {
       quotations: 14,
       totalSales: 23400000,
       pendingApprovals: 3,
+      pendingProductionOrders: 3,
     },
     thailand: {
       salesApprovals: 15,
@@ -83,6 +135,7 @@ export default function InternationalMarketDashboardPage() {
       quotations: 16,
       totalSales: 28600000,
       pendingApprovals: 4,
+      pendingProductionOrders: 5,
     },
     brunei: {
       salesApprovals: 8,
@@ -93,17 +146,49 @@ export default function InternationalMarketDashboardPage() {
       quotations: 8,
       totalSales: 14700000,
       pendingApprovals: 2,
+      pendingProductionOrders: 2,
+    },
+    malaysia: {
+      salesApprovals: 9,
+      electricityCost: 6,
+      siteInspection: 7,
+      salesContracts: 8,
+      equipmentTest: 6,
+      quotations: 11,
+      totalSales: 18900000,
+      pendingApprovals: 3,
+      pendingProductionOrders: 4,
     },
   };
 
   const currentData = branchData[selectedBranch];
 
   const stats = {
-    totalBranches: selectedBranch === 'all' ? 3 : 1,
+    totalBranches: selectedBranch === 'all' ? 4 : 1,
     totalSales: currentData.totalSales,
     pendingApprovals: currentData.pendingApprovals,
     activeContracts: currentData.salesContracts,
   };
+
+  const getPendingProductionOrders = (branchId: string) => {
+    return pendingProductionOrdersByBranch[branchId] ?? 0;
+  };
+
+  const productionApprovalAlerts =
+    selectedBranch === 'all'
+      ? branches
+          .filter((branch) => branch.id !== 'all')
+          .map((branch) => ({
+            ...branch,
+            pendingProductionOrders: getPendingProductionOrders(branch.id),
+          }))
+          .filter((branch) => branch.pendingProductionOrders > 0)
+      : [
+          {
+            ...branches.find((branch) => branch.id === selectedBranch)!,
+            pendingProductionOrders: getPendingProductionOrders(selectedBranch),
+          },
+        ].filter((branch) => branch.pendingProductionOrders > 0);
 
   const menuCards = [
     {
@@ -201,6 +286,102 @@ export default function InternationalMarketDashboardPage() {
     return new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(value);
   };
 
+  const formatDateOnly = (value: string | null) => {
+    if (!value) return '-';
+    const asText = String(value);
+    if (asText.includes('T')) return asText.split('T')[0];
+    return asText.length >= 10 ? asText.slice(0, 10) : asText;
+  };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+        <div className="max-w-7xl mx-auto px-4 py-10">
+          <div className="bg-white rounded-lg shadow-md p-6 text-sm text-gray-600">
+            Loading dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const loadBranchPendingPdo = async (branchId: string, branchCountry: string) => {
+    try {
+      setSelectedAlertBranch(branchId);
+      setPendingPdoLoading(true);
+      setPendingPdoError(null);
+
+      const response = await fetch(
+        `/api/korea/production-orders?branchKey=${encodeURIComponent(branchId)}&branch=${encodeURIComponent(branchCountry)}&status=pending`
+      );
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json) {
+        setPendingPdoRows([]);
+        setPendingPdoError(locale === 'ko' ? 'PDO 목록을 불러오지 못했습니다.' : 'Failed to load pending PDO list.');
+        return;
+      }
+
+      const sourceRows: Array<Record<string, unknown>> = Array.isArray(json)
+        ? json
+        : Array.isArray(json.rows)
+          ? json.rows
+          : [];
+
+      const mappedRows = sourceRows.map((row) => ({
+        id: String(row.poID ?? row.id ?? row.orderID ?? row.pdoID ?? ''),
+        orderNumber: String(row.orderNumber ?? row.pdoNo ?? row.poNo ?? '-'),
+        product: String(row.product ?? row.product_name ?? '-'),
+        customerName: String(row.customerName ?? row.customer_name ?? '-'),
+        dueDate: row.dueDate ? String(row.dueDate) : null,
+        priority: String(row.priority ?? '-'),
+        status: String(row.status ?? 'pending'),
+      }));
+
+      setPendingPdoRows(mappedRows);
+    } catch (error) {
+      console.error('Failed to load branch pending PDO:', error);
+      setPendingPdoRows([]);
+      setPendingPdoError(locale === 'ko' ? 'PDO 목록을 불러오지 못했습니다.' : 'Failed to load pending PDO list.');
+    } finally {
+      setPendingPdoLoading(false);
+    }
+  };
+
+  const approvePendingPdo = async (rowId: string | number) => {
+    if (!selectedAlertBranch) return;
+    try {
+      setApprovingPdoId(rowId);
+      const response = await fetch('/api/korea/production-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: rowId,
+          status: 'approved',
+          branchKey: selectedAlertBranch,
+          approvedBy: '양해욱 (Harry Yang)',
+        }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || (json && json.success === false)) {
+        const errorMessage = json?.error || json?.message || (locale === 'ko' ? 'PDO 승인에 실패했습니다.' : 'Failed to approve PDO.');
+        alert(String(errorMessage));
+        return;
+      }
+
+      setPendingPdoRows((prev) => prev.filter((row) => String(row.id) !== String(rowId)));
+      setPendingProductionOrdersByBranch((prev) => ({
+        ...prev,
+        [selectedAlertBranch]: Math.max((prev[selectedAlertBranch] ?? 0) - 1, 0),
+      }));
+    } catch (error) {
+      console.error('Failed to approve PDO:', error);
+      alert(locale === 'ko' ? 'PDO 승인 중 오류가 발생했습니다.' : 'Error while approving PDO.');
+    } finally {
+      setApprovingPdoId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
       {/* Header */}
@@ -256,7 +437,7 @@ export default function InternationalMarketDashboardPage() {
               {locale === 'ko' ? '지점 선택' : 'Select Branch'}
             </h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {branches.map((branch) => (
               <button
                 key={branch.id}
@@ -292,6 +473,171 @@ export default function InternationalMarketDashboardPage() {
             }
           </h2>
         </div>
+
+        {/* Production Order Approval Alerts */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-amber-500">
+          <div className="flex flex-wrap items-start gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <BellRing className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {locale === 'ko'
+                    ? '지점별 생산 주문 승인 알림'
+                    : 'Production Order Approval Alerts by Branch'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {locale === 'ko'
+                    ? '지점에서 올라온 생산 주문 승인 요청을 확인하세요'
+                    : 'Review production order requests from each branch for approval'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {!alertsLoaded ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              {locale === 'ko' ? '생산 주문 승인 데이터를 불러오는 중...' : 'Loading production approval alerts...'}
+            </div>
+          ) : productionApprovalAlerts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {productionApprovalAlerts.map((branch) => (
+                <div
+                  key={branch.id}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    {branch.countryCode ? (
+                      <CountryFlag country={branch.countryCode} size="sm" />
+                    ) : (
+                      <Factory className="w-4 h-4 text-amber-700" />
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{branch.country}</p>
+                      <p className="text-xs text-gray-600">
+                        {locale === 'ko' ? '승인 대기 생산 주문' : 'Pending production approvals'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-amber-600 text-white text-xs font-bold">
+                      {branch.pendingProductionOrders}
+                    </span>
+                    <button
+                      onClick={() => loadBranchPendingPdo(branch.id, branch.country)}
+                      className="px-2.5 py-1 rounded-full bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold transition-colors"
+                    >
+                      {locale === 'ko' ? '대기 PDO 보기' : 'View Pending PDO'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {locale === 'ko'
+                ? '현재 승인 대기 중인 생산 주문이 없습니다.'
+                : 'No production order approvals are pending right now.'}
+            </div>
+          )}
+
+          {selectedAlertBranch && (
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-slate-800">
+                  {(() => {
+                    const branch = branches.find((item) => item.id === selectedAlertBranch);
+                    const branchName = branch?.country || selectedAlertBranch;
+                    return locale === 'ko'
+                      ? `${branchName} 대기 PDO 목록`
+                      : `${branchName} Pending PDO List`;
+                  })()}
+                </h4>
+                <button
+                  onClick={() => {
+                    setSelectedAlertBranch(null);
+                    setPendingPdoRows([]);
+                    setPendingPdoError(null);
+                  }}
+                  className="text-xs text-slate-600 hover:text-slate-800"
+                >
+                  {locale === 'ko' ? '닫기' : 'Close'}
+                </button>
+              </div>
+
+              {pendingPdoLoading ? (
+                <div className="text-sm text-slate-600">
+                  {locale === 'ko' ? 'PDO를 불러오는 중...' : 'Loading pending PDO...'}
+                </div>
+              ) : pendingPdoError ? (
+                <div className="text-sm text-red-600">{pendingPdoError}</div>
+              ) : pendingPdoRows.length === 0 ? (
+                <div className="text-sm text-slate-600">
+                  {locale === 'ko' ? '해당 지점의 대기 PDO가 없습니다.' : 'No pending PDO for this branch.'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-2 pr-3 text-slate-600">PDO</th>
+                        <th className="text-left py-2 pr-3 text-slate-600">{locale === 'ko' ? '제품' : 'Product'}</th>
+                        <th className="text-left py-2 pr-3 text-slate-600">{locale === 'ko' ? '고객' : 'Customer'}</th>
+                        <th className="text-left py-2 pr-3 text-slate-600">{locale === 'ko' ? '납기일' : 'Due Date'}</th>
+                        <th className="text-left py-2 pr-3 text-slate-600">{locale === 'ko' ? '우선순위' : 'Priority'}</th>
+                        <th className="text-left py-2 text-slate-600">{locale === 'ko' ? '상태' : 'Status'}</th>
+                        <th className="text-left py-2 text-slate-600">{locale === 'ko' ? '상세보기' : 'View'}</th>
+                        <th className="text-left py-2 text-slate-600">{locale === 'ko' ? '승인' : 'Approve'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingPdoRows.map((row) => (
+                        <tr key={`${row.id}-${row.orderNumber}`} className="border-b border-slate-100">
+                          <td className="py-2 pr-3 font-medium text-slate-800">{row.orderNumber}</td>
+                          <td className="py-2 pr-3 text-slate-700">{row.product}</td>
+                          <td className="py-2 pr-3 text-slate-700">{row.customerName}</td>
+                          <td className="py-2 pr-3 text-slate-700">{formatDateOnly(row.dueDate)}</td>
+                          <td className="py-2 pr-3 text-slate-700">{row.priority}</td>
+                          <td className="py-2">
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                              {row.status}
+                            </span>
+                          </td>
+                          <td className="py-2">
+                            <button
+                              onClick={() =>
+                                window.open(
+                                  `/KR-Thailand/Admin-Login/production-orders/print?pdoID=${encodeURIComponent(String(row.id))}&pdoNo=${encodeURIComponent(row.orderNumber)}`,
+                                  '_blank'
+                                )
+                              }
+                              className="px-2.5 py-1 rounded-md bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold transition-colors"
+                            >
+                              {locale === 'ko' ? '보기' : 'View'}
+                            </button>
+                          </td>
+                          <td className="py-2">
+                            <button
+                              onClick={() => approvePendingPdo(row.id)}
+                              disabled={approvingPdoId === row.id}
+                              className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                            >
+                              {approvingPdoId === row.id
+                                ? (locale === 'ko' ? '처리중...' : 'Approving...')
+                                : (locale === 'ko' ? '승인' : 'Approve')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between">
@@ -424,7 +770,7 @@ export default function InternationalMarketDashboardPage() {
                     {(() => {
                       const totalSales = branches.filter(b => b.id !== 'all').reduce((sum, b) => sum + branchData[b.id].totalSales, 0);
                       let currentAngle = 0;
-                      const colors = ['#3b82f6', '#10b981', '#8b5cf6'];
+                      const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'];
                       
                       return branches.filter(b => b.id !== 'all').map((branch, index) => {
                         const value = branchData[branch.id].totalSales;
@@ -461,7 +807,7 @@ export default function InternationalMarketDashboardPage() {
                   const value = branchData[branch.id].totalSales;
                   const totalSales = branches.filter(b => b.id !== 'all').reduce((sum, b) => sum + branchData[b.id].totalSales, 0);
                   const percentage = ((value / totalSales) * 100).toFixed(1);
-                  const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500'];
+                  const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-amber-500'];
                   
                   return (
                     <div key={branch.id} className="flex items-center justify-between">

@@ -100,6 +100,15 @@ function getCurrentTimestamp() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
+function formatDateOnly(value?: string) {
+  if (!value) return '-';
+  const asText = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(asText)) return asText;
+  const d = new Date(asText);
+  if (Number.isNaN(d.getTime())) return asText;
+  return d.toISOString().slice(0, 10);
+}
+
 export default function ShipmentUpdatesPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -712,10 +721,10 @@ export default function ShipmentUpdatesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{shipment.currentLocation}</div>
-                        <div className="text-xs text-gray-500">{shipment.lastUpdate}</div>
+                        <div className="text-xs text-gray-500">{formatDateOnly(shipment.lastUpdate)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{shipment.estimatedDelivery}</div>
+                        <div className="text-sm text-gray-900">{formatDateOnly(shipment.estimatedDelivery)}</div>
                         <div className="text-xs text-gray-500">{shipment.carrier}</div>
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -774,7 +783,7 @@ export default function ShipmentUpdatesPage() {
                   </div>
                   <div className="bg-white rounded-lg p-3">
                     <p className="text-xs text-gray-600">{locale === 'ko' ? '배송 예정일' : 'Est. Delivery'}</p>
-                    <p className="font-semibold text-gray-900">{selectedShipment.estimatedDelivery}</p>
+                    <p className="font-semibold text-gray-900">{formatDateOnly(selectedShipment.estimatedDelivery)}</p>
                   </div>
                 </div>
               </div>
@@ -795,7 +804,7 @@ export default function ShipmentUpdatesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{locale === 'ko' ? '마지막 업데이트' : 'Last Update'}</p>
-                  <p className="font-semibold text-gray-800">{selectedShipment.lastUpdate}</p>
+                  <p className="font-semibold text-gray-800">{formatDateOnly(selectedShipment.lastUpdate)}</p>
                 </div>
               </div>
 
@@ -860,7 +869,6 @@ export default function ShipmentUpdatesPage() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">{locale === 'ko' ? '품목코드' : 'Code'}</th>
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">{t.quantity}</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">{locale === 'ko' ? '단위' : 'Unit'}</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">{locale === 'ko' ? '무게' : 'Weight'}</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">{locale === 'ko' ? '크기' : 'Dimensions'}</th>
                       </tr>
                     </thead>
@@ -873,7 +881,6 @@ export default function ShipmentUpdatesPage() {
                             <input type="number" value={item.quantity} onChange={e => handleItemQuantityChange(index, parseInt(e.target.value) || 0)} min={0} className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{item.unit}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{item.weight}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{item.dimensions || '-'}</td>
                         </tr>
                       ))}
@@ -886,8 +893,8 @@ export default function ShipmentUpdatesPage() {
                     <p className="text-2xl font-bold text-blue-600">{editItems.length}</p>
                   </div>
                   <div className="bg-purple-50 rounded-lg p-4">
-                    <p className="text-xs text-gray-600 mb-1">{locale === 'ko' ? '총 무게' : 'Total Weight'}</p>
-                    <p className="text-2xl font-bold text-purple-600">{selectedShipment.totalWeight}</p>
+                    <p className="text-xs text-gray-600 mb-1">{locale === 'ko' ? '총 박스 수' : 'Total Boxes'}</p>
+                    <p className="text-2xl font-bold text-purple-600">{Number(selectedShipment.totalBoxes || 0) > 0 ? selectedShipment.totalBoxes : '-'}</p>
                   </div>
                 </div>
               </div>
@@ -1040,10 +1047,6 @@ export default function ShipmentUpdatesPage() {
                     <input type="text" value={newShipment.contactPhone} onChange={e => setNewShipment(p => ({ ...p, contactPhone: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600 mb-1 block">{locale === 'ko' ? '총 무게' : 'Total Weight'}</label>
-                    <input type="text" value={newShipment.totalWeight} onChange={e => setNewShipment(p => ({ ...p, totalWeight: e.target.value }))} placeholder="250 kg" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                  <div>
                     <label className="text-sm text-gray-600 mb-1 block">{locale === 'ko' ? '박스 수' : 'Total Boxes'}</label>
                     <input type="number" value={newShipment.totalBoxes} onChange={e => setNewShipment(p => ({ ...p, totalBoxes: parseInt(e.target.value) || 0 }))} min={0} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
@@ -1126,7 +1129,6 @@ export default function ShipmentUpdatesPage() {
                         <input type="text" value={item.productCode} onChange={e => handleNewItemChange(i, 'productCode', e.target.value)} placeholder={locale === 'ko' ? '품목코드' : 'Code'} className="px-2 py-1.5 border border-gray-300 rounded text-sm font-mono focus:ring-2 focus:ring-green-500" />
                         <input type="number" value={item.quantity} onChange={e => handleNewItemChange(i, 'quantity', parseInt(e.target.value) || 0)} placeholder={locale === 'ko' ? '수량' : 'Qty'} min={0} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
                         <input type="text" value={item.unit} onChange={e => handleNewItemChange(i, 'unit', e.target.value)} placeholder={locale === 'ko' ? '단위' : 'Unit'} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
-                        <input type="text" value={item.weight} onChange={e => handleNewItemChange(i, 'weight', e.target.value)} placeholder={locale === 'ko' ? '무게' : 'Weight'} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
                         <input type="text" value={item.dimensions || ''} onChange={e => handleNewItemChange(i, 'dimensions', e.target.value)} placeholder={locale === 'ko' ? '크기' : 'Dimensions'} className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500" />
                       </div>
                     </div>
