@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, Suspense } from 'react'
+import PrintStyles from '../../components/PrintStyles'
 import { useSearchParams } from 'next/navigation'
 
 function SalesOrderPrintContent() {
@@ -128,78 +129,69 @@ function SalesOrderPrintContent() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
-        @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
+        @page { size: A4 portrait; margin: 1.5cm; }
         @media print {
           .no-print { display: none !important; }
-          body { margin: 0; padding: 0; overflow: hidden !important; }
+          body { margin: 0; padding: 0; overflow: hidden !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           html, body { -ms-overflow-style: none !important; scrollbar-width: none !important; }
           ::-webkit-scrollbar { display: none !important; }
-          .a4-page { box-shadow: none !important; }
+          .a4-page { box-shadow: none !important; margin: 0 !important; padding: 12mm 15mm 25mm 15mm !important; }
         }
-        @media screen { body { background: #e5e5e5; overflow-y: auto; } }
+        @media screen { body { background: #f5f5f5; overflow-y: auto; } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { display: none; }
         html { -ms-overflow-style: none; scrollbar-width: none; }
-        body { font-family: 'Sarabun', 'Segoe UI', sans-serif; }
-        .a4-page {
-          width: 100%; max-width: 190mm; min-height: 297mm;
-          margin: 10mm auto; padding: 10mm 12mm;
-          background: white; font-family: 'Sarabun', 'Segoe UI', sans-serif;
-          font-size: 11pt; line-height: 1.4; color: #333;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative;
-        }
-        .header-row {
-          display: flex; justify-content: space-between; align-items: flex-start;
-          margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #0284c7;
-        }
-        .company-name { font-size: 18pt; font-weight: 700; color: #0284c7; margin-bottom: 4px; }
-        .company-name-en { font-size: 11pt; font-weight: 600; color: #333; margin-bottom: 6px; }
-        .company-address { font-size: 9pt; color: #666; line-height: 1.5; }
+        img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .a4-page { width: 100%; max-width: 210mm; min-height: 297mm; margin: 10mm auto; padding: 12mm 15mm 25mm 15mm; background: white; font-family: 'Sarabun', 'Segoe UI', 'Helvetica', sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2937; box-shadow: 0 4px 16px rgba(0,0,0,0.1); position: relative; }
+        .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 3px solid #0284c7; }
+        .company-info { flex: 1; max-width: 60%; }
+        .company-logo-section { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 8px; }
+        .company-logo { width: 75px; height: 75px; border-radius: 8px; object-fit: contain; background: #fff; padding: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .company-text { flex: 1; }
+        .company-name { font-size: 17pt; font-weight: 700; color: #0284c7; margin-bottom: 2px; line-height: 1.2; }
+        .company-name-en { font-size: 10pt; font-weight: 600; color: #4b5563; margin-bottom: 6px; }
+        .company-address { font-size: 8.5pt; color: #6b7280; line-height: 1.5; }
         .doc-title { text-align: right; }
-        .doc-title h1 { font-size: 22pt; font-weight: 700; color: #0284c7; margin: 0 0 4px 0; }
-        .doc-title h2 { font-size: 13pt; font-weight: 600; color: #666; margin: 0 0 6px 0; }
-        .doc-ref { font-size: 11pt; font-weight: 700; color: #1e293b; }
-        .info-section { display: flex; gap: 20px; margin-bottom: 16px; }
-        .info-box { flex: 1; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #f8faff; }
-        .info-box-title { font-weight: 700; font-size: 10pt; color: #0284c7; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
-        .info-row { display: flex; margin-bottom: 4px; font-size: 10pt; }
-        .info-label { width: 110px; font-weight: 600; color: #555; flex-shrink: 0; }
-        .info-value { flex: 1; color: #333; word-break: break-word; }
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt; }
-        .items-table th { background: #0284c7; color: white; padding: 8px 10px; text-align: left; font-weight: 600; }
-        .items-table th.num { width: 36px; text-align: center; }
-        .items-table th.right { text-align: right; }
-        .items-table th.sku { width: 80px; }
-        .items-table th.qty { width: 60px; text-align: center; }
-        .items-table th.price { width: 110px; text-align: right; }
-        .items-table th.amount { width: 120px; text-align: right; }
-        .items-table td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-        .items-table td.num { text-align: center; }
-        .items-table td.right { text-align: right; }
-        .items-table td.center { text-align: center; }
-        .items-table tbody tr:nth-child(even) { background: #f0f9ff; }
-        .summary-section { display: flex; justify-content: flex-end; margin-bottom: 20px; }
-        .summary-table { width: 300px; font-size: 10pt; }
-        .summary-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
-        .summary-row.grand { font-weight: 700; font-size: 12pt; color: #0284c7; border-top: 2px solid #0284c7; border-bottom: none; padding-top: 10px; margin-top: 4px; }
-        .notes-section { border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 20px; background: #f0f9ff; }
-        .notes-title { font-weight: 700; font-size: 10pt; color: #0284c7; margin-bottom: 8px; }
-        .signature-section { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; }
-        .signature-box { width: 30%; text-align: center; }
-        .signature-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 8px; }
-        .signature-label { font-size: 10pt; font-weight: 600; color: #333; }
-        .signature-sublabel { font-size: 9pt; color: #666; }
-        .footer-info {
-          display: flex; justify-content: space-between; font-size: 8pt; color: #999;
-          border-top: 1px solid #eee; padding-top: 8px; margin-top: 16px;
-        }
-        .status-badge {
-          display: inline-block; padding: 2px 10px; border-radius: 12px;
-          font-weight: 600; font-size: 9pt; border: 1px solid currentColor;
-        }
+        .doc-title h1 { font-size: 24pt; font-weight: 700; color: #0284c7; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+        .doc-title h2 { font-size: 12pt; font-weight: 600; color: #6b7280; margin: 0; }
+        .info-section { display: flex; gap: 14px; margin-bottom: 14px; }
+        .info-box { flex: 1; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; background: linear-gradient(to bottom, #fafafa, #ffffff); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .info-box-title { font-weight: 700; font-size: 9.5pt; color: #0284c7; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #0284c7; text-transform: uppercase; letter-spacing: 0.3px; }
+        .info-row { display: flex; margin-bottom: 4px; font-size: 9pt; line-height: 1.5; }
+        .info-label { min-width: 95px; font-weight: 600; color: #4b5563; }
+        .info-value { flex: 1; color: #1f2937; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 9pt; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+        .items-table thead { background: linear-gradient(to bottom, #0284c7, #0369a1); }
+        .items-table th { color: white; padding: 8px 10px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.3px; }
+        .items-table th:nth-child(1) { width: 40px; text-align: center; }
+        .items-table th:nth-child(3) { width: 80px; }
+        .items-table th:nth-child(4) { width: 60px; text-align: center; }
+        .items-table th:nth-child(5) { width: 110px; text-align: right; }
+        .items-table th:nth-child(6) { width: 120px; text-align: right; }
+        .items-table td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; }
+        .items-table td:nth-child(1) { text-align: center; font-weight: 600; color: #6b7280; }
+        .items-table td:nth-child(4) { text-align: center; }
+        .items-table td:nth-child(5), .items-table td:nth-child(6) { text-align: right; }
+        .items-table tbody tr:nth-child(even) { background: #fafafa; }
+        .summary-section { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+        .summary-table { width: 280px; font-size: 9.5pt; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 12px; background: #fafafa; }
+        .summary-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e5e7eb; }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row.total { font-weight: 700; font-size: 12pt; color: #0284c7; border-top: 2px solid #0284c7; padding-top: 8px; margin-top: 4px; }
+        .notes-section { border: 1px solid #dbeafe; border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; background: linear-gradient(to bottom, #eff6ff, #ffffff); }
+        .notes-title { font-weight: 700; font-size: 9.5pt; color: #0284c7; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .payment-section { border: 1px solid #93c5fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; background: linear-gradient(to bottom, #eff6ff, #ffffff); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .payment-title { font-weight: 700; font-size: 10pt; color: #1e40af; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .signature-section { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; margin-bottom: 65px; gap: 16px; }
+        .signature-box { flex: 1; text-align: center; padding: 8px; border: 1px solid #f3f4f6; border-radius: 6px; background: #fafafa; }
+        .signature-line { border-bottom: 2px solid #9ca3af; height: 35px; margin-bottom: 8px; }
+        .signature-label { font-size: 9pt; font-weight: 600; color: #1f2937; }
+        .signature-sublabel { font-size: 8pt; color: #6b7280; margin-top: 2px; }
+        .footer-info { display: flex; justify-content: space-between; font-size: 7.5pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 16px; }
+        @media print { .footer-info { position: fixed !important; bottom: 8mm !important; left: 12mm !important; right: 12mm !important; margin-top: 0 !important; background: white !important; } }
       `}</style>
 
+      <PrintStyles />
       <div className="no-print" style={{ textAlign: 'center', padding: '12px', background: '#f0f0f0' }}>
         <button
           onClick={() => { setSelectedLang('th'); window.history.replaceState(null, '', updateQueryStringParameter(window.location.href, 'lang', 'th')) }}
@@ -213,42 +205,27 @@ function SalesOrderPrintContent() {
           onClick={() => window.print()}
           style={{ marginLeft: 16, padding: '6px 20px', fontSize: 13, borderRadius: 20, border: '1px solid #0284c7', background: '#0284c7', color: 'white', cursor: 'pointer', fontWeight: 600 }}
         >{L('Print', 'พิมพ์')}</button>
-        <button
-          onClick={() => window.close()}
-          style={{ marginLeft: 8, padding: '6px 20px', fontSize: 13, borderRadius: 20, border: '1px solid #ccc', background: '#fff', cursor: 'pointer' }}
-        >{L('Close', 'ปิด')}</button>
       </div>
 
       <div className="a4-page">
         {/* Header */}
         <div className="header-row">
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img
-                src="/k-energy-save-logo.jpg"
-                alt="Logo"
-                style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'contain' }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-              />
-              <div>
-                <div className="company-name">K Energy Save</div>
-                <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}</div>
+          <div className="company-info">
+            <div className="company-logo-section">
+              <img src="/k-energy-save-logo.jpg" alt="Logo" className="company-logo" />
+              <div className="company-text">
+                <div className="company-name">{L('K Energy Save', 'เค อีเนอร์ยี่ เซฟ')}</div>
+                <div className="company-name-en">{L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
               </div>
             </div>
-            <div className="company-address" style={{ marginTop: 8 }}>
-              84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250<br />
-              {L('Tel', 'โทร')}: 02-080-8916 | Email: info@kenergysave.com
+            <div className="company-address">
+              84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250<br/>
+              Tel: 02-080-8916 | Email: info@kenergysave.com
             </div>
           </div>
           <div className="doc-title">
             <h1>{L('SALES ORDER', 'ใบสั่งขาย')}</h1>
-            <h2>{L('Sales Order', 'เอกสารสั่งขาย')}</h2>
-            <div className="doc-ref">{order.orderNo || orderNo || `SO-${orderID}`}</div>
-            <div style={{ marginTop: 6 }}>
-              <span className="status-badge" style={{ color: stInfo.color, borderColor: stInfo.color }}>
-                {L(stInfo.en, stInfo.th)}
-              </span>
-            </div>
+            <h2>{order.orderNo || '-'}</h2>
           </div>
         </div>
 
@@ -350,7 +327,7 @@ function SalesOrderPrintContent() {
               <span>{L(`VAT ${vatPct}%`, `ภาษีมูลค่าเพิ่ม ${vatPct}%`)}</span>
               <span>{fmtNum(vatAmt)} ฿</span>
             </div>
-            <div className="summary-row grand">
+            <div className="summary-row total">
               <span>{L('Grand Total', 'ยอดรวมสุทธิ')}</span>
               <span>{fmtNum(grandTotal)} ฿</span>
             </div>
@@ -366,15 +343,13 @@ function SalesOrderPrintContent() {
         )}
 
         {/* Bank Info */}
-        <div style={{ marginBottom: 20, padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#0284c7', marginBottom: 8 }}>
-            {L('Bank Account Information', 'ข้อมูลบัญชีธนาคาร')}
-          </div>
-          <div style={{ fontSize: 9, lineHeight: 1.6, color: '#334155' }}>
+        <div className="payment-section">
+          <div className="payment-title">{L('Bank Account Information', 'ข้อมูลบัญชีธนาคาร')}</div>
+          <div style={{ fontSize: '9pt', lineHeight: 1.6, color: '#334155' }}>
             <div><strong>{L('Bank:', 'ธนาคาร:')}</strong> {L('Kasikorn Bank (KBANK)', 'ธนาคารกสิกรไทย')}</div>
             <div><strong>{L('Current Account:', 'บัญชีกระแสรายวัน:')}</strong> 212-1-17253-7</div>
             <div><strong>{L('Savings Account:', 'บัญชีออมทรัพย์:')}</strong> 211-8-78336-3</div>
-            <div><strong>{L('Account Name:', 'ชื่อบัญชี:')}</strong> {L('K Energy Save Co., Ltd.', 'บริษัท เค เอ็นเนอร์ยี่ เซฟ จำกัด')}</div>
+            <div><strong>{L('Account Name:', 'ชื่อบัญชี:')}</strong> {L('K Energy Save Co., Ltd.', 'บริษัท เค อีเนอร์ยี่ เซฟ จำกัด')}</div>
           </div>
         </div>
 

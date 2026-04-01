@@ -7,12 +7,16 @@ type DbExecutor = Pick<PoolConnection, 'query'>
 
 type ColumnRow = RowDataPacket & {
   Field: string
+  Extra: string
+  Null: string
+  Default: string | null
 }
 
 type ProductionOrderSchema = {
   productionColumns: Set<string>
   materialColumns: Set<string>
   stepColumns: Set<string>
+  autoIncrementCols: Set<string>
   pkCol: string
   noCol: string
   dateCol: string
@@ -20,21 +24,36 @@ type ProductionOrderSchema = {
   stepFkCol: string
 }
 
-async function getTableColumns(executor: DbExecutor, tableName: string): Promise<Set<string>> {
+async function getTableColumnsMeta(executor: DbExecutor, tableName: string): Promise<ColumnRow[]> {
   const [rows] = await executor.query(`SHOW COLUMNS FROM \`${tableName}\``)
-  return new Set((rows as ColumnRow[]).map((row) => row.Field))
+  return rows as ColumnRow[]
+}
+
+async function getTableColumns(executor: DbExecutor, tableName: string): Promise<Set<string>> {
+  const meta = await getTableColumnsMeta(executor, tableName)
+  return new Set(meta.map((row) => row.Field))
 }
 
 async function getProductionOrderSchema(executor: DbExecutor): Promise<ProductionOrderSchema> {
-  const productionColumns = await getTableColumns(executor, 'production_orders')
-  const materialColumns = await getTableColumns(executor, 'production_order_materials')
-  const stepColumns = await getTableColumns(executor, 'production_order_steps')
+  const productionMeta = await getTableColumnsMeta(executor, 'production_orders')
+  const materialMeta = await getTableColumnsMeta(executor, 'production_order_materials')
+  const stepMeta = await getTableColumnsMeta(executor, 'production_order_steps')
+
+  const productionColumns = new Set(productionMeta.map(r => r.Field))
+  const materialColumns = new Set(materialMeta.map(r => r.Field))
+  const stepColumns = new Set(stepMeta.map(r => r.Field))
+  const allMeta = [...productionMeta, ...materialMeta, ...stepMeta]
+  const autoIncrementCols = new Set(allMeta.filter(r => r.Extra?.includes('auto_increment')).map(r => r.Field))
+
+  const pkCandidates = ['pdoID', 'poID', 'itemID', 'id']
+  const pkCol = pkCandidates.find(c => productionColumns.has(c)) || 'id'
 
   return {
     productionColumns,
     materialColumns,
     stepColumns,
-    pkCol: productionColumns.has('pdoID') ? 'pdoID' : productionColumns.has('poID') ? 'poID' : 'id',
+    autoIncrementCols,
+    pkCol,
     noCol: productionColumns.has('pdoNo') ? 'pdoNo' : 'poNo',
     dateCol: productionColumns.has('pdoDate') ? 'pdoDate' : 'poDate',
     materialFkCol: materialColumns.has('pdoID') ? 'pdoID' : materialColumns.has('poID') ? 'poID' : 'production_order_id',
@@ -43,15 +62,56 @@ async function getProductionOrderSchema(executor: DbExecutor): Promise<Productio
 }
 
 function addCompatAliases(row: Record<string, unknown>, schema: ProductionOrderSchema) {
+  const isMissingDocNo = (value: unknown) => value === null || value === undefined || String(value).trim() === ''
+  const isMissingDate = (value: unknown) => value === null || value === undefined || String(value).trim() === ''
+  const rawDocNo = row[schema.noCol]
+  let resolvedDocNo = rawDocNo
+
+  if (isMissingDocNo(resolvedDocNo)) {
+    const rawDate = row[schema.dateCol] || row.created_at
+    const rawId = row[schema.pkCol]
+    const date = rawDate ? new Date(String(rawDate)) : new Date()
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const sequence = String(Number(rawId) || 1).padStart(5, '0')
+    resolvedDocNo = `PDOTH${yyyy}${mm}${dd}-${sequence}`
+    row[schema.noCol] = resolvedDocNo
+  }
+
+  const rawDateValue = row[schema.dateCol]
+  let resolvedDate = rawDateValue
+  if (isMissingDate(resolvedDate)) {
+    if (row.created_at) {
+      resolvedDate = row.created_at
+    } else if (!isMissingDocNo(resolvedDocNo)) {
+      const m = String(resolvedDocNo).match(/^PDOTH(\d{4})(\d{2})(\d{2})-\d+$/)
+      if (m) {
+        resolvedDate = `${m[1]}-${m[2]}-${m[3]}`
+      }
+    }
+    if (!isMissingDate(resolvedDate)) {
+      row[schema.dateCol] = resolvedDate
+    }
+  }
+
   if (!('pdoID' in row)) row.pdoID = row[schema.pkCol]
   if (!('id' in row)) row.id = row[schema.pkCol]
-  if (!('pdoNo' in row)) row.pdoNo = row[schema.noCol]
-  if (!('pdoDate' in row)) row.pdoDate = row[schema.dateCol]
+  if (!('pdoNo' in row) || isMissingDocNo(row.pdoNo)) row.pdoNo = resolvedDocNo
+  if (!('poNo' in row) || isMissingDocNo(row.poNo)) row.poNo = resolvedDocNo
+  if (!('pdoDate' in row) || isMissingDate(row.pdoDate)) row.pdoDate = resolvedDate
+  if (!('poDate' in row) || isMissingDate(row.poDate)) row.poDate = resolvedDate
   return row
 }
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unknown error'
+}
+
+function isDuplicateDocNoError(error: unknown, docNoColumn: string) {
+  const code = (error as { code?: string })?.code
+  const message = getErrorMessage(error)
+  return code === 'ER_DUP_ENTRY' && message.includes('Duplicate entry') && message.includes(docNoColumn)
 }
 
 export async function GET(request: NextRequest) {
@@ -149,101 +209,114 @@ export async function POST(request: NextRequest) {
 
     try {
       const schema = await getProductionOrderSchema(connection)
-      const pdoNo = incomingPdoNo || await generateDocumentNumber('PDO', 'production_orders', schema.noCol)
+      let pdoNo = incomingPdoNo || await generateDocumentNumber('PDO', 'production_orders', schema.noCol)
 
-      await connection.beginTransaction()
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          await connection.beginTransaction()
 
-      const insertColumns: string[] = []
-      const insertValues: unknown[] = []
-      const addInsertValue = (column: string, value: unknown) => {
-        if (!schema.productionColumns.has(column)) return
-        insertColumns.push(column)
-        insertValues.push(value)
-      }
-
-      addInsertValue(schema.noCol, pdoNo)
-      addInsertValue(schema.dateCol, pdoDate)
-      addInsertValue('sales_orderID', sales_orderID || null)
-      addInsertValue('product_id', product_id)
-      addInsertValue('product_code', product_code)
-      addInsertValue('product_name', product_name)
-      addInsertValue('quantity_ordered', quantity_ordered || 0)
-      addInsertValue('unit', unit || 'pcs')
-      addInsertValue('start_date', start_date)
-      addInsertValue('due_date', due_date)
-      addInsertValue('priority', priority || 'normal')
-      addInsertValue('production_line', production_line)
-      addInsertValue('shift', shift)
-      addInsertValue('supervisor', supervisor)
-      addInsertValue('notes', notes)
-      addInsertValue('created_by', created_by)
-      addInsertValue('status', 'pending')
-
-      const placeholders = insertColumns.map(() => '?').join(', ')
-      const [result] = await connection.query<ResultSetHeader>(
-        `INSERT INTO production_orders (${insertColumns.join(', ')}) VALUES (${placeholders})`,
-        insertValues
-      )
-
-      const pdoID = result.insertId
-
-      // Insert materials
-      if (materials && Array.isArray(materials) && materials.length > 0) {
-        for (const material of materials) {
-          const materialColumns: string[] = []
-          const materialValues: unknown[] = []
-          const addMaterialValue = (column: string, value: unknown) => {
-            if (!schema.materialColumns.has(column)) return
-            materialColumns.push(column)
-            materialValues.push(value)
+          const insertColumns: string[] = []
+          const insertValues: unknown[] = []
+          const addInsertValue = (column: string, value: unknown) => {
+            if (!schema.productionColumns.has(column)) return
+            insertColumns.push(column)
+            insertValues.push(value)
           }
 
-          addMaterialValue(schema.materialFkCol, pdoID)
-          addMaterialValue('material_id', material.material_id)
-          addMaterialValue('material_code', material.material_code)
-          addMaterialValue('material_name', material.material_name)
-          addMaterialValue('quantity_required', material.quantity_required || 0)
-          addMaterialValue('unit', material.unit || 'pcs')
+          addInsertValue(schema.noCol, pdoNo)
+          addInsertValue(schema.dateCol, pdoDate)
+          addInsertValue('sales_orderID', sales_orderID || null)
+          addInsertValue('product_id', product_id)
+          addInsertValue('product_code', product_code)
+          addInsertValue('product_name', product_name)
+          addInsertValue('quantity_ordered', quantity_ordered || 0)
+          addInsertValue('unit', unit || 'pcs')
+          addInsertValue('start_date', start_date)
+          addInsertValue('due_date', due_date)
+          addInsertValue('priority', priority || 'normal')
+          addInsertValue('production_line', production_line)
+          addInsertValue('shift', shift)
+          addInsertValue('supervisor', supervisor)
+          addInsertValue('notes', notes)
+          addInsertValue('created_by', created_by)
+          addInsertValue('status', 'pending')
 
-          await connection.query(
-            `INSERT INTO production_order_materials (${materialColumns.join(', ')})
-             VALUES (${materialColumns.map(() => '?').join(', ')})`,
-            materialValues
+          const placeholders = insertColumns.map(() => '?').join(', ')
+          const [result] = await connection.query(
+            `INSERT INTO production_orders (${insertColumns.join(', ')}) VALUES (${placeholders})`,
+            insertValues
           )
+          const insertResult = result as ResultSetHeader
+
+          const pdoID = insertResult.insertId
+
+          // Insert materials
+          if (materials && Array.isArray(materials) && materials.length > 0) {
+            for (const material of materials) {
+              const materialColumns: string[] = []
+              const materialValues: unknown[] = []
+              const addMaterialValue = (column: string, value: unknown) => {
+                if (!schema.materialColumns.has(column)) return
+                materialColumns.push(column)
+                materialValues.push(value)
+              }
+
+              addMaterialValue(schema.materialFkCol, pdoID)
+              addMaterialValue('material_id', material.material_id)
+              addMaterialValue('material_code', material.material_code)
+              addMaterialValue('material_name', material.material_name)
+              addMaterialValue('quantity_required', material.quantity_required || 0)
+              addMaterialValue('unit', material.unit || 'pcs')
+
+              await connection.query(
+                `INSERT INTO production_order_materials (${materialColumns.join(', ')})
+                 VALUES (${materialColumns.map(() => '?').join(', ')})`,
+                materialValues
+              )
+            }
+          }
+
+          // Insert steps
+          if (steps && Array.isArray(steps) && steps.length > 0) {
+            for (let i = 0; i < steps.length; i++) {
+              const step = steps[i]
+              const stepColumns: string[] = []
+              const stepValues: unknown[] = []
+              const addStepValue = (column: string, value: unknown) => {
+                if (!schema.stepColumns.has(column)) return
+                stepColumns.push(column)
+                stepValues.push(value)
+              }
+
+              addStepValue(schema.stepFkCol, pdoID)
+              addStepValue('step_number', i + 1)
+              addStepValue('step_name', step.step_name)
+              addStepValue('description', step.description)
+              addStepValue('duration_minutes', step.duration_minutes || 0)
+              addStepValue('assigned_to', step.assigned_to)
+
+              await connection.query(
+                `INSERT INTO production_order_steps (${stepColumns.join(', ')})
+                 VALUES (${stepColumns.map(() => '?').join(', ')})`,
+                stepValues
+              )
+            }
+          }
+
+          await connection.commit()
+          return NextResponse.json({ success: true, pdoID, pdoNo })
+        } catch (error) {
+          await connection.rollback()
+          if (isDuplicateDocNoError(error, schema.noCol) && attempt < 4) {
+            pdoNo = await generateDocumentNumber('PDO', 'production_orders', schema.noCol)
+            continue
+          }
+          throw error
         }
       }
 
-      // Insert steps
-      if (steps && Array.isArray(steps) && steps.length > 0) {
-        for (let i = 0; i < steps.length; i++) {
-          const step = steps[i]
-          const stepColumns: string[] = []
-          const stepValues: unknown[] = []
-          const addStepValue = (column: string, value: unknown) => {
-            if (!schema.stepColumns.has(column)) return
-            stepColumns.push(column)
-            stepValues.push(value)
-          }
-
-          addStepValue(schema.stepFkCol, pdoID)
-          addStepValue('step_number', i + 1)
-          addStepValue('step_name', step.step_name)
-          addStepValue('description', step.description)
-          addStepValue('duration_minutes', step.duration_minutes || 0)
-          addStepValue('assigned_to', step.assigned_to)
-
-          await connection.query(
-            `INSERT INTO production_order_steps (${stepColumns.join(', ')})
-             VALUES (${stepColumns.map(() => '?').join(', ')})`,
-            stepValues
-          )
-        }
-      }
-
-      await connection.commit()
-      return NextResponse.json({ success: true, pdoID, pdoNo })
+      throw new Error('Failed to create production order after retry')
     } catch (error) {
-      await connection.rollback()
       throw error
     } finally {
       connection.release()

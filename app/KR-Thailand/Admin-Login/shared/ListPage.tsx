@@ -587,7 +587,7 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
               <thead>
                 <tr>
                   {columns.map(c => (
-                    <th key={c.key}>{translateLabel(c.label || c.key)}</th>
+                    <th key={c.key}><span suppressHydrationWarning>{translateLabel(c.label || c.key)}</span></th>
                   ))}
                   {(print || edit || selectable) && <th>{T('Actions', 'การกระทำ')}</th>}
                 </tr>
@@ -873,4 +873,3 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
     </>
   )
 }
-

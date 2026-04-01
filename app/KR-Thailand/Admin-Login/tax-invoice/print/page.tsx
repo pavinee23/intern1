@@ -90,7 +90,7 @@ function TaxInvoicePrintPageContent() {
     <>
       <style>{`
         @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
-        @media print { .no-print { display: none !important } body { margin:0; padding:0 } }
+        @media print { .no-print { display: none !important } body { margin:0; padding:0 } .footer-print { position: fixed !important; bottom: 8mm !important; left: 12mm !important; right: 12mm !important; margin-top: 0 !important; background: white !important; } }
         body { font-family: 'Sarabun', 'Segoe UI', sans-serif; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         table th { background: #e67e22; color: #fff; }
@@ -179,9 +179,10 @@ function TaxInvoicePrintPageContent() {
           </div>
         </div>
 
-        <div style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
-          <div>{L('Printed by', 'ผู้พิมพ์')}: {loggedUser || '-'}</div>
-          <div>{L('Printed at', 'พิมพ์เมื่อ')}: {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#999', borderTop: '1px solid #eee', paddingTop: 6, marginTop: 12 }} className="footer-print">
+          <span>{L('Printed by', 'ผู้พิมพ์')}: {loggedUser || '-'}</span>
+          <span>{L('Printed at', 'พิมพ์เมื่อ')}: {new Date(lastPrinted || new Date()).toLocaleString(selectedLang === 'th' ? 'th-TH' : 'en-US')}</span>
+          <span>{L('Print count', 'ครั้งที่พิมพ์')}: {printCount + 1}</span>
         </div>
       </div>
     </>

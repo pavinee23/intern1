@@ -47,6 +47,7 @@ export default function CreateProductionOrderPage() {
   const [salesOrderLoading, setSalesOrderLoading] = useState(false)
   const [salesOrderID, setSalesOrderID] = useState<number | null>(null)
   const [importedFromRef, setImportedFromRef] = useState<string>('')
+  const [soCustomer, setSoCustomer] = useState<{ name: string; taxId: string; phone: string; address: string; deliveryDate: string } | null>(null)
 
   const [createdByName, setCreatedByName] = useState('')
   const [locale, setLocale] = useState<'en'|'th'>('th')
@@ -116,7 +117,7 @@ export default function CreateProductionOrderPage() {
       const yyyy = String(now.getFullYear())
       const mm = String(now.getMonth() + 1).padStart(2, '0')
       const dd = String(now.getDate()).padStart(2, '0')
-      setPdoNo(`PDO-${yyyy}${mm}${dd}-00001`)
+      setPdoNo(`PDOTH${yyyy}${mm}${dd}-00001`)
     } finally {
       setRefreshingPdoNo(false)
     }
@@ -200,6 +201,15 @@ export default function CreateProductionOrderPage() {
       const refNo = so.orderNo || `SO-${String(so.orderID).padStart(6, '0')}`
       setImportedFromRef(L('Sales Order: ', 'ใบสั่งขาย: ') + refNo)
       setSalesOrderID(so.orderID)
+
+      // Store customer info from SO
+      setSoCustomer({
+        name: so.customer_name || '-',
+        taxId: so.customer_tax_id || so.taxId || '-',
+        phone: so.customer_phone || so.phone || '-',
+        address: so.customer_address || so.address || '-',
+        deliveryDate: so.delivery_date || so.deliveryDate || ''
+      })
 
       setShowSalesOrderModal(false)
     } catch (err) {
@@ -340,6 +350,22 @@ export default function CreateProductionOrderPage() {
                   </svg>
                   <span style={{ fontWeight: 500 }}>{L('Imported from:', 'นำเข้าจาก:')}</span>
                   <span style={{ fontWeight: 600 }}>{importedFromRef}</span>
+                </div>
+              )}
+              {soCustomer && (
+                <div style={{ marginTop: 10, padding: '10px 14px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#c2410c', marginBottom: 8 }}>
+                    {L('Customer Information (from SO)', 'ข้อมูลลูกค้า (จากใบสั่งขาย)')}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 13 }}>
+                    <div><span style={{ color: '#78350f', fontWeight: 600 }}>{L('Customer: ', 'ลูกค้า: ')}</span><span>{soCustomer.name}</span></div>
+                    <div><span style={{ color: '#78350f', fontWeight: 600 }}>{L('Tax ID: ', 'เลขผู้เสียภาษี: ')}</span><span>{soCustomer.taxId}</span></div>
+                    <div><span style={{ color: '#78350f', fontWeight: 600 }}>{L('Phone: ', 'โทรศัพท์: ')}</span><span>{soCustomer.phone}</span></div>
+                    {soCustomer.deliveryDate && (
+                      <div><span style={{ color: '#78350f', fontWeight: 600 }}>{L('Delivery Date: ', 'วันที่จัดส่ง: ')}</span><span>{new Date(soCustomer.deliveryDate).toLocaleDateString(locale === 'th' ? 'th-TH' : 'en-US')}</span></div>
+                    )}
+                    <div style={{ gridColumn: '1 / -1' }}><span style={{ color: '#78350f', fontWeight: 600 }}>{L('Address: ', 'ที่อยู่: ')}</span><span>{soCustomer.address}</span></div>
+                  </div>
                 </div>
               )}
             </div>

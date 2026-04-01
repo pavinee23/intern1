@@ -49,11 +49,14 @@ export async function generateDocumentNumber(
     await connection.commit()
 
     const counter = rows[0].counter
-    const counterStr = String(counter).padStart(4, '0')
+    const counterStr = String(counter).padStart(prefix === 'PDO' ? 5 : 4, '0')
 
     // สร้างเลขเอกสารตามรูปแบบของแต่ละประเภท
     let docNumber: string
-    if (prefix === 'WT') {
+    if (prefix === 'PDO') {
+      // Production Order: PDOTHYYYYMMDD-#####
+      docNumber = `PDOTH${yearMonthDay}-${counterStr}`
+    } else if (prefix === 'WT') {
       // Warranty: WT-TH-YYYYMMDD-####
       docNumber = `${prefix}-TH-${yearMonthDay}-${counterStr}`
     } else {

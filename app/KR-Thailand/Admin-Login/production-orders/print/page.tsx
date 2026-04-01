@@ -6,10 +6,13 @@ import { useSearchParams } from 'next/navigation'
 
 function ProductionOrderPrintContent() {
   const searchParams = useSearchParams()
-  const poID = searchParams?.get('poID') || ''
-  const poNo = searchParams?.get('poNo') || ''
+  const poID = searchParams?.get('poID') || searchParams?.get('pdoID') || ''
+  const poNo = searchParams?.get('poNo') || searchParams?.get('pdoNo') || ''
   const auto = searchParams?.get('autoPrint')
+  const [hydrated, setHydrated] = useState(false)
   const [doc, setDoc] = useState<any | null>(null)
+  const [salesOrder, setSalesOrder] = useState<any | null>(null)
+  const [customerDetail, setCustomerDetail] = useState<any | null>(null)
   const [loggedUser, setLoggedUser] = useState<string | null>(null)
   const [printCount, setPrintCount] = useState<number>(0)
   const [lastPrinted, setLastPrinted] = useState<string | null>(null)
@@ -25,14 +28,18 @@ function ProductionOrderPrintContent() {
   })
 
   useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
     const idOrNo = poID || poNo
     if (!idOrNo) return
     ;(async () => {
       try {
-        let res = await fetch(`/api/production-orders?poID=${encodeURIComponent(poID)}`)
+        let res = await fetch(`/api/production-orders?id=${encodeURIComponent(poID)}`)
         let j = await res.json().catch(() => null)
         if (!(res.ok && j && j.success && j.productionOrder)) {
-          res = await fetch(`/api/production-orders?poNo=${encodeURIComponent(poNo || poID)}`)
+          res = await fetch(`/api/production-orders?pdoNo=${encodeURIComponent(poNo || poID)}`)
           j = await res.json().catch(() => null)
         }
         if (j && j.success) {
@@ -47,6 +54,36 @@ function ProductionOrderPrintContent() {
       }
     })()
   }, [poID, poNo])
+
+  useEffect(() => {
+    const soId = doc?.sales_orderID || doc?.sales_order_id
+    if (!soId) return
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/sales-orders?id=${encodeURIComponent(String(soId))}`)
+        const j = await res.json().catch(() => null)
+        if (res.ok && j?.success && j?.order) {
+          const so = j.order
+          setSalesOrder(so)
+          // If SO doesn't have customer_name, fetch from customers table using cusID
+          const cusId = so.cusID || so.cus_id
+          if (cusId && !so.customer_name) {
+            try {
+              const cr = await fetch(`/api/customers?id=${encodeURIComponent(String(cusId))}`)
+              const cj = await cr.json().catch(() => null)
+              if (cr.ok && cj?.success && cj?.customer) {
+                setCustomerDetail(cj.customer)
+              }
+            } catch (e) {
+              console.error('Failed to load customer detail', e)
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load sales order for delivery customer info', e)
+      }
+    })()
+  }, [doc?.sales_orderID, doc?.sales_order_id])
 
   useEffect(() => {
     try {
@@ -79,6 +116,7 @@ function ProductionOrderPrintContent() {
     }
   }, [doc, auto])
 
+  if (!hydrated) return <div style={{ padding: 20 }}>Loading...</div>
   if (!poID && !poNo) return <div style={{ padding: 20 }}>Missing poID or poNo</div>
   if (!doc) return <div style={{ padding: 20 }}>Loading...</div>
 
@@ -91,33 +129,85 @@ function ProductionOrderPrintContent() {
   }
 
   const L = (en: string, th: string) => selectedLang === 'th' ? th : en
-
-  const items = Array.isArray(doc.items) ? doc.items : []
-  const subtotal = items.reduce((s: number, it: any) => {
-    const qty = Number(it.quantity || 0)
-    const price = Number(it.unit_price || it.unitPrice || 0)
-    return s + (qty * price)
-  }, 0)
-  const discount = Number(doc.discount || 0)
-  const afterDiscount = subtotal - discount
-  const vat = (afterDiscount * 7) / 100
-  const grandTotal = afterDiscount + vat
+  const fmtDate = (v: any) => {
+    if (!v) return '-'
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return '-'
+    return d.toLocaleDateString(selectedLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
 
   const productName = doc.product_name || doc.product || '-'
+  const productCode = doc.product_code || '-'
   const productionLine = doc.production_line || doc.line || '-'
+  const shift = doc.shift || '-'
+  const priority = doc.priority || '-'
   const supervisor = doc.supervisor || doc.supervisedBy || '-'
-  const targetQty = doc.target_qty || doc.quantity || '-'
+  const targetQty = doc.quantity_ordered || doc.target_qty || doc.quantity || '-'
+  const unit = doc.unit || 'pcs'
+  const createdBy = doc.created_by || '-'
+  const reference = salesOrder?.orderNo || doc.so_no || doc.sales_order_no || (doc.sales_orderID ? `SO-${String(doc.sales_orderID).padStart(6, '0')}` : '-')
+  const notes = doc.notes || '-'
+  const isBlank = (v: any) => !v || String(v).trim() === '' || String(v).trim() === '-'
+  const manufacturerName = isBlank(doc.manufacturer_name) ? 'Zera co.,Ltd' : doc.manufacturer_name
+  const manufacturerTaxId = isBlank(doc.manufacturer_tax_id) ? '831-87-03154' : doc.manufacturer_tax_id
+  const manufacturerAddress = isBlank(doc.manufacturer_address) ? '2F, 16-10, 166beon-gil\nElseso-ro, Gunpo-si\nGyeonggi-do, Korea' : doc.manufacturer_address
+  const cusAddrParts = customerDetail ? [
+    customerDetail.house_number, customerDetail.moo ? `ม.${customerDetail.moo}` : '',
+    customerDetail.tambon, customerDetail.amphoe, customerDetail.province, customerDetail.postcode
+  ].filter(Boolean).join(' ') : ''
+  const deliveryCustomerName = salesOrder?.customer_name || customerDetail?.fullname || customerDetail?.company || doc.customer_name || '-'
+  const deliveryCustomerTaxId = salesOrder?.customer_tax_id || customerDetail?.tax_id || doc.customer_tax_id || '-'
+  const deliveryCustomerPhone = salesOrder?.customer_phone || customerDetail?.phone || doc.customer_phone || '-'
+  const deliveryCustomerAddress = salesOrder?.customer_address || cusAddrParts || doc.customer_address || doc.address || '-'
+  const deliveryDate = salesOrder?.delivery_date || '-'
+  const items = Array.isArray(doc.items) && doc.items.length > 0
+    ? doc.items
+    : [{ description: productName, quantity: targetQty, unit }]
 
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 1.8cm 2.5cm 1.8cm 2.5cm; }
+        @page { size: A4 portrait; margin: 10mm 12mm; }
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; overflow: hidden !important; }
           html, body { -ms-overflow-style: none !important; scrollbar-width: none !important; }
           ::-webkit-scrollbar { display: none !important; }
-          .a4-page { box-shadow: none !important; }
+          .a4-page {
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            min-height: auto !important;
+            font-size: 10pt !important;
+          }
+          .header-row { margin-bottom: 10px !important; padding-bottom: 8px !important; }
+          .company-name { font-size: 15pt !important; margin-bottom: 2px !important; }
+          .company-name-en { font-size: 10pt !important; margin-bottom: 2px !important; }
+          .company-address { font-size: 8.2pt !important; line-height: 1.35 !important; }
+          .doc-title h1 { font-size: 18pt !important; margin-bottom: 2px !important; }
+          .doc-title h2 { font-size: 11pt !important; }
+          .info-section { gap: 10px !important; margin-bottom: 10px !important; }
+          .info-box, .to-box, .customer-box, .note-box { padding: 8px 10px !important; margin-bottom: 8px !important; }
+          .info-box-title, .to-title, .customer-title, .note-title { font-size: 9pt !important; margin-bottom: 4px !important; }
+          .info-row { font-size: 8.8pt !important; margin-bottom: 2px !important; }
+          .info-label { width: 88px !important; }
+          .note-value { font-size: 8.8pt !important; min-height: 14px !important; }
+          .items-table { margin-bottom: 8px !important; font-size: 8.8pt !important; }
+          .items-table th, .items-table td { padding: 5px 6px !important; }
+          .signature-section { margin-top: 12px !important; padding-top: 10px !important; }
+          .signature-line { height: 30px !important; margin-bottom: 4px !important; }
+          .signature-label { font-size: 8.8pt !important; }
+          .signature-sublabel { font-size: 8pt !important; }
+          .footer-info {
+            position: fixed !important;
+            bottom: 8mm !important;
+            left: 12mm !important;
+            right: 12mm !important;
+            margin-top: 0 !important;
+            padding-top: 6px !important;
+            font-size: 7.5pt !important;
+          }
         }
         @media screen { body { background: #e5e5e5; overflow-y: auto; } }
         * { box-sizing: border-box; }
@@ -138,20 +228,21 @@ function ProductionOrderPrintContent() {
         .info-row { display: flex; margin-bottom: 4px; font-size: 10pt; }
         .info-label { width: 100px; font-weight: 600; color: #555; }
         .info-value { flex: 1; color: #333; }
+        .to-box { margin-bottom: 14px; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #f8fafc; }
+        .to-title { font-weight: 700; font-size: 10pt; color: #0ea5e9; margin-bottom: 6px; }
+        .customer-box { margin-bottom: 14px; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #fff7ed; }
+        .customer-title { font-weight: 700; font-size: 10pt; color: #ea580c; margin-bottom: 6px; }
+        .note-box { margin-bottom: 14px; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
+        .note-title { font-weight: 700; font-size: 10pt; color: #16a34a; margin-bottom: 6px; }
+        .note-value { white-space: pre-wrap; font-size: 10pt; color: #333; min-height: 24px; }
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt; }
         .items-table th { background: #0ea5e9; color: white; padding: 8px 10px; text-align: left; font-weight: 600; }
         .items-table th:nth-child(1) { width: 40px; text-align: center; }
-        .items-table th:nth-child(3) { width: 70px; text-align: right; }
-        .items-table th:nth-child(4) { width: 100px; text-align: right; }
-        .items-table th:nth-child(5) { width: 110px; text-align: right; }
+        .items-table th:nth-child(3) { width: 110px; text-align: right; white-space: nowrap; padding-right: 14px; }
         .items-table td { padding: 8px 10px; border-bottom: 1px solid #eee; }
         .items-table td:nth-child(1) { text-align: center; }
-        .items-table td:nth-child(3), .items-table td:nth-child(4), .items-table td:nth-child(5) { text-align: right; }
+        .items-table td:nth-child(3) { text-align: right; white-space: nowrap; padding-right: 14px; }
         .items-table tbody tr:nth-child(even) { background: #f9f9f9; }
-        .summary-section { display: flex; justify-content: flex-end; margin-bottom: 20px; }
-        .summary-table { width: 280px; font-size: 10pt; }
-        .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
-        .summary-row.total { font-weight: 700; font-size: 12pt; color: #0ea5e9; border-top: 2px solid #0ea5e9; border-bottom: none; padding-top: 10px; margin-top: 4px; }
         .signature-section { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; }
         .signature-box { width: 30%; text-align: center; }
         .signature-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 8px; }
@@ -202,41 +293,98 @@ function ProductionOrderPrintContent() {
           <div className="info-box">
             <div className="info-box-title">{L('Production Order Information', 'ข้อมูลใบสั่งผลิต')}</div>
             <div className="info-row">
-              <span className="info-label">{L('PO No:', 'เลขที่:')}</span>
-              <span className="info-value" style={{ fontWeight: 700 }}>{doc.poNo || doc.po_no || '-'}</span>
+              <span className="info-label">{L('PDO No:', 'เลขที่ PDO:')}</span>
+              <span className="info-value" style={{ fontWeight: 700 }}>{doc.pdoNo || doc.poNo || doc.po_no || '-'}</span>
             </div>
             <div className="info-row">
               <span className="info-label">{L('Date:', 'วันที่:')}</span>
-              <span className="info-value">{doc.poDate || doc.date ? new Date(doc.poDate || doc.date).toLocaleDateString(selectedLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
+              <span className="info-value">{fmtDate(doc.pdoDate || doc.poDate || doc.date)}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">{L('Start Date:', 'วันเริ่ม:')}</span>
+              <span className="info-value">{fmtDate(doc.start_date || doc.startDate)}</span>
             </div>
             <div className="info-row">
               <span className="info-label">{L('Due Date:', 'กำหนดเสร็จ:')}</span>
-              <span className="info-value">{doc.due_date || doc.dueDate ? new Date(doc.due_date || doc.dueDate).toLocaleDateString(selectedLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
+              <span className="info-value">{fmtDate(doc.due_date || doc.dueDate)}</span>
             </div>
             <div className="info-row">
               <span className="info-label">{L('Status:', 'สถานะ:')}</span>
               <span className="info-value" style={{ color: doc.status === 'completed' ? '#16a34a' : '#666' }}>{doc.status || 'pending'}</span>
             </div>
+            <div className="info-row">
+              <span className="info-label">{L('Created By:', 'ผู้สร้าง:')}</span>
+              <span className="info-value">{createdBy}</span>
+            </div>
           </div>
           <div className="info-box">
             <div className="info-box-title">{L('Production Details', 'รายละเอียดการผลิต')}</div>
-            <div className="info-row">
-              <span className="info-label">{L('Product:', 'สินค้า:')}</span>
-              <span className="info-value" style={{ fontWeight: 600 }}>{productName}</span>
-            </div>
             <div className="info-row">
               <span className="info-label">{L('Line:', 'สายการผลิต:')}</span>
               <span className="info-value">{productionLine}</span>
             </div>
             <div className="info-row">
-              <span className="info-label">{L('Target Qty:', 'เป้าหมาย:')}</span>
-              <span className="info-value">{targetQty}</span>
-            </div>
-            <div className="info-row">
               <span className="info-label">{L('Supervisor:', 'หัวหน้างาน:')}</span>
               <span className="info-value">{supervisor}</span>
             </div>
+            <div className="info-row">
+              <span className="info-label">{L('Shift:', 'กะ:')}</span>
+              <span className="info-value">{shift}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">{L('Priority:', 'ความสำคัญ:')}</span>
+              <span className="info-value">{priority}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">{L('SO Ref:', 'อ้างอิง SO:')}</span>
+              <span className="info-value">{reference}</span>
+            </div>
           </div>
+        </div>
+
+        <div className="to-box">
+          <div className="to-title">{L('Manufacturer Information', 'ข้อมูลผู้ผลิต')}</div>
+          <div className="info-row">
+            <span className="info-label">{L('Manufacturer:', 'ผู้ผลิต:')}</span>
+            <span className="info-value" style={{ fontWeight: 600 }}>{manufacturerName}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{L('Tax ID:', 'เลขผู้เสียภาษี:')}</span>
+            <span className="info-value">{manufacturerTaxId}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{L('Address:', 'ที่อยู่:')}</span>
+            <span className="info-value" style={{ whiteSpace: 'pre-line' }}>{manufacturerAddress}</span>
+          </div>
+        </div>
+
+        <div className="customer-box">
+          <div className="customer-title">{L('Delivery Customer Information', 'ข้อมูลลูกค้าที่ต้องจัดส่ง')}</div>
+          <div className="info-row">
+            <span className="info-label">{L('Customer:', 'ลูกค้า:')}</span>
+            <span className="info-value" style={{ fontWeight: 600 }}>{deliveryCustomerName}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{L('Tax ID:', 'เลขผู้เสียภาษี:')}</span>
+            <span className="info-value">{deliveryCustomerTaxId}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{L('Phone:', 'โทรศัพท์:')}</span>
+            <span className="info-value">{deliveryCustomerPhone}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{L('Address:', 'ที่อยู่จัดส่ง:')}</span>
+            <span className="info-value">{deliveryCustomerAddress}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{L('Delivery Date:', 'วันที่จัดส่ง:')}</span>
+            <span className="info-value">{fmtDate(deliveryDate)}</span>
+          </div>
+        </div>
+
+        <div className="note-box">
+          <div className="note-title">{L('Notes', 'หมายเหตุ')}</div>
+          <div className="note-value">{notes}</div>
         </div>
 
         <table className="items-table">
@@ -245,50 +393,27 @@ function ProductionOrderPrintContent() {
               <th>{L('No.', 'ลำดับ')}</th>
               <th>{L('Description', 'รายการ')}</th>
               <th>{L('Qty', 'จำนวน')}</th>
-              <th>{L('Unit Price', 'ราคา/หน่วย')}</th>
-              <th>{L('Amount', 'จำนวนเงิน')}</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: '#999', padding: 20 }}>-</td></tr>
+              <tr><td colSpan={3} style={{ textAlign: 'center', color: '#999', padding: 20 }}>-</td></tr>
             ) : items.map((it: any, idx: number) => {
-              const qty = Number(it.quantity || it.qty || 1)
-              const unitPrice = Number(it.unit_price || it.unitPrice || it.price || 0)
-              const amount = Number(it.total_price || it.total || (qty * unitPrice))
+              const rawQty = it.quantity || it.qty || targetQty
+              const qtyNum = parseFloat(String(rawQty))
+              const qtyDisplay = !isNaN(qtyNum) ? qtyNum.toFixed(2) : (rawQty || '-')
+              const itemUnit = it.unit || unit || ''
+              const desc = it.description || it.product_name || it.desc || productName || '-'
               return (
                 <tr key={idx}>
                   <td>{idx + 1}</td>
-                  <td>{it.description || it.product_name || it.desc || '-'}</td>
-                  <td>{qty}</td>
-                  <td>{unitPrice.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
-                  <td>{amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
+                  <td>{desc}</td>
+                  <td>{`${qtyDisplay}${itemUnit ? ` ${itemUnit}` : ''}`}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
-
-        <div className="summary-section">
-          <div className="summary-table">
-            <div className="summary-row">
-              <span>{L('Subtotal', 'รวม')}</span>
-              <span>{subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
-            </div>
-            <div className="summary-row">
-              <span>{L('Discount', 'ส่วนลด')}</span>
-              <span>{discount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
-            </div>
-            <div className="summary-row">
-              <span>{L('VAT 7%', 'ภาษีมูลค่าเพิ่ม 7%')}</span>
-              <span>{vat.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
-            </div>
-            <div className="summary-row total">
-              <span>{L('Grand Total', 'ยอดรวมสุทธิ')}</span>
-              <span>{grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
-            </div>
-          </div>
-        </div>
 
         <div className="signature-section">
           <div className="signature-box">

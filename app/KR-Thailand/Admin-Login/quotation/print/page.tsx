@@ -527,16 +527,23 @@ function QuotationPrintContent() {
 
         /* Footer */
         .footer-info {
-          position: absolute;
-          bottom: 10mm;
-          left: 15mm;
-          right: 15mm;
           display: flex;
           justify-content: space-between;
           font-size: 7.5pt;
           color: #9ca3af;
           border-top: 1px solid #e5e7eb;
           padding-top: 6px;
+          margin-top: 16px;
+        }
+        @media print {
+          .footer-info {
+            position: fixed !important;
+            bottom: 8mm !important;
+            left: 12mm !important;
+            right: 12mm !important;
+            margin-top: 0 !important;
+            background: white !important;
+          }
         }
       `}</style>
 

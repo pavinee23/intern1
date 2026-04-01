@@ -9,7 +9,7 @@ export default function ProductionOrdersListPage() {
       apiPath="/api/production-orders"
       createPath="/KR-Thailand/Admin-Login/documents/production-orders/create"
       columns={[
-        { key: 'poNo', label: 'PO No.' },
+        { key: 'pdoNo', label: 'PDO No.' },
         { key: 'poDate', label: 'Date' },
         { key: 'product_name', label: 'Product' },
         { key: 'quantity_ordered', label: 'Quantity' },
@@ -17,7 +17,7 @@ export default function ProductionOrdersListPage() {
         { key: 'priority', label: 'Priority' },
         { key: 'status', label: 'Status' }
       ]}
-      print={{ path: '/KR-Thailand/Admin-Login/production-orders/print', paramName: 'pdoNo', idKey: 'pdoID', newTab: true }}
+      print={{ path: '/KR-Thailand/Admin-Login/production-orders/print', paramName: 'pdoID', idKey: 'pdoID', newTab: true }}
     />
   )
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/mysql'
+import { generateDocumentNumber } from '@/lib/document-number'
 
 type CountRow = { cnt: number }
 type ColumnNameRow = { COLUMN_NAME: string }
@@ -25,6 +26,9 @@ export async function POST(request: NextRequest) {
 
     // Mapping ระหว่าง type กับ prefix, table name, และ field name
     const documentTypes: Record<string, { prefix: string; table: string; field: string }> = {
+      // Sales
+      'so': { prefix: 'SO', table: 'sales_orders', field: 'orderNo' },
+
       // Purchase & Procurement
       'pr': { prefix: 'PR', table: 'purchase_requests', field: 'prNo' },
       'si': { prefix: 'SI', table: 'supplier_invoices', field: 'siNo' },
@@ -61,6 +65,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // PDO ใช้ตัวนับกลางแบบ atomic เพื่อให้ได้เลขใหม่ทุกครั้งที่กด Refresh
+    // และลดโอกาสชนเลขจากการใช้งานพร้อมกันหลายคน
+    if (normalizedType === 'pdo') {
+      const docNo = await generateDocumentNumber('PDO', 'production_orders', 'pdoNo')
+      return NextResponse.json({
+        success: true,
+        docNo,
+        prefix: 'PDO',
+        type: 'PDO',
+        field: 'pdoNo'
+      })
+    }
+
     // สร้างรูปแบบวันที่ YYYYMMDD
     const now = new Date()
     const year = now.getFullYear()
@@ -68,8 +85,10 @@ export async function POST(request: NextRequest) {
     const day = String(now.getDate()).padStart(2, '0')
     const datePrefix = `${year}${month}${day}`
 
-    // สร้าง pattern สำหรับค้นหา เช่น PR-20260324-%
-    const searchPattern = `${docType.prefix}-${datePrefix}-%`
+    // สร้าง pattern สำหรับค้นหา
+    const searchPattern = normalizedType === 'pdo'
+      ? `PDOTH${datePrefix}-%`
+      : `${docType.prefix}-${datePrefix}-%`
 
     const connection = await pool.getConnection()
 
@@ -103,12 +122,20 @@ export async function POST(request: NextRequest) {
       }
 
       const [rows] = await connection.query(
-        `SELECT ${fieldName} as docNo
-         FROM ${docType.table}
-         WHERE ${fieldName} LIKE ?
-         ORDER BY ${fieldName} DESC
-         LIMIT 1`,
-        [searchPattern]
+        normalizedType === 'pdo'
+          ? `SELECT ${fieldName} as docNo
+             FROM ${docType.table}
+             WHERE ${fieldName} LIKE ? OR ${fieldName} LIKE ?
+             ORDER BY ${fieldName} DESC
+             LIMIT 1`
+          : `SELECT ${fieldName} as docNo
+             FROM ${docType.table}
+             WHERE ${fieldName} LIKE ?
+             ORDER BY ${fieldName} DESC
+             LIMIT 1`,
+        normalizedType === 'pdo'
+          ? [searchPattern, `${docType.prefix}-${datePrefix}-%`]
+          : [searchPattern]
       )
       const docRows = rows as DocNoRow[]
 
@@ -128,7 +155,10 @@ export async function POST(request: NextRequest) {
       const sequenceStr = String(nextNumber).padStart(5, '0')
       let newDocNo: string
 
-      if (docType.prefix === 'WT') {
+      if (normalizedType === 'pdo') {
+        // Production Order: PDOTHYYYYMMDD-#####
+        newDocNo = `PDOTH${datePrefix}-${sequenceStr}`
+      } else if (docType.prefix === 'WT') {
         // Warranty: WT-TH-YYYYMMDD-#####
         newDocNo = `${docType.prefix}-TH-${datePrefix}-${sequenceStr}`
       } else {

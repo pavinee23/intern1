@@ -78,7 +78,8 @@ function ContractPrintPageContent() {
         .signature { display:flex; justify-content: space-between; margin-top: 36px; }
         .sig-box { width: 30%; text-align: center; }
         .sig-line { border-bottom: 1px solid #333; height: 40px; margin-bottom: 8px; }
-        .footer { position: absolute; bottom: 12mm; left: 15mm; right: 15mm; font-size: 9pt; color: #777; border-top: 1px solid #eee; padding-top: 8px; display:flex; justify-content:space-between }
+        .footer { font-size: 9pt; color: #777; border-top: 1px solid #eee; padding-top: 8px; display:flex; justify-content:space-between; margin-top: 16px; }
+        @media print { .footer { position: fixed !important; bottom: 8mm !important; left: 12mm !important; right: 12mm !important; margin-top: 0 !important; background: white !important; } }
       `}</style>
 
       <PrintStyles />

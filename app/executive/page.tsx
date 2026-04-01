@@ -435,6 +435,9 @@ export default function ExecutiveDashboard() {
 
   const currentData = branchesData[selectedBranch];
 
+  const fmtNum = (n: number): string =>
+    new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(n)
+
   const getSeverityColor = (severity: 'high' | 'medium' | 'low') => {
     switch (severity) {
       case 'high': return 'text-red-600 bg-red-50 border-red-200';
@@ -637,7 +640,7 @@ export default function ExecutiveDashboard() {
             </div>
             <h3 className="text-sm text-gray-600 mb-1">{t.revenue}</h3>
             <p className="text-2xl font-bold text-gray-900">
-              {currentData.currency}{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(currentData.revenue)}
+              {currentData.currency}{fmtNum(currentData.revenue)}
             </p>
           </div>
 
@@ -648,7 +651,7 @@ export default function ExecutiveDashboard() {
             </div>
             <h3 className="text-sm text-gray-600 mb-1">{t.netProfit}</h3>
             <p className="text-2xl font-bold text-gray-900">
-              {currentData.currency}{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(currentData.profit)}
+              {currentData.currency}{fmtNum(currentData.profit)}
             </p>
           </div>
 
@@ -659,7 +662,7 @@ export default function ExecutiveDashboard() {
             </div>
             <h3 className="text-sm text-gray-600 mb-1">{t.expenses}</h3>
             <p className="text-2xl font-bold text-gray-900">
-              {currentData.currency}{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(currentData.expenses)}
+              {currentData.currency}{fmtNum(currentData.expenses)}
             </p>
           </div>
 
@@ -690,7 +693,7 @@ export default function ExecutiveDashboard() {
             <CountryFlag country={currentData.countryCode} size="xl" />
             <div>
               <h3 className="text-lg font-bold text-gray-900">{t[currentData.country]} {t.branchBillsTitle}</h3>
-              <p className="text-sm text-gray-600">{t.totalAmount}: {currentData.currency}{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(currentData.pendingBills.reduce((sum, bill) => sum + bill.amount, 0))}</p>
+              <p className="text-sm text-gray-600">{t.totalAmount}: {currentData.currency}{fmtNum(currentData.pendingBills.reduce((sum, bill) => sum + bill.amount, 0))}</p>
             </div>
           </div>
 
@@ -735,7 +738,7 @@ export default function ExecutiveDashboard() {
                   <div>
                     <p className="text-sm text-gray-500 mb-1">{t.amount}:</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {currentData.currency}{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(bill.amount)}
+                      {currentData.currency}{fmtNum(bill.amount)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       <Calendar className="w-3 h-3 inline mr-1" />
@@ -1667,7 +1670,7 @@ export default function ExecutiveDashboard() {
                 <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
                   <p className="text-sm text-green-700 font-medium mb-1">{t.amount}</p>
                   <p className="text-3xl font-bold text-green-900">
-                    {currentData.currency}{new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(selectedBill.amount)}
+                    {currentData.currency}{fmtNum(selectedBill.amount)}
                   </p>
                 </div>
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
