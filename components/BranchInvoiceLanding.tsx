@@ -86,6 +86,12 @@ export default function BranchInvoiceLanding({
 
   const branchName = isKo ? branchNameKo : branchNameEn;
   const subtitle = isKo ? subtitleKo : subtitleEn;
+
+  const fixedBranchCompanyName = branchCode === 'TH' ? 'K Energy Save co., Ltd (Group of Zera) Thailand' : '';
+  const fixedBranchPhone = branchCode === 'TH' ? '02-080-8916' : '';
+  const fixedBranchEmail = branchCode === 'TH' ? 'info@kenergy-save.com' : '';
+  const fixedBranchAddress = branchCode === 'TH' ? '84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250, Thailand' : '';
+
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingReports, setLoadingReports] = useState(false);
@@ -93,9 +99,9 @@ export default function BranchInvoiceLanding({
   const [selectedReport, setSelectedReport] = useState<DeliveryReport | null>(null);
   const [invoiceNo, setInvoiceNo] = useState(() => buildDefaultInvoiceNo(branchCode));
   const [invoiceDate, setInvoiceDate] = useState(() => todayString());
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerName, setCustomerName] = useState(fixedBranchCompanyName);
+  const [customerPhone, setCustomerPhone] = useState(fixedBranchPhone);
+  const [customerAddress, setCustomerAddress] = useState(fixedBranchAddress);
   const [draftItems, setDraftItems] = useState<DraftItem[]>([{ desc: '', qty: 1, price: 0 }]);
   const [vatRate, setVatRate] = useState(branchCode === 'TH' ? 7 : 0);
   const [saving, setSaving] = useState(false);
@@ -201,20 +207,33 @@ export default function BranchInvoiceLanding({
       let nextReports: DeliveryReport[] = [];
 
       if (branchCode === 'TH') {
-        const res = await fetch(`/api/delivery-notes?q=${encodeURIComponent(searchTerm)}`, { cache: 'no-store' });
-        const json = await res.json();
-        const rows = Array.isArray(json?.deliveryNotes) ? json.deliveryNotes : [];
-        nextReports = rows.map((row: any) => ({
-          id: String(row.deliveryID || row.id || row.deliveryNo || ''),
-          documentNo: String(row.deliveryNo || row.noteNo || ''),
-          documentDate: String(row.deliveryDate || row.delivery_date || ''),
-          customerName: String(row.customer_name || row.receiver_name || ''),
-          phone: String(row.customer_phone || row.receiver_phone || ''),
-          address: String(row.delivery_address || row.customer_address || ''),
-          referenceNo: String(row.refOrderNo || ''),
-          sourceLabel: 'Thailand Delivery Note',
-          items: normalizeItems(row.items || []),
-        }));
+        // Fetch from kr_shipment_updates (TH destination) + used invoice data in parallel
+        const [shipRes, invRes] = await Promise.all([
+          fetch('/api/korea/shipment-updates?destination=Thailand', { cache: 'no-store' }),
+          fetch(`/api/branch-invoices?branchCode=TH`, { cache: 'no-store' }),
+        ]);
+        const shipJson = await shipRes.json();
+        const invJson = invRes.ok ? await invRes.json() : {};
+        const usedShipments = new Set<string>((invJson.usedShipmentNos || []).map((s: string) => s.toUpperCase()));
+        const usedPdos = new Set<string>((invJson.usedPdoNos || []).map((s: string) => s.toUpperCase()));
+        const rows = Array.isArray(shipJson) ? shipJson : (Array.isArray(shipJson?.rows) ? shipJson.rows : []);
+        nextReports = rows
+          .filter((row: any) => {
+            const sn = String(row.shipmentNumber || '').toUpperCase();
+            const pdo = String(row.orderNumber || '').toUpperCase();
+            return !usedShipments.has(sn) && !(pdo && usedPdos.has(pdo));
+          })
+          .map((row: any) => ({
+            id: String(row.id || row.shipmentNumber || ''),
+            documentNo: String(row.shipmentNumber || ''),
+            documentDate: String(row.estimatedDelivery || row.lastUpdate || row.created_at || ''),
+            customerName: String(row.contactPerson || row.destination || 'Thailand Branch'),
+            phone: String(row.contactPhone || ''),
+            address: String(row.destinationAddress || ''),
+            referenceNo: String(row.orderNumber || ''),
+            sourceLabel: 'Thailand Shipment List',
+            items: normalizeItems(Array.isArray(row.items) ? row.items : (typeof row.items === 'string' ? JSON.parse(row.items || '[]') : [])),
+          }));
       } else if (branchCode === 'KR') {
         const res = await fetch('/api/korea/domestic-shipments', { cache: 'no-store' });
         const rows = await res.json();
@@ -425,23 +444,35 @@ export default function BranchInvoiceLanding({
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-gray-700">
-                      {isKo ? '고객/수취처' : 'Customer / Receiver'}
+                      {isKo ? '지점 회사명' : 'Branch Company Name'}
                     </label>
-                    <input
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-orange-400"
-                    />
+                    {fixedBranchCompanyName ? (
+                      <div className="w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-800">
+                        {fixedBranchCompanyName}
+                      </div>
+                    ) : (
+                      <input
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-orange-400"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-gray-700">
                       {isKo ? '연락처' : 'Phone'}
                     </label>
-                    <input
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-orange-400"
-                    />
+                    {fixedBranchPhone ? (
+                      <div className="w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-800">
+                        {fixedBranchPhone}
+                      </div>
+                    ) : (
+                      <input
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-orange-400"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-gray-700">

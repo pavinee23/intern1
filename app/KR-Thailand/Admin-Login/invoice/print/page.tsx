@@ -182,7 +182,7 @@ function InvoicePrintPageContent() {
             </div>
             <div className="company-address" style={{ marginTop: 8 }}>
               84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250<br/>
-              Tel: 02-080-8916 | Email: info@kenergysave.com
+              Tel: 02-080-8916 | Email: info@kenergy-save.com
             </div>
           </div>
           <div className="doc-title">

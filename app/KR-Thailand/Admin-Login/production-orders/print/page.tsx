@@ -517,7 +517,7 @@ export default function ProductionOrderPrintPage() {
             </div>
             <div className="company-address">
               {L('84 Chaloem Phrakiat Rama 9 Soi 34, Nong Bon, Prawet, Bangkok 10250', '84 ถนนเฉลิมพระเกียรติ ร.9 ซอย 34 แขวงหนองบอน เขตประเวศ กรุงเทพมหานคร 10250')}<br/>
-              {L('Tel: 02-080-8916 | Email: info@kenergysave.com', 'โทร: 02-080-8916 | อีเมล: info@kenergysave.com')}
+              {L('Tel: 02-080-8916 | Email: info@kenergy-save.com', 'โทร: 02-080-8916 | อีเมล: info@kenergy-save.com')}
             </div>
           </div>
           <div className="doc-title">
