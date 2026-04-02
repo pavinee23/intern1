@@ -67,7 +67,12 @@ export default function InvoicePrintPage() {
   const formatDate = (value?: string) => {
     if (!value) return '-';
     try {
-      return new Date(value).toLocaleDateString(isKo ? 'ko-KR' : 'en-US');
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return value;
+      const yyyy = dt.getFullYear();
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     } catch {
       return value;
     }
@@ -75,7 +80,7 @@ export default function InvoicePrintPage() {
 
   const formatMoney = (value?: number) => {
     return new Intl.NumberFormat(isKo ? 'ko-KR' : 'en-US', {
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2
     }).format(Number(value || 0));
   };
@@ -98,9 +103,24 @@ export default function InvoicePrintPage() {
     );
   }
 
+  const invoiceNo = invoice.invoiceNumber || invoice.id;
+  const customerId = (invoice.id || '').replace(/[^0-9]/g, '').slice(-5) || '-';
+  const itemDescription = invoice.linked_pdo_product || invoice.notes?.split('\n')[0] || 'K-Saver-30kVA';
+  const qty = 1;
+  const unitPrice = Number(invoice.subtotal || invoice.totalAmount || 0);
+  const subtotal = Number(invoice.subtotal || unitPrice * qty);
+  const taxRate = Number(invoice.taxRate || 0);
+  const taxAmount = Number(invoice.taxAmount || 0);
+  const totalAmount = Number(invoice.totalAmount || subtotal + taxAmount);
+  const thailandBranchName = 'K Energy Save Co., Ltd. (Thailand Branch)';
+  const thailandBranchAddress = [
+    '84 Chaloem Phrakiat Rama 9 Soi 34',
+    'Nong Bon, Prawet',
+    'Bangkok 10250, Thailand'
+  ].join('\n');
+
   return (
     <>
-      {/* Print Styles */}
       <style jsx global>{`
         @page {
           size: A4;
@@ -110,11 +130,12 @@ export default function InvoicePrintPage() {
         @media print {
           html, body {
             width: 210mm;
-            height: 297mm;
+            min-height: 297mm;
             margin: 0;
             padding: 0;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
+            font-family: Arial, Helvetica, sans-serif;
           }
 
           .no-print {
@@ -124,14 +145,11 @@ export default function InvoicePrintPage() {
           .print-container {
             width: 210mm;
             min-height: 297mm;
-            padding: 20mm;
             margin: 0;
-            background: white;
+            padding: 10mm 11mm;
             box-sizing: border-box;
-          }
-
-          .page-break {
-            page-break-after: always;
+            background: #fff;
+            overflow: hidden;
           }
         }
 
@@ -139,15 +157,16 @@ export default function InvoicePrintPage() {
           .print-container {
             width: 210mm;
             min-height: 297mm;
-            margin: 20px auto;
-            padding: 20mm;
-            background: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 18px auto;
+            padding: 10mm 11mm;
+            box-sizing: border-box;
+            background: #fff;
+            box-shadow: 0 0 12px rgba(0,0,0,0.15);
+            overflow: hidden;
           }
         }
       `}</style>
 
-      {/* Screen Only - Controls */}
       <div className="no-print fixed left-4 top-4 z-50 flex gap-3">
         <button
           type="button"
@@ -179,256 +198,147 @@ export default function InvoicePrintPage() {
         </div>
       </div>
 
-      {/* Print Content - A4 Formatted */}
-      <div className="print-container">
-        {/* Letterhead Header */}
-        <div className="mb-8 border-b-4 border-orange-500 pb-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold text-gray-900">
-                {isKo ? '인보이스' : 'INVOICE'}
-              </h1>
-              <p className="mt-1 text-base text-gray-500">
-                {isKo ? 'Tax Invoice' : '세금계산서'}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                {isKo ? '인보이스 번호' : 'Invoice No.'}
-              </div>
-              <div className="text-3xl font-bold text-orange-600">
-                {invoice.invoiceNumber || invoice.id}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* From/To Section */}
-        <div className="mb-6 grid grid-cols-2 gap-8">
-          {/* Customer (Left) */}
+      <div className="print-container text-[11px] leading-[1.25] text-black">
+        <div className="mb-3 flex items-start justify-between gap-4">
           <div>
-            <div className="mb-3 border-b-2 border-gray-200 pb-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {isKo ? '고객 (Bill To)' : 'Bill To (고객)'}
-              </h2>
-            </div>
-            <div className="space-y-2">
-              <div className="text-lg font-bold text-gray-900">{invoice.customer || '-'}</div>
-              {invoice.customer_address && (
-                <div className="text-sm leading-relaxed text-gray-700">
-                  {invoice.customer_address}
-                </div>
-              )}
-            </div>
-
-            {/* PDO Information Box */}
-            {invoice.linked_pdo_number && (
-              <div className="mt-4 rounded-lg border-2 border-blue-300 bg-blue-50 p-4">
-                <div className="mb-2 text-xs font-bold uppercase text-blue-900">
-                  {isKo ? '생산주문정보' : 'Production Order'}
-                </div>
-                <div className="space-y-1.5 text-sm">
-                  <div className="flex items-baseline">
-                    <span className="w-16 font-semibold text-gray-700">PDO:</span>
-                    <span className="font-bold text-blue-900">{invoice.linked_pdo_number}</span>
-                  </div>
-                  {invoice.pdo_branch && (
-                    <div className="flex items-baseline">
-                      <span className="w-16 font-semibold text-gray-700">{isKo ? '지점' : 'Branch'}:</span>
-                      <span className="text-gray-800">{invoice.pdo_branch}</span>
-                    </div>
-                  )}
-                  {invoice.linked_pdo_product && (
-                    <div className="flex items-baseline">
-                      <span className="w-16 font-semibold text-gray-700">{isKo ? '제품' : 'Product'}:</span>
-                      <span className="text-gray-800">{invoice.linked_pdo_product}</span>
-                    </div>
-                  )}
-                  {invoice.linked_pdo_date && (
-                    <div className="flex items-baseline">
-                      <span className="w-16 font-semibold text-gray-700">{isKo ? '날짜' : 'Date'}:</span>
-                      <span className="text-xs text-gray-600">{formatDate(invoice.linked_pdo_date)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            <img src="/zera-logo.png" alt="ZERA" className="mb-1 h-14 w-auto object-contain" />
+            <p>2F,16-10, 166Beon-Gil, Gunpo-Si, Gyeonggi-do, Korea</p>
+            <p className="mt-1">TEL : +82-31-427-1380</p>
+            <p>E-MAIL: info@zera-energy.com</p>
+            <p>Prepared by: Eun Seok Oh / Assistant Manager</p>
           </div>
 
-          {/* Company (Right) */}
-          <div>
-            <div className="mb-3 border-b-2 border-gray-200 pb-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {isKo ? '발행자 (From)' : 'From (발행자)'}
-              </h2>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xl font-bold text-gray-900">Zera Co., Ltd.</div>
-              <div className="text-base font-semibold text-gray-700">주식회사 제라</div>
-              <div className="mt-2 text-xs text-gray-600">
-                {isKo ? '대한민국 본사' : 'Korea Headquarters'}
-              </div>
-              <div className="mt-3 rounded bg-gray-100 px-3 py-2">
-                <div className="text-xs font-bold text-gray-900">
-                  Tax ID: 831-87-03154
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Invoice Dates */}
-        <div className="mb-6 grid grid-cols-2 gap-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-gray-500">
-              {isKo ? '발행일' : 'Issue Date'}
-            </div>
-            <div className="mt-1 text-lg font-semibold text-gray-900">
-              {formatDate(invoice.issueDate)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-gray-500">
-              {isKo ? '만기일' : 'Due Date'}
-            </div>
-            <div className="mt-1 text-lg font-semibold text-gray-900">
-              {formatDate(invoice.dueDate)}
-            </div>
-          </div>
-        </div>
-
-        {/* Amount Summary Table */}
-        <div className="mb-6">
-          <div className="overflow-hidden rounded-lg border-2 border-gray-300">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-800 text-white">
-                  <th className="px-6 py-3 text-left text-sm font-bold uppercase tracking-wide">
-                    {isKo ? '항목' : 'Description'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-bold uppercase tracking-wide">
-                    {isKo ? '금액 (USD)' : 'Amount (USD)'}
-                  </th>
+          <div className="w-[46%]">
+            <h1 className="mb-2 text-right text-[32px] font-bold leading-none text-[#6f83b8]">INVOICE</h1>
+            <table className="ml-auto w-[78%] border border-black border-collapse">
+              <tbody>
+                <tr>
+                  <td className="w-[48%] border border-black px-2 py-1 text-right font-semibold">DATE</td>
+                  <td className="border border-black px-2 py-1 text-center">{formatDate(invoice.issueDate)}</td>
                 </tr>
-              </thead>
-              <tbody className="bg-white">
-                <tr className="border-b border-gray-200">
-                  <td className="px-6 py-4 text-base font-medium text-gray-700">
-                    {isKo ? '공급가액' : 'Subtotal'}
-                  </td>
-                  <td className="px-6 py-4 text-right text-base font-semibold text-gray-900">
-                    $ {formatMoney(invoice.subtotal)}
-                  </td>
+                <tr>
+                  <td className="border border-black px-2 py-1 text-right font-semibold">INVOICE NO</td>
+                  <td className="border border-black px-2 py-1 text-center">{invoiceNo}</td>
                 </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-6 py-4 text-base font-medium text-gray-700">
-                    {isKo ? `부가세 (${invoice.taxRate || 0}%)` : `VAT (${invoice.taxRate || 0}%)`}
-                  </td>
-                  <td className="px-6 py-4 text-right text-base font-semibold text-gray-900">
-                    $ {formatMoney(invoice.taxAmount)}
-                  </td>
-                </tr>
-                <tr className="bg-orange-500">
-                  <td className="px-6 py-5 text-xl font-bold text-white">
-                    {isKo ? '합계' : 'Total Amount'}
-                  </td>
-                  <td className="px-6 py-5 text-right text-2xl font-bold text-white">
-                    $ {formatMoney(invoice.totalAmount)}
-                  </td>
+                <tr>
+                  <td className="border border-black px-2 py-1 text-right font-semibold">CUSTOMER ID</td>
+                  <td className="border border-black px-2 py-1 text-center">{customerId}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Bank Account Information */}
-        <div className="mb-6 rounded-lg border-2 border-blue-400 bg-blue-50 p-5">
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-blue-900">
-            {isKo ? '은행 계좌 정보' : 'Bank Account Information'}
-          </h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Account 1 */}
-            <div className="rounded-lg border border-blue-300 bg-white p-4 shadow-sm">
-              <div className="mb-3 border-b border-gray-200 pb-2">
-                <span className="text-xs font-bold uppercase text-blue-800">Account 1</span>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">Bank:</span>
-                  <span className="text-gray-900">KB Kookmin Bank</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">Account No:</span>
-                  <span className="font-bold text-gray-900">676901-01-284982</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">SWIFT:</span>
-                  <span className="text-gray-900">CZNBKRSEXXX</span>
-                </div>
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Account Holder:</div>
-                  <div className="text-xs text-gray-900">Zera Co., Ltd. (주식회사 세라님)</div>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Seongnam Hi-Tech Branch
-                </div>
-              </div>
+        <div className="mb-3 grid grid-cols-2 gap-4">
+          <div>
+            <div className="mb-1 bg-[#2f4a87] px-2 py-1 text-[13px] font-bold tracking-wide text-white">CUSTOMER</div>
+            <div className="min-h-[84px] border border-black p-2 text-[11px] leading-[1.25]">
+              <p className="font-bold">{thailandBranchName}</p>
+              <p className="mt-1 whitespace-pre-line">{thailandBranchAddress}</p>
             </div>
+          </div>
 
-            {/* Account 2 */}
-            <div className="rounded-lg border border-blue-300 bg-white p-4 shadow-sm">
-              <div className="mb-3 border-b border-gray-200 pb-2">
-                <span className="text-xs font-bold uppercase text-blue-800">Account 2</span>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">Bank:</span>
-                  <span className="text-gray-900">KB Kookmin Bank</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">Account No:</span>
-                  <span className="font-bold text-gray-900">676968-11-015342</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-600">SWIFT:</span>
-                  <span className="text-gray-900">CZNBKRSEXXX</span>
-                </div>
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Account Holder:</div>
-                  <div className="text-xs text-gray-900">Zera Co., Ltd. (주식회사 제라)</div>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Seongnam Hi-Tech Branch
-                </div>
-              </div>
+          <div>
+            <div className="mb-1 bg-[#2f4a87] px-2 py-1 text-[13px] font-bold tracking-wide text-white">REMARK</div>
+            <div className="min-h-[84px] border border-black p-2 text-[11px] leading-[1.25]">
+              <p>CONSIGNEE : {thailandBranchName.toUpperCase()}</p>
+              <p>DESTINATION : BANGKOK, THAILAND</p>
+              <p>INVOICE NO. OR PO NO : {invoice.salesContractNumber || invoice.linked_pdo_number || '-'}</p>
+              <p>ORIGIN : MADE IN KOREA</p>
             </div>
           </div>
         </div>
 
-        {/* Notes */}
-        {invoice.notes && (
-          <div className="mb-6">
-            <div className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-              {isKo ? '메모' : 'Notes'}
-            </div>
-            <div className="rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm leading-relaxed text-gray-700">
-              {invoice.notes}
+        <table className="w-full border border-black border-collapse text-[11px] leading-[1.2]">
+          <thead>
+            <tr className="bg-[#2f4a87] text-white">
+              <th className="w-[58%] border border-black px-2 py-1 text-left">DESCRIPTION</th>
+              <th className="w-[14%] border border-black px-2 py-1">UNIT PRICE</th>
+              <th className="w-[11%] border border-black px-2 py-1">QTY</th>
+              <th className="w-[17%] border border-black px-2 py-1">AMOUNT(USD)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border border-black px-2 py-1">{itemDescription}</td>
+              <td className="border border-black px-2 py-1 text-center">$ {formatMoney(unitPrice)}</td>
+              <td className="border border-black px-2 py-1 text-center">{qty}</td>
+              <td className="border border-black px-2 py-1 text-right">$ {formatMoney(subtotal)}</td>
+            </tr>
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <tr key={idx}>
+                <td className="h-5 border border-black" />
+                <td className="border border-black" />
+                <td className="border border-black" />
+                <td className="border border-black" />
+              </tr>
+            ))}
+            <tr>
+              <td className="border border-black px-2 py-2 align-top" colSpan={3}>
+                <p className="font-bold">***Summary of Payment***</p>
+                <p>Total Amount: $ {formatMoney(totalAmount)} CIF Bangkok Based</p>
+                {invoice.notes ? (
+                  <p className="whitespace-pre-line">{invoice.notes}</p>
+                ) : (
+                  <>
+                    <p>1st : $ {formatMoney(totalAmount / 2)} (50% against B/L)</p>
+                    <p>2nd: $ {formatMoney(totalAmount / 2)} (50% after 90 days upon completion of installation)</p>
+                  </>
+                )}
+              </td>
+              <td className="border border-black" />
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="mt-3 grid grid-cols-5 gap-4">
+          <div className="col-span-3">
+            <div className="mb-1 bg-[#2f4a87] px-2 py-1 text-[13px] font-bold tracking-wide text-white">BANK INFORMATION</div>
+            <div className="min-h-[148px] border border-black p-2 text-[11px] leading-[1.3]">
+              <p className="italic">Beneficiary : ZERA co.</p>
+              <p className="italic">Bank Name : industrial Bank of Korea</p>
+              <p className="italic">Account No. : 165-132084-56-00010</p>
+              <p className="italic">Swift Code : IBKOKRSEXXX</p>
+              <p className="italic">Branch : Seongnam High-Tech</p>
+              <p className="mt-2 italic">Address : 8, 457beon-gil, Dunchon-daero, Jungwon-gu,</p>
+              <p className="italic">Seongnam-si, Gyeonggi-do, Republic of Korea</p>
             </div>
           </div>
-        )}
 
-        {/* Footer */}
-        <div className="mt-auto border-t-2 border-gray-300 pt-4">
-          <div className="text-center text-xs text-gray-500">
-            <p className="font-bold text-gray-700">Zera Co., Ltd. (주식회사 제라)</p>
-            <p className="mt-1">Tax ID: 831-87-03154</p>
-            <p className="mt-2 italic">
-              {isKo
-                ? '본 인보이스는 전자 문서로 발행되었습니다.'
-                : 'This invoice has been issued as an electronic document.'}
-            </p>
+          <div className="col-span-2">
+            <table className="w-full border border-black border-collapse text-[11px] leading-[1.25]">
+              <tbody>
+                <tr>
+                  <td className="border border-black px-2 py-1">Subtotal</td>
+                  <td className="border border-black px-2 py-1 text-right">$ {formatMoney(subtotal)}</td>
+                </tr>
+                <tr>
+                  <td className="border border-black px-2 py-1">Taxable</td>
+                  <td className="border border-black px-2 py-1 text-right">{taxRate ? `${taxRate}%` : ''}</td>
+                </tr>
+                <tr>
+                  <td className="border border-black px-2 py-1">Tax due</td>
+                  <td className="border border-black px-2 py-1 text-right">{taxAmount ? `$ ${formatMoney(taxAmount)}` : ''}</td>
+                </tr>
+                <tr>
+                  <td className="border border-black px-2 py-1">Other</td>
+                  <td className="border border-black px-2 py-1" />
+                </tr>
+                <tr>
+                  <td className="border border-black px-2 py-1 font-bold">TOTAL</td>
+                  <td className="border border-black px-2 py-1 text-right font-bold">$ {formatMoney(totalAmount)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div className="mt-4 text-[11px]">
+              <p>Confirmed by</p>
+              <div className="mt-2 h-10 border-b border-black" />
+            </div>
           </div>
         </div>
+
+        <div className="mt-4 text-center text-[16px] font-semibold italic">Thank You For Your Business!</div>
       </div>
     </>
   );

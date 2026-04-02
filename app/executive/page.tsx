@@ -438,6 +438,12 @@ export default function ExecutiveDashboard() {
   const fmtNum = (n: number): string =>
     new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(n)
 
+  const getAttachmentSizeLabel = (billId: number, attachmentIndex: number): string => {
+    const major = ((billId * 31 + attachmentIndex * 17) % 5) + 1;
+    const minor = (billId * 13 + attachmentIndex * 7) % 10;
+    return `${major}.${minor} MB`;
+  };
+
   const getSeverityColor = (severity: 'high' | 'medium' | 'low') => {
     switch (severity) {
       case 'high': return 'text-red-600 bg-red-50 border-red-200';
@@ -1715,7 +1721,7 @@ export default function ExecutiveDashboard() {
                           {selectedBill.category.toLowerCase().replace(/\s+/g, '_')}_{idx + 1}.pdf
                         </p>
                         <p className="text-xs text-gray-500">
-                          {Math.floor(Math.random() * 5) + 1}.{Math.floor(Math.random() * 10)} MB
+                          {getAttachmentSizeLabel(selectedBill.id, idx + 1)}
                         </p>
                       </div>
                       <button className="text-blue-600 hover:text-blue-800 text-sm font-semibold">
