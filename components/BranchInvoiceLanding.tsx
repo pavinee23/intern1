@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale } from '@/lib/LocaleContext';
@@ -44,7 +44,7 @@ function todayString() {
 
 function buildDefaultInvoiceNo(branchCode: BranchCode) {
   const ymd = todayString().replaceAll('-', '');
-  return `${branchCode}-INV-${ymd}-0001`;
+  return `INV-${ymd}-${branchCode}00001`;
 }
 
 function normalizeItems(items: any[]): DraftItem[] {
@@ -98,6 +98,7 @@ export default function BranchInvoiceLanding({
   const [reports, setReports] = useState<DeliveryReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<DeliveryReport | null>(null);
   const [invoiceNo, setInvoiceNo] = useState(() => buildDefaultInvoiceNo(branchCode));
+  const [invoiceNoLoading, setInvoiceNoLoading] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(() => todayString());
   const [customerName, setCustomerName] = useState(fixedBranchCompanyName);
   const [customerPhone, setCustomerPhone] = useState(fixedBranchPhone);
@@ -105,6 +106,26 @@ export default function BranchInvoiceLanding({
   const [draftItems, setDraftItems] = useState<DraftItem[]>([{ desc: '', qty: 1, price: 0 }]);
   const [vatRate, setVatRate] = useState(branchCode === 'TH' ? 7 : 0);
   const [saving, setSaving] = useState(false);
+
+  const refreshInvoiceNo = async () => {
+    setInvoiceNoLoading(true);
+    try {
+      const res = await fetch(`/api/branch-invoices?branchCode=${encodeURIComponent(branchCode)}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok && data?.success && data?.invoiceNo) {
+        setInvoiceNo(String(data.invoiceNo));
+      } else {
+        setInvoiceNo(buildDefaultInvoiceNo(branchCode));
+      }
+    } catch {
+      setInvoiceNo(buildDefaultInvoiceNo(branchCode));
+    } finally {
+      setInvoiceNoLoading(false);
+    }
+  };
+
+  // Load next invoice number from DB on mount
+  useEffect(() => { void refreshInvoiceNo(); }, []);
 
   const draftSubtotal = draftItems.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0), 0);
   const draftVat = draftSubtotal * (Number(vatRate) || 0) / 100;
@@ -182,12 +203,12 @@ export default function BranchInvoiceLanding({
 
       if (res.ok && json.success) {
         alert(isKo ? '인보이스가 저장되었습니다!' : 'Invoice saved successfully!');
-        // Reset form
-        setInvoiceNo(buildDefaultInvoiceNo(branchCode));
+        // Reset form and get next invoice number from DB
+        await refreshInvoiceNo();
         setInvoiceDate(todayString());
-        setCustomerName('');
-        setCustomerPhone('');
-        setCustomerAddress('');
+        setCustomerName(fixedBranchCompanyName);
+        setCustomerPhone(fixedBranchPhone);
+        setCustomerAddress(fixedBranchAddress);
         setDraftItems([{ desc: '', qty: 1, price: 0 }]);
         setSelectedReport(null);
       } else {
@@ -346,49 +367,6 @@ export default function BranchInvoiceLanding({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-600">
-                <div className="font-semibold text-gray-800">
-                  {isKo ? '현재 상태' : 'Current Status'}
-                </div>
-                <div className="mt-1">
-                  {formHref
-                    ? (isKo ? '인보이스 생성 페이지 연결 가능' : 'Invoice creation page available')
-                    : (isKo ? '이 지점 전용 인보이스 페이지 준비 중' : 'Dedicated invoice page is being prepared')}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-gray-800">
-                  {isKo ? '페이지 목적' : 'Page Purpose'}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  {isKo
-                    ? '생산 대시보드에서 지점별 인보이스 작업으로 이동할 수 있는 시작 페이지입니다.'
-                    : 'This is the landing page for branch-specific invoice work from the production dashboard.'}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-gray-800">
-                  {isKo ? '선택한 지점' : 'Selected Branch'}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  {branchName}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-gray-800">
-                  {isKo ? '다음 작업' : 'Next Step'}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  {formHref
-                    ? (isKo ? '아래 버튼으로 인보이스 입력 화면을 열 수 있습니다.' : 'Use the button below to open the invoice entry screen.')
-                    : (isKo ? '이 페이지를 기준으로 각 지점별 인보이스 기능을 연결할 수 있습니다.' : 'This page is ready to be connected to a branch-specific invoice workflow.')}
-                </p>
-              </div>
             </div>
 
             <div className="no-print mt-8 flex flex-wrap gap-3">
@@ -423,9 +401,10 @@ export default function BranchInvoiceLanding({
                       {isKo ? '인보이스 번호' : 'Invoice No.'}
                     </label>
                     <input
-                      value={invoiceNo}
-                      onChange={(e) => setInvoiceNo(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-orange-400"
+                      value={invoiceNoLoading ? (isKo ? '불러오는 중...' : 'Loading...') : invoiceNo}
+                      onChange={(e) => !invoiceNoLoading && setInvoiceNo(e.target.value)}
+                      readOnly={invoiceNoLoading}
+                      className={`w-full rounded-xl border px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-orange-400 ${invoiceNoLoading ? 'border-gray-200 bg-gray-100 text-gray-400' : 'border-gray-300 bg-white'}`}
                     />
                   </div>
                   <div className="w-full md:w-56">
