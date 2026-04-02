@@ -173,6 +173,7 @@ type KoreaInvoice = {
   id: string
   invoiceNumber?: string
   customer?: string
+  supplier_name?: string
   issueDate?: string
   dueDate?: string
   subtotal?: number
@@ -1070,7 +1071,7 @@ export default function AccountingDashboardPage() {
                               {invoice.invoiceNumber || invoice.id}
                             </td>
                             <td style={{ padding: '12px 16px', color: '#1f2937' }}>
-                              {invoice.customer || '-'}
+                              {invoice.supplier_name || invoice.customer || '-'}
                             </td>
                             <td style={{ padding: '12px 16px', color: '#6b7280' }}>
                               {invoice.issueDate ? new Date(invoice.issueDate).toLocaleDateString('th-TH') : '-'}
@@ -1079,7 +1080,7 @@ export default function AccountingDashboardPage() {
                               {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('th-TH') : '-'}
                             </td>
                             <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#1f2937' }}>
-                              ${((invoice.totalAmount || 0) / 1350).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ${(invoice.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                               <span style={{
@@ -1100,17 +1101,16 @@ export default function AccountingDashboardPage() {
                             <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                               <button
                                 onClick={() => {
-                                  const amountUSD = ((invoice.totalAmount || 0) / 1350).toFixed(2)
+                                  const amountUSD = (invoice.totalAmount || 0).toFixed(2)
                                   const amountTHB = (parseFloat(amountUSD) * 35).toFixed(2)
                                   const params = new URLSearchParams({
                                     source: 'korea_invoice',
                                     invoice_id: invoice.id,
                                     invoice_number: invoice.invoiceNumber || '',
                                     amount: amountUSD,
-                                    amount_krw: String(invoice.totalAmount || 0),
                                     amount_thb: amountTHB,
-                                    supplier: invoice.customer || '',
-                                    notes: `Korea HQ Invoice: ${invoice.invoiceNumber || invoice.id} (₩${(invoice.totalAmount || 0).toLocaleString()} = $${amountUSD} = ฿${parseFloat(amountTHB).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+                                    supplier: invoice.supplier_name || invoice.customer || '',
+                                    notes: `Korea HQ Invoice: ${invoice.invoiceNumber || invoice.id} ($${amountUSD} = ฿${parseFloat(amountTHB).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
                                   })
                                   router.push(`/Thailand/Accounting-Login/finance/pay?${params.toString()}`)
                                 }}

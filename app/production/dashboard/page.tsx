@@ -69,6 +69,10 @@ export default function ProductionDashboardPage() {
   });
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState('');
+  const [alerts, setAlerts] = useState<{ overdueOrders: any[]; unpaidInvoices: any[]; inTransitShipments: any[] }>({ overdueOrders: [], unpaidInvoices: [], inTransitShipments: [] });
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [shipmentStats, setShipmentStats] = useState({ total: 0, preparing: 0, in_transit: 0, customs: 0, delivered: 0 });
+  const [invoiceStats, setInvoiceStats] = useState({ total: 0, unpaid: 0, paid: 0, overdue: 0 });
 
   const branchInvoiceCards = [
     {
@@ -155,6 +159,10 @@ export default function ProductionDashboardPage() {
           malaysia: { ...EMPTY_STATS, ...(json?.branches?.malaysia || {}) },
           brunei: { ...EMPTY_STATS, ...(json?.branches?.brunei || {}) },
         });
+        if (json.alerts) setAlerts(json.alerts);
+        if (json.recentOrders) setRecentOrders(json.recentOrders);
+        if (json.shipments) setShipmentStats(json.shipments);
+        if (json.invoices) setInvoiceStats(json.invoices);
       } catch (err: any) {
         if (!active) return;
         setDashboardError(err?.message || 'Failed to load production dashboard data');
@@ -589,6 +597,139 @@ export default function ProductionDashboardPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Data Summary Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+            <div className="text-xs text-gray-500 mb-1">{locale === 'ko' ? '출하 완료' : 'Delivered'}</div>
+            <div className="text-2xl font-bold text-blue-700">{shipmentStats.delivered}</div>
+            <div className="text-xs text-gray-400 mt-1">{locale === 'ko' ? `전체 ${shipmentStats.total}건` : `of ${shipmentStats.total} shipments`}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+            <div className="text-xs text-gray-500 mb-1">{locale === 'ko' ? '운송중' : 'In Transit'}</div>
+            <div className="text-2xl font-bold text-yellow-700">{shipmentStats.in_transit + shipmentStats.customs}</div>
+            <div className="text-xs text-gray-400 mt-1">{locale === 'ko' ? `준비중 ${shipmentStats.preparing}건` : `${shipmentStats.preparing} preparing`}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+            <div className="text-xs text-gray-500 mb-1">{locale === 'ko' ? '미납 인보이스' : 'Unpaid Invoices'}</div>
+            <div className="text-2xl font-bold text-red-700">{invoiceStats.unpaid}</div>
+            <div className="text-xs text-gray-400 mt-1">{locale === 'ko' ? `전체 ${invoiceStats.total}건` : `of ${invoiceStats.total} invoices`}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+            <div className="text-xs text-gray-500 mb-1">{locale === 'ko' ? '납부 완료' : 'Paid'}</div>
+            <div className="text-2xl font-bold text-green-700">{invoiceStats.paid}</div>
+            <div className="text-xs text-gray-400 mt-1">{locale === 'ko' ? `연체 ${invoiceStats.overdue}건` : `${invoiceStats.overdue} overdue`}</div>
+          </div>
+        </div>
+
+        {/* Alerts Section */}
+        {(alerts.overdueOrders.length > 0 || alerts.unpaidInvoices.length > 0 || alerts.inTransitShipments.length > 0) && (
+          <div className="mb-8 space-y-4">
+            {alerts.overdueOrders.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-red-700 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  {locale === 'ko' ? `납기 초과 생산 주문 (${alerts.overdueOrders.length}건)` : `Overdue Production Orders (${alerts.overdueOrders.length})`}
+                </h3>
+                <div className="space-y-2">
+                  {alerts.overdueOrders.map((o: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-white rounded p-2">
+                      <span className="font-semibold text-gray-800">{o.pdoNo}</span>
+                      <span className="text-gray-600">{o.product_name}</span>
+                      <span className="text-red-600 font-medium">Due: {o.due_date}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">{o.priority}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {alerts.unpaidInvoices.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-yellow-700 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  {locale === 'ko' ? `미납 인보이스 (${alerts.unpaidInvoices.length}건)` : `Unpaid Invoices (${alerts.unpaidInvoices.length})`}
+                </h3>
+                <div className="space-y-2">
+                  {alerts.unpaidInvoices.map((inv: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-white rounded p-2">
+                      <span className="font-semibold text-gray-800">{inv.invoiceNumber}</span>
+                      <span className="text-gray-600">{inv.customer}</span>
+                      <span className="text-gray-800 font-medium">${Number(inv.totalAmount||0).toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-bold">{inv.branch_code || '-'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {alerts.inTransitShipments.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-blue-700 mb-3 flex items-center gap-2">
+                  <Truck className="w-4 h-4" />
+                  {locale === 'ko' ? `운송중 배송 (${alerts.inTransitShipments.length}건)` : `In-Transit Shipments (${alerts.inTransitShipments.length})`}
+                </h3>
+                <div className="space-y-2">
+                  {alerts.inTransitShipments.map((s: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-white rounded p-2">
+                      <span className="font-semibold text-gray-800">{s.shipmentNumber}</span>
+                      <span className="text-gray-600">{s.orderNumber}</span>
+                      <span className="text-blue-600">{s.destination}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">{s.currentStatus}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent Production Orders */}
+        {recentOrders.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5 text-orange-500" />
+              {locale === 'ko' ? '최근 생산 주문' : 'Recent Production Orders'}
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-xs text-gray-500">
+                    <th className="text-left py-2 px-2">{locale === 'ko' ? 'PDO 번호' : 'PDO No.'}</th>
+                    <th className="text-left py-2 px-2">{locale === 'ko' ? '제품명' : 'Product'}</th>
+                    <th className="text-right py-2 px-2">{locale === 'ko' ? '수량' : 'Qty'}</th>
+                    <th className="text-left py-2 px-2">{locale === 'ko' ? '상태' : 'Status'}</th>
+                    <th className="text-left py-2 px-2">{locale === 'ko' ? '납기일' : 'Due Date'}</th>
+                    <th className="text-left py-2 px-2">{locale === 'ko' ? '우선순위' : 'Priority'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((o: any, i: number) => (
+                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-2 font-semibold text-gray-800 text-xs">{o.pdoNo}</td>
+                      <td className="py-2 px-2 text-gray-700">{o.product_name}</td>
+                      <td className="py-2 px-2 text-right">{Number(o.quantity_ordered||0)} {o.unit}</td>
+                      <td className="py-2 px-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          o.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          o.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>{o.status}</span>
+                      </td>
+                      <td className="py-2 px-2 text-gray-600 text-xs">{o.due_date}</td>
+                      <td className="py-2 px-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          o.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                          o.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>{o.priority}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

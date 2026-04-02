@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/mysql'
-import type { RowDataPacket } from 'mysql2/promise'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,17 +15,28 @@ export async function GET(request: NextRequest) {
           i.id,
           i.invoiceNumber,
           i.customer,
+          i.customer_address,
+          i.customer_phone,
+          i.customer_email,
           i.issueDate,
           i.dueDate,
           i.subtotal,
           i.taxRate,
           i.taxAmount,
+          i.vat_amount,
           i.totalAmount,
           i.paymentStatus,
           i.notes,
           i.salesContractNumber,
+          i.branch_code,
           i.pdo_number,
           i.pdo_branch,
+          i.shipment_no,
+          i.repdo_no,
+          i.qaqc_no,
+          i.supplier_name,
+          i.supplier_phone,
+          i.supplier_email,
           i.created_at,
           po.pdoNo AS linked_pdo_number,
           po.pdoDate AS linked_pdo_date,
@@ -37,35 +47,32 @@ export async function GET(request: NextRequest) {
       `
 
       const params: string[] = []
-      let hasWhere = false
+      const where: string[] = []
 
       if (status === 'unpaid') {
-        query += ` WHERE i.paymentStatus IN ('unpaid', 'partial', 'overdue')`
-        hasWhere = true
+        where.push(`i.paymentStatus IN ('unpaid', 'partial', 'overdue')`)
       } else if (status !== 'all') {
-        query += ` WHERE i.paymentStatus = ?`
+        where.push(`i.paymentStatus = ?`)
         params.push(status)
-        hasWhere = true
       }
 
-      // Filter by branch (customer name contains branch name)
+      // Filter by branch_code first, fallback to notes for legacy records
       if (branch) {
-        const branchMap: { [key: string]: string } = {
-          'thailand': 'Thailand',
-          'vietnam': 'Vietnam',
-          'malaysia': 'Malaysia',
-          'brunei': 'Brunei'
+        const branchCodeMap: { [key: string]: string } = {
+          thailand: 'TH', vietnam: 'VN', malaysia: 'MY', brunei: 'BN', korea: 'KR'
         }
-        const customerPattern = branchMap[branch.toLowerCase()] || branch
-        query += hasWhere ? ` AND` : ` WHERE`
-        query += ` i.customer LIKE ?`
-        params.push(`%${customerPattern}%`)
-        hasWhere = true
+        const branchCode = branchCodeMap[branch.toLowerCase()] || branch.slice(0, 2).toUpperCase()
+        where.push(`(i.branch_code = ? OR (i.branch_code IS NULL AND i.notes LIKE ?))`)
+        params.push(branchCode, `%Branch: ${branchCode}%`)
+      }
+
+      if (where.length > 0) {
+        query += ` WHERE ${where.join(' AND ')}`
       }
 
       query += ` ORDER BY i.created_at DESC`
 
-      const [rows] = await connection.query<RowDataPacket[]>(query, params)
+      const [rows]: any = await connection.query(query, params)
 
       return NextResponse.json({
         success: true,
