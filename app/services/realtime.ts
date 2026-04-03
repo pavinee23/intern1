@@ -70,17 +70,17 @@ async function queryInfluxLast(deviceId: string): Promise<{ ok: boolean; raw?: s
     const kMatch = raw.match(/"ksave"\s*:\s*"([^"]+)"/i)
     const sMatch = raw.match(/"series(?:_name)?"\s*:\s*"([^"]+)"/i)
     const nameMatch = raw.match(/"name"\s*:\s*"([^"]+)"/i)
-    parsed.seriesName = (kMatch && kMatch[1]) || (sMatch && sMatch[1]) || (mMatch && mMatch[1]) || (nameMatch && nameMatch[1])
+    parsed.seriesName = kMatch?.[1] ?? sMatch?.[1] ?? mMatch?.[1] ?? nameMatch?.[1] ?? undefined
 
     const snMatch = raw.match(/"series_no"\s*:\s*"?([0-9]+(?:\.[0-9]+)?)"?/i)
     const idMatch = raw.match(/"(?:device|host|machine|id)"\s*:\s*"?([0-9]+(?:\.[0-9]+)?)"?/i)
     const valueMatch = raw.match(/"_value"\s*:\s*([0-9.+\\-eE]+)/i)
-    parsed.seriesNo = (snMatch && snMatch[1]) || (idMatch && idMatch[1]) || (valueMatch && valueMatch[1]) || undefined
+    parsed.seriesNo = snMatch?.[1] ?? idMatch?.[1] ?? valueMatch?.[1] ?? undefined
 
     const locMatch = raw.match(/"location"\s*:\s*"([^"]+)"/i)
     const siteMatch = raw.match(/"site(?:_name)?"\s*:\s*"([^"]+)"/i)
     const locTagMatch = raw.match(/"loc"\s*:\s*"([^"]+)"/i)
-    parsed.location = (locMatch && locMatch[1]) || (siteMatch && siteMatch[1]) || (locTagMatch && locTagMatch[1]) || undefined
+    parsed.location = locMatch?.[1] ?? siteMatch?.[1] ?? locTagMatch?.[1] ?? undefined
 
     const timeMatch = raw.match(/"_time"\s*:\s*"([^"]+)"/i) || raw.match(/"time"\s*:\s*"([^"]+)"/i)
     if (timeMatch && timeMatch[1]) {

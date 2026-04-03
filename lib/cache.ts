@@ -62,11 +62,11 @@ class SimpleCache {
     const maxAge = ttl || this.defaultTTL
     const now = Date.now()
 
-    for (const [key, entry] of this.cache.entries()) {
+    this.cache.forEach((entry, key) => {
       if (now - entry.timestamp > maxAge) {
         this.cache.delete(key)
       }
-    }
+    })
   }
 }
 

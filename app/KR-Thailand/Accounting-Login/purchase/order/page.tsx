@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow from '../../components/AccWindow'
 import SupplierSearch from '../../components/SupplierSearch'
 
@@ -9,10 +9,10 @@ type PO = { id?: number; doc_no?: string; doc_date: string; supplier_id?: number
 const emptyItem = (): Item => ({ description: '', qty: 1, unit: 'ชิ้น', unit_price: 0, amount: 0 })
 const emptyPO = (): PO => ({ doc_date: new Date().toISOString().slice(0, 10), status: 'draft', subtotal: 0, discount: 0, vat_amount: 0, total: 0, items: [emptyItem()] })
 
-const th: any = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
-const td: any = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
-const inp: any = { padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13.5, width: '100%', boxSizing: 'border-box', fontFamily: '"Sarabun","Tahoma",sans-serif', outline: 'none' }
-const btn = (bg: string, c = '#1f2937'): any => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
+const th: React.CSSProperties = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
+const td: React.CSSProperties = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
+const inp: React.CSSProperties = { padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13.5, width: '100%', boxSizing: 'border-box', fontFamily: '"Sarabun","Tahoma",sans-serif', outline: 'none' }
+const btn = (bg: string, c = '#1f2937'): React.CSSProperties => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
 
 function calcItems(items: Item[], discount: number, vatRate: number) {
   const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
@@ -31,15 +31,15 @@ export default function PurchaseOrderPage() {
   const [vatRate] = useState(0.07)
   const [msg, setMsg] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const r = await fetch('/api/accounting/purchase-orders')
-    const d = await r.json(); if (d.ok) setList(d.data)
-  }
-  useEffect(() => {
-    load()
+    const d = await r.json(); if (d.ok) setList(d.data as PO[])
   }, [])
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const setItem = (idx: number, field: keyof Item, val: any) => {
+  const setItem = (idx: number, field: keyof Item, val: string | number) => {
     setForm(f => {
       const items = [...(f.items || [])]
       const item = { ...items[idx], [field]: val }
@@ -55,15 +55,16 @@ export default function PurchaseOrderPage() {
     const method = form.id ? 'PUT' : 'POST'
     const res = await fetch('/api/accounting/purchase-orders', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     const d = await res.json()
-    if (d.ok) { setShowForm(false); load(); setMsg('บันทึกสำเร็จ') } else setMsg('Error: ' + d.error)
+    if (d.ok) { setShowForm(false); void load(); setMsg('บันทึกสำเร็จ') } else setMsg('Error: ' + d.error)
     setLoading(false)
   }
 
   const del = async (id: number) => {
     if (!confirm('ลบใบสั่งซื้อนี้?')) return
     await fetch('/api/accounting/purchase-orders?id=' + id, { method: 'DELETE' })
-    load()
+    void load()
   }
+  const handleDelete = (id?: number) => { if (typeof id === 'number') void del(id) }
 
   const statusLabel: Record<string, string> = { draft: 'ร่าง', confirmed: 'ยืนยัน', received: 'รับแล้ว', cancelled: 'ยกเลิก' }
   const statusColor: Record<string, string> = { draft: '#888', confirmed: '#0055aa', received: 'green', cancelled: 'red' }
@@ -80,7 +81,7 @@ export default function PurchaseOrderPage() {
             <thead><tr>{['เลขที่','วันที่','ผู้จำหน่าย','ยอดรวม','สถานะ',''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {list.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#888', padding: 20 }}>ไม่มีข้อมูล</td></tr>}
-              {list.map((row: any, i) => (
+              {list.map((row, i) => (
                 <tr key={row.id} style={{ background: i % 2 ? '#f5f5f5' : '#fff' }}>
                   <td style={{ ...td, fontFamily: 'monospace' }}>{row.doc_no}</td>
                   <td style={td}>{row.doc_date ? new Date(row.doc_date).toLocaleDateString('th-TH') : ''}</td>
@@ -90,9 +91,9 @@ export default function PurchaseOrderPage() {
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={async () => {
                       const r = await fetch('/api/accounting/purchase-orders?id=' + row.id)
-                      const d = await r.json(); if (d.ok) { setForm(d.data); setSupplierDisplay(d.data.supplier_name || ''); setShowForm(true) }
+                      const d = await r.json(); if (d.ok) { const loaded = d.data as PO; setForm(loaded); setSupplierDisplay(loaded.supplier_name || ''); setShowForm(true) }
                     }}>แก้ไข</button>
-                    <button style={{ ...btn('#f3f4f6', '#cc0000') }} onClick={() => del(row.id)}>ลบ</button>
+                    <button style={{ ...btn('#f3f4f6', '#cc0000') }} onClick={() => handleDelete(row.id)}>ลบ</button>
                   </td>
                 </tr>
               ))}
@@ -103,7 +104,7 @@ export default function PurchaseOrderPage() {
         {/* Form Modal */}
         {showForm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 30, overflowY: 'auto' }}>
-            <div style={{ background: '#fff', border: '2px solid', border: '1px solid #d1d5db', borderRadius: 8, width: '95%', maxWidth: 820, boxShadow: '4px 4px 12px rgba(0,0,0,0.4)', marginBottom: 30 }}>
+            <div style={{ background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, width: '95%', maxWidth: 820, boxShadow: '4px 4px 12px rgba(0,0,0,0.4)', marginBottom: 30 }}>
               <div style={{ background: 'linear-gradient(135deg, #374151 0%, #4b5563 100%)', padding: '3px 8px', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                 <span>{form.id ? 'แก้ไขใบสั่งซื้อ ' + form.doc_no : 'สร้างใบสั่งซื้อใหม่'}</span>
                 <span style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)}>✕</span>

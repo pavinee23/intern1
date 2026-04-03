@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/mysql'
 
+type PreInstallRow = Record<string, unknown> & {
+  additionalEquipment?: unknown
+  additionalTests?: unknown
+}
+
+type PreInstallPayload = {
+  id?: string
+  branch?: string
+  location?: string
+  equipment?: string
+  datetime?: string
+  technician?: string
+  voltage?: number
+  frequency?: number
+  powerFactor?: number
+  thd?: number
+  current?: { L1?: number; L2?: number; L3?: number; N?: number }
+  balance?: string
+  result?: string
+  recommendation?: string
+  notes?: string
+  riskAssessment?: string
+  estimatedCost?: number
+  additionalEquipment?: unknown[]
+  additionalTests?: Record<string, unknown>
+  scheduledFollowUp?: { date?: string; technician?: string; priority?: string }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -8,7 +36,7 @@ export async function GET(req: NextRequest) {
     const branch = searchParams.get('branch')
 
     if (id) {
-      const rows = await query('SELECT * FROM kr_pre_install_analysis WHERE id = ?', [id])
+      const rows = await query('SELECT * FROM kr_pre_install_analysis WHERE id = ?', [id]) as PreInstallRow[]
       const row = rows[0]
       if (!row) return NextResponse.json(null)
       return NextResponse.json({
@@ -23,8 +51,8 @@ export async function GET(req: NextRequest) {
     if (branch) { sql += ' AND branch = ?'; params.push(branch) }
     sql += ' ORDER BY datetime DESC LIMIT 200'
 
-    const rows = await query(sql, params)
-    return NextResponse.json(rows.map((r: any) => ({
+    const rows = await query(sql, params) as PreInstallRow[]
+    return NextResponse.json(rows.map((r) => ({
       ...r,
       additionalEquipment: r.additionalEquipment ? (typeof r.additionalEquipment === 'string' ? JSON.parse(r.additionalEquipment) : r.additionalEquipment) : [],
       additionalTests: r.additionalTests ? (typeof r.additionalTests === 'string' ? JSON.parse(r.additionalTests) : r.additionalTests) : {}
@@ -36,7 +64,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const body = await req.json() as PreInstallPayload
     const { id, branch, location, equipment, datetime, technician, voltage, frequency, powerFactor, thd, current, balance, result, recommendation, notes, riskAssessment, estimatedCost, additionalEquipment, additionalTests, scheduledFollowUp } = body
     await query(
       `INSERT INTO kr_pre_install_analysis (id, branch, location, equipment, datetime, technician, voltage, frequency, powerFactor, thd, current_L1, current_L2, current_L3, current_N, balance, result, recommendation, notes, riskAssessment, estimatedCost, additionalEquipment, additionalTests, scheduledFollowUp_date, scheduledFollowUp_technician, scheduledFollowUp_priority)
@@ -51,7 +79,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const body = await req.json()
+    const body = await req.json() as PreInstallPayload
     const { id, branch, location, equipment, datetime, technician, voltage, frequency, powerFactor, thd, current, balance, result, recommendation, notes, riskAssessment, estimatedCost, additionalEquipment, additionalTests, scheduledFollowUp } = body
     await query(
       `UPDATE kr_pre_install_analysis SET branch=?, location=?, equipment=?, datetime=?, technician=?, voltage=?, frequency=?, powerFactor=?, thd=?, current_L1=?, current_L2=?, current_L3=?, current_N=?, balance=?, result=?, recommendation=?, notes=?, riskAssessment=?, estimatedCost=?, additionalEquipment=?, additionalTests=?, scheduledFollowUp_date=?, scheduledFollowUp_technician=?, scheduledFollowUp_priority=? WHERE id=?`,

@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
+import { useSite } from '@/lib/SiteContext';
+import { formatCurrencyBySite, getCurrencyCodeBySite } from '@/lib/currency';
 import {
   Zap,
   TrendingDown,
   Leaf,
   DollarSign,
-  Calendar,
   RefreshCw,
   BarChart3,
   Activity
@@ -36,22 +37,19 @@ interface DailyData {
 
 export default function EnergyDashboardPage() {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const { selectedSite } = useSite();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<string>('30'); // days
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [period]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/kenergy/energy-analytics?period=${period}`);
+      const res = await fetch(`/api/kenergy/energy-analytics?period=${period}&site=${selectedSite}`);
       const json = await res.json();
 
       if (json.success) {
@@ -60,12 +58,16 @@ export default function EnergyDashboardPage() {
       } else {
         setError(json.error || 'Failed to load analytics');
       }
-    } catch (err: any) {
-      setError(err.message || 'Network error');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, selectedSite]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   if (loading && !summary) {
     return (
@@ -92,6 +94,11 @@ export default function EnergyDashboardPage() {
     avgBefore: 0,
     avgAfter: 0
   };
+  const currencyCode = getCurrencyCodeBySite(selectedSite, locale);
+  const costSavingsText = formatCurrencyBySite(stats.costSavings, selectedSite, locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -164,9 +171,9 @@ export default function EnergyDashboardPage() {
                 {t('costSavings') || 'Cost Savings'}
               </p>
               <p className="text-3xl font-bold text-amber-900">
-                {stats.costSavings.toLocaleString()}
+                {costSavingsText}
               </p>
-              <p className="text-xs text-amber-600 mt-1">THB</p>
+              <p className="text-xs text-amber-600 mt-1">{currencyCode}</p>
             </div>
             <div className="p-3 bg-amber-500 rounded-lg">
               <DollarSign className="w-8 h-8 text-white" />

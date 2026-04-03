@@ -6,11 +6,20 @@ import AdminLayout from '../components/AdminLayout'
 import CreatedBy from '../components/CreatedBy'
 import styles from '../admin-theme.module.css'
 
+type ReceiptRecord = {
+  date: string
+  method: string
+  amount: number
+  reference: string
+  invoice_no?: string
+  invNo?: string
+}
+
 export default function ReceiptPage() {
   const router = useRouter()
   const [receiptNo, setReceiptNo] = useState('')
   const [receiptDate, setReceiptDate] = useState(() => new Date().toISOString().split('T')[0])
-  const [records, setRecords] = useState([{ date: '', method: 'Cash', amount: 0, reference: '' }])
+  const [records, setRecords] = useState<ReceiptRecord[]>([{ date: '', method: 'Cash', amount: 0, reference: '' }])
   const [invNo, setInvNo] = useState('')
   const [invoiceInfo, setInvoiceInfo] = useState<{ invID: number; invNo: string; total_amount: number; status: string } | null>(null)
   const [invoicePaidAmount, setInvoicePaidAmount] = useState<number>(0)
@@ -146,10 +155,16 @@ export default function ReceiptPage() {
   }
 
   function addRow() { setRecords([...records, { date: '', method: 'Cash', amount: 0, reference: '' }]) }
-  function update(i: number, key: string, value: any) {
+  function update(i: number, key: keyof ReceiptRecord, value: string | number) {
     const c = [...records]
-    // @ts-ignore
-    c[i][key] = key === 'amount' ? Number(value) : value
+    const record = { ...c[i] }
+    if (key === 'amount') record.amount = Number(value)
+    else if (key === 'invoice_no') record.invoice_no = String(value)
+    else if (key === 'invNo') record.invNo = String(value)
+    else if (key === 'date') record.date = String(value)
+    else if (key === 'method') record.method = String(value)
+    else record.reference = String(value)
+    c[i] = record
     setRecords(c)
   }
   function removeRow(i: number) {

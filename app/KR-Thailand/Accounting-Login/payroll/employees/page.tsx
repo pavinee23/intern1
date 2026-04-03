@@ -1164,8 +1164,6 @@ export default function EmployeesPage() {
                   onClick={() => {
                     setShowAddModal(false)
                     setNewEmployee({
-                      username: '',
-                      password: '',
                       name: '',
                       name_th: '',
                       email: '',
@@ -1174,7 +1172,12 @@ export default function EmployeesPage() {
                       address: '',
                       salary: 0,
                       hourlyRate: 0,
-                      dailyRate: 0
+                      dailyRate: 0,
+                      startDate: '',
+                      endDate: '',
+                      terminationReason: '',
+                      terminationType: '',
+                      taxId: ''
                     })
                   }}
                   disabled={saving}

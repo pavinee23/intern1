@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
-import { ChevronDown, Search, Edit2, Trash2, Settings, Server, Wifi, WifiOff, RefreshCw, X, Save, Phone, MapPin, User, Plus, Eye } from 'lucide-react';
+import { Search, Edit2, Trash2, Settings, Server, Wifi, WifiOff, RefreshCw, X, Save, Phone, MapPin, User, Plus, Eye } from 'lucide-react';
 
 interface Device {
   deviceID?: number;
@@ -31,39 +31,59 @@ interface Device {
   site?: string;
 }
 
+type DeviceForm = Omit<Partial<Device>, 'latitude' | 'longitude'> & {
+  latitude?: string;
+  longitude?: string;
+};
+
+interface CustomerResult {
+  cusID: number;
+  fullname?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  company?: string | null;
+  house_number?: string | null;
+  moo?: string | null;
+  tambon?: string | null;
+  amphoe?: string | null;
+  province?: string | null;
+  postcode?: string | null;
+}
+
+interface ProductResponse {
+  products?: Array<{ name?: string | null }>;
+}
+
 export default function DevicesSettingPage() {
   const { selectedSite } = useSite();
   const { t, locale } = useLocale();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [searchCriteria, setSearchCriteria] = useState('');
   const [searchDeviceName, setSearchDeviceName] = useState('');
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [viewingDevice, setViewingDevice] = useState<Device | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Device>>({});
+  const [editForm, setEditForm] = useState<DeviceForm>({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [productNames, setProductNames] = useState<string[]>([]);
-  const [addForm, setAddForm] = useState<Partial<Device>>({
+  const [addForm, setAddForm] = useState<DeviceForm>({
     deviceName: '',
     ksaveID: '',
     seriesNo: '',
     ipAddress: '',
     phone: '',
     location: '',
-    latitude: null,
-    longitude: null,
+    latitude: '',
+    longitude: '',
     customerName: '',
     customerPhone: '',
     customerAddress: '',
     customer_id: null,
   });
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-  const [customerResults, setCustomerResults] = useState<any[]>([]);
+  const [customerResults, setCustomerResults] = useState<CustomerResult[]>([]);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState<string | null>(null);
@@ -121,14 +141,26 @@ export default function DevicesSettingPage() {
     return `ZE KOR-C-${dateStr}-${code}${next}`;
   };
 
+  const parseCoordinate = (value?: string) => {
+    if (value === undefined) return undefined;
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const numericValue = Number(trimmed);
+    return Number.isFinite(numericValue) ? numericValue : undefined;
+  };
+
   // Preload product names for the device selector
   useEffect(() => {
     const loadProducts = async () => {
       try {
         const res = await fetch('/api/kenergy/products?limit=200&sortBy=name');
-        const json = await res.json();
+        const json = (await res.json()) as ProductResponse;
         if (json?.products?.length) {
-          setProductNames(json.products.map((p: any) => p.name).filter(Boolean));
+          setProductNames(
+            json.products
+              .map((product) => product.name?.trim() || '')
+              .filter((name): name is string => Boolean(name))
+          );
         }
       } catch (err) {
         console.warn('Unable to load products for device selector', err);
@@ -177,8 +209,8 @@ export default function DevicesSettingPage() {
       customerPhone: device.customerPhone || '',
       customerAddress: device.customerAddress || '',
       location: device.location || '',
-      latitude: device.latitude ?? null,
-      longitude: device.longitude ?? null,
+      latitude: device.latitude !== null && device.latitude !== undefined ? String(device.latitude) : '',
+      longitude: device.longitude !== null && device.longitude !== undefined ? String(device.longitude) : '',
     });
     setSaveMsg(null);
   }
@@ -211,7 +243,7 @@ export default function DevicesSettingPage() {
       } else {
         alert(data.error || 'Failed to delete device');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Delete device error:', err);
       alert('Network error. Please try again.');
     }
@@ -228,8 +260,8 @@ export default function DevicesSettingPage() {
         body: JSON.stringify({
           deviceId: editingDevice.deviceID,
           ...editForm,
-          latitude: editForm.latitude !== null && editForm.latitude !== undefined && editForm.latitude !== '' ? Number(editForm.latitude) : undefined,
-          longitude: editForm.longitude !== null && editForm.longitude !== undefined && editForm.longitude !== '' ? Number(editForm.longitude) : undefined,
+          latitude: parseCoordinate(editForm.latitude),
+          longitude: parseCoordinate(editForm.longitude),
         }),
       });
       const json = await res.json();
@@ -260,8 +292,8 @@ export default function DevicesSettingPage() {
           : selectedSite === 'malaysia'
             ? 'Malaysia'
             : 'Thailand',
-      latitude: null,
-      longitude: null,
+      latitude: '',
+      longitude: '',
       customerName: '',
       customerPhone: '',
       customerAddress: '',
@@ -288,8 +320,8 @@ export default function DevicesSettingPage() {
         body: JSON.stringify({
           ...addForm,
           customerId: addForm.customer_id ?? null,
-          latitude: addForm.latitude !== null && addForm.latitude !== undefined && addForm.latitude !== '' ? Number(addForm.latitude) : undefined,
-          longitude: addForm.longitude !== null && addForm.longitude !== undefined && addForm.longitude !== '' ? Number(addForm.longitude) : undefined,
+          latitude: parseCoordinate(addForm.latitude),
+          longitude: parseCoordinate(addForm.longitude),
           site: selectedSite
         }),
       });
@@ -310,11 +342,7 @@ export default function DevicesSettingPage() {
   }
 
   // Fetch devices from API
-  useEffect(() => {
-    fetchDevices();
-  }, [selectedSite]);
-
-  async function fetchDevices() {
+  const fetchDevices = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -327,13 +355,18 @@ export default function DevicesSettingPage() {
       } else {
         setError(data.error || 'Failed to fetch devices');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch devices error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedSite]);
+
+  // Fetch devices from API
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   // Filter devices by table search
   const filteredDevices = devices.filter(device =>
@@ -419,8 +452,9 @@ export default function DevicesSettingPage() {
           saved: '✓ บันทึกแล้ว!',
           save: 'บันทึก',
           cancel: 'ยกเลิก',
-          saveError: 'เกิดข้อผิดพลาด กรุณาลองใหม่'
-          ,
+          close: 'ปิด',
+          search: 'ค้นหา',
+          saveError: 'เกิดข้อผิดพลาด กรุณาลองใหม่',
           deviceConfigTitle: 'การตั้งค่าอุปกรณ์',
           statusOnline: 'ออนไลน์',
           statusOffline: 'ออฟไลน์',
@@ -481,8 +515,9 @@ export default function DevicesSettingPage() {
           saved: '✓ 저장 완료!',
           save: '저장',
           cancel: '취소',
-          saveError: '오류가 발생했습니다. 다시 시도해주세요.'
-          ,
+          close: '닫기',
+          search: '검색',
+          saveError: '오류가 발생했습니다. 다시 시도해주세요.',
           deviceConfigTitle: '장치 구성',
           statusOnline: '온라인',
           statusOffline: '오프라인',
@@ -543,8 +578,9 @@ export default function DevicesSettingPage() {
           saved: '✓ Saved!',
           save: 'Save',
           cancel: 'Cancel',
-          saveError: 'An error occurred. Please try again.'
-          ,
+          close: 'Close',
+          search: 'Search',
+          saveError: 'An error occurred. Please try again.',
           deviceConfigTitle: 'Device Configuration',
           statusOnline: 'Online',
           statusOffline: 'Offline',
@@ -675,7 +711,7 @@ export default function DevicesSettingPage() {
             <>
               {/* ── Mobile cards (< md) ── */}
               <div className="md:hidden space-y-3">
-                {filteredDevices.map((device, index) => (
+                {filteredDevices.map((device) => (
                   <div key={device.deviceID} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-3">
                     {/* Card header */}
                     <div className="flex items-start justify-between gap-2">

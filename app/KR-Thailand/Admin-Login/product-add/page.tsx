@@ -287,7 +287,7 @@ export default function ProductAddPage() {
                     type="button"
                     onClick={async () => {
                       let sku = form.sku
-                      if (!sku) sku = generateSku() || ''
+                      if (!sku) sku = (await generateSku()) || ''
                       // after generation/check the SKU
                       await checkSkuUnique(sku)
                     }}

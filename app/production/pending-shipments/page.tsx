@@ -21,7 +21,7 @@ interface Shipment {
   shipmentNumber: string;
   orderNumber: string;
   destination: 'Korea' | 'Brunei' | 'Thailand' | 'Vietnam' | 'Malaysia';
-  destinationCode: 'KR' | 'BN' | 'TH' | 'VN' | 'ML';
+  destinationCode: 'KR' | 'BN' | 'TH' | 'VN' | 'MY';
   destinationAddress: string;
   status: 'packed' | 'ready-to-ship' | 'in-transit' | 'delivered';
   shipDate?: string;
@@ -86,13 +86,15 @@ type RawShipment = Record<string, unknown> & {
 const BRANCHES = [
   { code: 'KR', name: 'Korea' },
   { code: 'TH', name: 'Thailand' },
-  { code: 'VT', name: 'Vietnam' },
-  { code: 'ML', name: 'Malaysia' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'MY', name: 'Malaysia' },
   { code: 'BN', name: 'Brunei' },
 ] as const;
 
 function branchCodeFromOrderNo(orderNo?: string) {
   const m = String(orderNo || '').toUpperCase().match(/^PDO([A-Z]{2})/);
+  if (m?.[1] === 'VT') return 'VN';
+  if (m?.[1] === 'ML') return 'MY';
   if (m?.[1]) return m[1];
   return 'KR';
 }
@@ -117,7 +119,7 @@ export default function PendingShipmentsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [qaBills, setQaBills] = useState<QaBill[]>([]);
   const [qaLoading, setQaLoading] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState<'KR' | 'TH' | 'VT' | 'ML' | 'BN'>('KR');
+  const [selectedBranch, setSelectedBranch] = useState<'KR' | 'TH' | 'VN' | 'MY' | 'BN'>('KR');
   const [creatingShipmentId, setCreatingShipmentId] = useState<string | null>(null);
 
   const loadShipments = async () => {
@@ -126,6 +128,15 @@ export default function PendingShipmentsPage() {
     if (Array.isArray(data)) {
       setShipments(data.map((r: RawShipment) => ({
         ...r,
+        id: r.id ?? r.shipmentNumber ?? `shipment-${String(r.orderNumber || Date.now())}`,
+        shipmentNumber: r.shipmentNumber ?? String(r.id ?? `shipment-${Date.now()}`),
+        orderNumber: r.orderNumber ?? '',
+        destination: (r.destination as Shipment['destination']) ?? 'Korea',
+        destinationCode: (r.destinationCode === 'VT' ? 'VN' : r.destinationCode === 'ML' ? 'MY' : r.destinationCode ?? 'KR') as Shipment['destinationCode'],
+        destinationAddress: r.destinationAddress ?? '',
+        status: (r.status as Shipment['status']) ?? 'packed',
+        estimatedDelivery: r.estimatedDelivery ?? '',
+        priority: (r.priority as Shipment['priority']) ?? 'normal',
         items: r.items ?? [],
         updates: r.updates ?? [],
         customerName: r.customerName ?? '',

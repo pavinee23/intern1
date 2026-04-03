@@ -28,6 +28,24 @@ type CalculationData = {
   parameters?: Record<string, unknown> | string | null
   result?: Record<string, unknown> | string | null
   monthly_payment?: number | string
+  contracted_capacity?: number | string
+  peak_power?: number | string
+  device_cost?: number | string
+  amortize_months?: number | string
+  expected_savings_percent?: number | string
+  faucet_method?: string
+  total_annual_kwh?: number | string
+  total_annual_cost?: number | string
+  average_monthly_kwh?: number | string
+  average_monthly_cost?: number | string
+  roi_years?: number | string
+  roi_months?: number | string
+  annual_savings_baht?: number | string
+  carbon_reduction?: number | string
+  monthly_savings_baht?: number | string
+  annual_savings_kwh?: number | string
+  cumulative_10year_savings?: number | string
+  january_kwh?: number | string
 }
 
 export default function PowerCalculatorPrintPage() {
@@ -733,7 +751,7 @@ export default function PowerCalculatorPrintPage() {
             </div>
             <div className="doc-info-item">
               <span className="doc-info-label">{L('Date:', 'วันที่:')}</span>
-              <span className="doc-info-value">{formatDate(data.created_at)}</span>
+              <span className="doc-info-value">{formatDate(data.created_at || '')}</span>
             </div>
             <div className="doc-info-item">
               <span className="doc-info-label">{L('Company:', 'ชื่อบริษัท:')}</span>
@@ -1076,7 +1094,7 @@ export default function PowerCalculatorPrintPage() {
                       <tr key={i}>
                         <td>{usage.period || '-'}</td>
                         <td className="text-right">{(usage.kwh || 0).toLocaleString()}</td>
-                        <td className="text-right">{usage.peak_kw ? usage.peak_kw.toFixed(2) : '-'}</td>
+                        <td className="text-right">{usage.peak_kw ? Number(usage.peak_kw).toFixed(2) : '-'}</td>
                       </tr>
                     ))}
                   </tbody>

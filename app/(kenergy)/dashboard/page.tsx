@@ -42,6 +42,17 @@ interface DashboardData {
   recentDevices: RecentDevice[]
 }
 
+const normalizeDeviceKey = (device: Pick<RecentDevice, 'deviceID' | 'deviceName'>) => {
+  const primaryKey = device.deviceID ?? device.deviceName ?? ''
+  return String(primaryKey).trim().toUpperCase()
+}
+
+const getDeviceTimestamp = (device: Pick<RecentDevice, 'lastUpdate'>) => {
+  if (!device.lastUpdate) return 0
+  const timestamp = new Date(device.lastUpdate).getTime()
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { t, locale } = useLocale()
@@ -61,6 +72,7 @@ export default function DashboardPage() {
       en: 'en-US',
       cn: 'zh-CN',
       vn: 'vi-VN',
+      ms: 'ms-MY',
     }
     const lang = localeMap[locale] ?? 'en-US'
     const d = new Date()
@@ -110,11 +122,11 @@ export default function DashboardPage() {
           <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-red-400" />
           </div>
-          <p className="text-gray-800 font-semibold mb-1">Failed to load dashboard</p>
+          <p className="text-gray-800 font-semibold mb-1">{uiCopy.failedToLoadDashboard}</p>
           <p className="text-gray-400 text-sm mb-5">{error}</p>
           <button onClick={fetchDashboardData}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors text-sm">
-            <RefreshCw className="w-4 h-4" /> Retry
+            <RefreshCw className="w-4 h-4" /> {uiCopy.retry}
           </button>
         </div>
       </div>
@@ -123,6 +135,18 @@ export default function DashboardPage() {
 
   const stats = data?.stats || { totalDevices: 0, onlineDevices: 0, offlineDevices: 0, energySaved: 0 }
   const recentDevices = data?.recentDevices || []
+  const uniqueRecentDevices = Array.from(
+    recentDevices.reduce((deviceMap, device) => {
+      const deviceKey = normalizeDeviceKey(device)
+      const existingDevice = deviceMap.get(deviceKey)
+
+      if (!existingDevice || getDeviceTimestamp(device) >= getDeviceTimestamp(existingDevice)) {
+        deviceMap.set(deviceKey, device)
+      }
+
+      return deviceMap
+    }, new Map<string, RecentDevice>()).values()
+  )
   const onlineRate = stats.totalDevices > 0 ? Math.round((stats.onlineDevices / stats.totalDevices) * 100) : 0
   const searchQuery = searchTerm.trim().toLowerCase()
   const dashboardCopy = {
@@ -235,6 +259,28 @@ export default function DashboardPage() {
       balanceGood: 'Can bang tot',
       balanceWarn: 'Nen theo doi',
       balanceRisk: 'Lech cao'
+    },
+    ms: {
+      searchLabel: 'Cari Peranti',
+      searchPlaceholder: 'Cari mengikut nama peranti, ID, atau lokasi pemasangan',
+      searchResults: 'Hasil Carian',
+      clearSearch: 'Kosongkan',
+      noSearchResults: 'Tiada peranti yang sepadan dengan carian anda',
+      viewAll: 'Lihat Semua',
+      viewLess: 'Lihat Kurang',
+      currentTitle: 'Analisis Arus Sebelum Pemasangan',
+      currentSubtitle: 'Paparan nilai arus terkini daripada peranti yang telah dipasang untuk rujukan sebelum pemasangan baharu.',
+      avgCurrent: 'Arus Purata',
+      loadBalance: 'Keseimbangan Beban',
+      phaseCurrent: 'Arus Setiap Fasa',
+      avgThd: 'THD Purata',
+      phaseThd: 'THD Setiap Fasa',
+      updatedAt: 'Kemas Kini Terakhir',
+      analyze: 'Lihat Semua',
+      noCurrentData: 'Tiada data arus terkini tersedia',
+      balanceGood: 'Seimbang',
+      balanceWarn: 'Perlu Dipantau',
+      balanceRisk: 'Ketidakseimbangan Tinggi'
     }
   }[locale] ?? {
     searchLabel: 'Search Devices',
@@ -259,6 +305,218 @@ export default function DashboardPage() {
     balanceRisk: 'High Gap'
   }
 
+  const uiCopy = {
+    en: {
+      dashboardTitle: 'Dashboard',
+      totalTag: 'Total',
+      totalDevices: 'Total Devices',
+      onlineDevices: 'Online Devices',
+      offlineDevices: 'Offline Devices',
+      energySavedLabel: 'Energy Saved',
+      failedToLoadDashboard: 'Failed to load dashboard',
+      retry: 'Retry',
+      systemBadge: 'K Energy Save System',
+      kpiDevices: 'Devices',
+      kpiOnline: 'Online',
+      kpiKwhSaved: 'kWh Saved',
+      refresh: 'Refresh',
+      live: 'Live',
+      onlineSuffix: 'online',
+      alert: 'Alert',
+      needsAttention: 'need attention',
+      systemHealth: 'System Health',
+      autoRefresh60s: 'Auto-refresh every 60s',
+      onlineRate: 'Online Rate',
+      online: 'Online',
+      offline: 'Offline',
+      co2Reduced: 'CO₂ reduced',
+      kwhSaved: 'kWh saved',
+      quickActions: 'Quick Actions',
+      liveMonitor: 'Live Monitor',
+      realTimeData: 'Real-time data',
+      analytics: 'Analytics',
+      chartsReports: 'Charts & Reports',
+      devices: 'Devices',
+      allDevices: 'All devices',
+      settings: 'Settings',
+      systemConfig: 'System config',
+      voltageLineToLine: 'Voltage (Line-to-Line)',
+      current: 'Current',
+      thd: 'THD',
+      trendTitle: 'Current Trend (Last 30 min)',
+      reduction: 'Reduction',
+      beforeKsave: 'Before K-Save',
+      afterKsave: 'After K-Save'
+    },
+    cn: {
+      dashboardTitle: '仪表板',
+      totalTag: '总计',
+      totalDevices: '设备总数',
+      onlineDevices: '在线设备',
+      offlineDevices: '离线设备',
+      energySavedLabel: '节省电量',
+      failedToLoadDashboard: '无法加载仪表板',
+      retry: '重试',
+      systemBadge: 'K Energy Save 系统',
+      kpiDevices: '设备',
+      kpiOnline: '在线',
+      kpiKwhSaved: '已节省 kWh',
+      refresh: '刷新',
+      live: '实时',
+      onlineSuffix: '在线',
+      alert: '警报',
+      needsAttention: '需要关注',
+      systemHealth: '系统健康',
+      autoRefresh60s: '每 60 秒自动刷新',
+      onlineRate: '在线率',
+      online: '在线',
+      offline: '离线',
+      co2Reduced: '减少 CO₂',
+      kwhSaved: '已节省 kWh',
+      quickActions: '快捷操作',
+      liveMonitor: '实时监控',
+      realTimeData: '实时数据',
+      analytics: '分析',
+      chartsReports: '图表与报告',
+      devices: '设备',
+      allDevices: '所有设备',
+      settings: '设置',
+      systemConfig: '系统配置',
+      voltageLineToLine: '电压（线间）',
+      current: '电流',
+      thd: 'THD',
+      trendTitle: '电流趋势（最近 30 分钟）',
+      reduction: '降幅',
+      beforeKsave: 'K-Save 前',
+      afterKsave: 'K-Save 后'
+    },
+    vn: {
+      dashboardTitle: 'Bang Dieu Khien',
+      totalTag: 'Tong',
+      totalDevices: 'Tong thiet bi',
+      onlineDevices: 'Thiet bi truc tuyen',
+      offlineDevices: 'Thiet bi ngoai tuyen',
+      energySavedLabel: 'Nang luong tiet kiem',
+      failedToLoadDashboard: 'Khong the tai bang dieu khien',
+      retry: 'Thu lai',
+      systemBadge: 'K Energy Save System',
+      kpiDevices: 'Thiet bi',
+      kpiOnline: 'Truc tuyen',
+      kpiKwhSaved: 'kWh tiet kiem',
+      refresh: 'Lam moi',
+      live: 'Truc tiep',
+      onlineSuffix: 'truc tuyen',
+      alert: 'Canh bao',
+      needsAttention: 'can kiem tra',
+      systemHealth: 'Suc khoe he thong',
+      autoRefresh60s: 'Tu dong lam moi moi 60 giay',
+      onlineRate: 'Ty le truc tuyen',
+      online: 'Truc tuyen',
+      offline: 'Ngoai tuyen',
+      co2Reduced: 'CO₂ giam',
+      kwhSaved: 'kWh tiet kiem',
+      quickActions: 'Thao tac nhanh',
+      liveMonitor: 'Giam sat truc tiep',
+      realTimeData: 'Du lieu thoi gian thuc',
+      analytics: 'Phan tich',
+      chartsReports: 'Bieu do & Bao cao',
+      devices: 'Thiet bi',
+      allDevices: 'Tat ca thiet bi',
+      settings: 'Cai dat',
+      systemConfig: 'Cau hinh he thong',
+      voltageLineToLine: 'Dien ap (Line-to-Line)',
+      current: 'Dong dien',
+      thd: 'THD',
+      trendTitle: 'Xu huong dong dien (30 phut gan nhat)',
+      reduction: 'Giam',
+      beforeKsave: 'Truoc K-Save',
+      afterKsave: 'Sau K-Save'
+    },
+    ms: {
+      dashboardTitle: 'Papan Pemuka',
+      totalTag: 'Jumlah',
+      totalDevices: 'Jumlah Peranti',
+      onlineDevices: 'Peranti Dalam Talian',
+      offlineDevices: 'Peranti Luar Talian',
+      energySavedLabel: 'Tenaga Dijimatkan',
+      failedToLoadDashboard: 'Gagal memuatkan papan pemuka',
+      retry: 'Cuba Lagi',
+      systemBadge: 'K Energy Save System',
+      kpiDevices: 'Peranti',
+      kpiOnline: 'Dalam Talian',
+      kpiKwhSaved: 'kWh Dijimatkan',
+      refresh: 'Muat Semula',
+      live: 'Langsung',
+      onlineSuffix: 'dalam talian',
+      alert: 'Amaran',
+      needsAttention: 'perlu perhatian',
+      systemHealth: 'Kesihatan Sistem',
+      autoRefresh60s: 'Muat semula automatik setiap 60 saat',
+      onlineRate: 'Kadar Dalam Talian',
+      online: 'Dalam Talian',
+      offline: 'Luar Talian',
+      co2Reduced: 'CO₂ dikurangkan',
+      kwhSaved: 'kWh dijimatkan',
+      quickActions: 'Tindakan Pantas',
+      liveMonitor: 'Pemantau Langsung',
+      realTimeData: 'Data masa nyata',
+      analytics: 'Analitik',
+      chartsReports: 'Carta & Laporan',
+      devices: 'Peranti',
+      allDevices: 'Semua peranti',
+      settings: 'Tetapan',
+      systemConfig: 'Konfigurasi sistem',
+      voltageLineToLine: 'Voltan (Line-to-Line)',
+      current: 'Arus',
+      thd: 'THD',
+      trendTitle: 'Trend Arus (30 minit terakhir)',
+      reduction: 'Pengurangan',
+      beforeKsave: 'Sebelum K-Save',
+      afterKsave: 'Selepas K-Save'
+    }
+  }[locale] ?? {
+    dashboardTitle: 'Dashboard',
+    totalTag: 'Total',
+    totalDevices: 'Total Devices',
+    onlineDevices: 'Online Devices',
+    offlineDevices: 'Offline Devices',
+    energySavedLabel: 'Energy Saved',
+    failedToLoadDashboard: 'Failed to load dashboard',
+    retry: 'Retry',
+    systemBadge: 'K Energy Save System',
+    kpiDevices: 'Devices',
+    kpiOnline: 'Online',
+    kpiKwhSaved: 'kWh Saved',
+    refresh: 'Refresh',
+    live: 'Live',
+    onlineSuffix: 'online',
+    alert: 'Alert',
+    needsAttention: 'need attention',
+    systemHealth: 'System Health',
+    autoRefresh60s: 'Auto-refresh every 60s',
+    onlineRate: 'Online Rate',
+    online: 'Online',
+    offline: 'Offline',
+    co2Reduced: 'CO₂ reduced',
+    kwhSaved: 'kWh saved',
+    quickActions: 'Quick Actions',
+    liveMonitor: 'Live Monitor',
+    realTimeData: 'Real-time data',
+    analytics: 'Analytics',
+    chartsReports: 'Charts & Reports',
+    devices: 'Devices',
+    allDevices: 'All devices',
+    settings: 'Settings',
+    systemConfig: 'System config',
+    voltageLineToLine: 'Voltage (Line-to-Line)',
+    current: 'Current',
+    thd: 'THD',
+    trendTitle: 'Current Trend (Last 30 min)',
+    reduction: 'Reduction',
+    beforeKsave: 'Before K-Save',
+    afterKsave: 'After K-Save'
+  }
+
   const matchesSearch = (device: RecentDevice) => {
     if (!searchQuery) return true
     return [device.deviceName, device.customerName, device.deviceID, device.location]
@@ -266,7 +524,7 @@ export default function DashboardPage() {
       .some(value => String(value).toLowerCase().includes(searchQuery))
   }
 
-  const filteredRecentDevices = recentDevices.filter(matchesSearch)
+  const filteredRecentDevices = uniqueRecentDevices.filter(matchesSearch)
   const filteredCurrentAnalysisDevices = filteredRecentDevices.filter(device =>
     Array.isArray(device.currentABC) && device.currentABC.some(value => value !== null)
   )
@@ -314,26 +572,26 @@ export default function DashboardPage() {
           <div>
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
               <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
-              K Energy Save System
+              {uiCopy.systemBadge}
             </div>
             <h1 className="text-3xl font-bold text-white mb-1">
-              {t('dashboard') || 'Dashboard'}
+              {uiCopy.dashboardTitle}
             </h1>
             <p className="text-emerald-100 text-sm">{nowStr}</p>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
             {[
-              { val: stats.totalDevices, label: 'Devices' },
-              { val: `${onlineRate}%`, label: 'Online' },
-              { val: stats.energySaved.toLocaleString(), label: 'kWh Saved' },
+              { val: stats.totalDevices, label: uiCopy.kpiDevices },
+              { val: `${onlineRate}%`, label: uiCopy.kpiOnline },
+              { val: stats.energySaved.toLocaleString(), label: uiCopy.kpiKwhSaved },
             ].map(kpi => (
               <div key={kpi.label} className="flex flex-col items-center bg-white/15 backdrop-blur-sm rounded-2xl px-5 py-3 min-w-[88px] border border-white/20">
                 <span className="text-2xl font-bold text-white leading-none">{kpi.val}</span>
                 <span className="text-emerald-200 text-xs mt-1">{kpi.label}</span>
               </div>
             ))}
-            <button onClick={fetchDashboardData} title="Refresh"
+            <button onClick={fetchDashboardData} title={uiCopy.refresh}
               className="p-3 bg-white/15 hover:bg-white/25 rounded-xl border border-white/20 transition-all">
               <RefreshCw className={`w-5 h-5 text-white ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -353,11 +611,11 @@ export default function DashboardPage() {
               <Server className="w-5 h-5 text-white" />
             </div>
             <span className="text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full">
-              {t('total') || 'Total'}
+              {uiCopy.totalTag}
             </span>
           </div>
           <p className="text-4xl font-black text-white leading-none mb-1">{stats.totalDevices}</p>
-          <p className="text-blue-100 text-xs font-medium">{t('totalDevices') || 'Total Devices'}</p>
+          <p className="text-blue-100 text-xs font-medium">{uiCopy.totalDevices}</p>
         </div>
 
         {/* Online */}
@@ -369,15 +627,15 @@ export default function DashboardPage() {
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
-              Live
+              {uiCopy.live}
             </span>
           </div>
           <p className="text-4xl font-black text-white leading-none mb-1">{stats.onlineDevices}</p>
-          <p className="text-emerald-100 text-xs font-medium mb-3">{t('onlineDevices') || 'Online Devices'}</p>
+          <p className="text-emerald-100 text-xs font-medium mb-3">{uiCopy.onlineDevices}</p>
           <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
             <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${onlineRate}%` }} />
           </div>
-          <p className="text-emerald-100 text-xs mt-1 text-right">{onlineRate}% online</p>
+          <p className="text-emerald-100 text-xs mt-1 text-right">{onlineRate}% {uiCopy.onlineSuffix}</p>
         </div>
 
         {/* Offline */}
@@ -393,14 +651,14 @@ export default function DashboardPage() {
             </div>
             {stats.offlineDevices > 0 && (
               <span className="text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full animate-pulse">
-                ⚠ Alert
+                ⚠ {uiCopy.alert}
               </span>
             )}
           </div>
           <p className="text-4xl font-black text-white leading-none mb-1">{stats.offlineDevices}</p>
-          <p className="text-red-100 text-xs font-medium">{t('offlineDevices') || 'Offline Devices'}</p>
+          <p className="text-red-100 text-xs font-medium">{uiCopy.offlineDevices}</p>
           {stats.offlineDevices > 0 && (
-            <p className="text-white/70 text-xs mt-2">{stats.offlineDevices} device{stats.offlineDevices > 1 ? 's' : ''} need attention</p>
+            <p className="text-white/70 text-xs mt-2">{stats.offlineDevices} {uiCopy.devices} {uiCopy.needsAttention}</p>
           )}
         </div>
 
@@ -416,10 +674,10 @@ export default function DashboardPage() {
             </span>
           </div>
           <p className="text-4xl font-black text-white leading-none mb-1">{stats.energySaved.toLocaleString()}</p>
-          <p className="text-amber-100 text-xs font-medium mb-2">{t('energySaved') || 'Energy Saved'}</p>
+          <p className="text-amber-100 text-xs font-medium mb-2">{uiCopy.energySavedLabel}</p>
           <div className="flex items-center gap-1.5">
             <Leaf className="w-3 h-3 text-white/70" />
-            <span className="text-white/70 text-xs">~{(stats.energySaved * 0.5).toLocaleString()} kg CO₂</span>
+            <span className="text-white/70 text-xs">~{(stats.energySaved * 0.5).toLocaleString()} kg {uiCopy.co2Reduced}</span>
           </div>
         </div>
 
@@ -432,15 +690,15 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gray-400" /> System Health
+              <Activity className="w-4 h-4 text-gray-400" /> {uiCopy.systemHealth}
             </h2>
-            <span className="text-xs text-gray-400">Auto-refresh every 60s</span>
+            <span className="text-xs text-gray-400">{uiCopy.autoRefresh60s}</span>
           </div>
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-gray-600 font-medium flex items-center gap-1.5">
-                  <Wifi className="w-3.5 h-3.5 text-emerald-500" /> Online Rate
+                  <Wifi className="w-3.5 h-3.5 text-emerald-500" /> {uiCopy.onlineRate}
                 </span>
                 <span className={`font-bold ${onlineRate >= 80 ? 'text-emerald-600' : onlineRate >= 50 ? 'text-amber-600' : 'text-red-500'}`}>
                   {onlineRate}%
@@ -456,7 +714,7 @@ export default function DashboardPage() {
                 <div className="p-2 bg-emerald-100 rounded-lg"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></div>
                 <div>
                   <p className="text-xl font-bold text-emerald-700">{stats.onlineDevices}</p>
-                  <p className="text-xs text-emerald-600">Online</p>
+                  <p className="text-xs text-emerald-600">{uiCopy.online}</p>
                 </div>
               </div>
               <div className={`flex items-center gap-3 rounded-xl p-3 ${stats.offlineDevices > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
@@ -465,16 +723,16 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className={`text-xl font-bold ${stats.offlineDevices > 0 ? 'text-red-600' : 'text-gray-500'}`}>{stats.offlineDevices}</p>
-                  <p className={`text-xs ${stats.offlineDevices > 0 ? 'text-red-500' : 'text-gray-400'}`}>Offline</p>
+                  <p className={`text-xs ${stats.offlineDevices > 0 ? 'text-red-500' : 'text-gray-400'}`}>{uiCopy.offline}</p>
                 </div>
               </div>
             </div>
             <div className="flex gap-2 pt-1 flex-wrap">
               <div className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full border border-green-100">
-                <Leaf className="w-3.5 h-3.5" /> CO₂ ~{(stats.energySaved * 0.5).toLocaleString()} kg reduced
+                <Leaf className="w-3.5 h-3.5" /> {uiCopy.co2Reduced} ~{(stats.energySaved * 0.5).toLocaleString()} kg
               </div>
               <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-1.5 rounded-full border border-amber-100">
-                <Zap className="w-3.5 h-3.5" /> {stats.energySaved.toLocaleString()} kWh saved
+                <Zap className="w-3.5 h-3.5" /> {stats.energySaved.toLocaleString()} {uiCopy.kwhSaved}
               </div>
             </div>
           </div>
@@ -483,14 +741,14 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-4">
-            <ChevronRight className="w-4 h-4 text-gray-400" /> Quick Actions
+            <ChevronRight className="w-4 h-4 text-gray-400" /> {uiCopy.quickActions}
           </h2>
           <div className="space-y-1.5">
             {[
-              { icon: Monitor,  label: 'Live Monitor', desc: 'Real-time data',   href: '/monitor',    cls: 'text-blue-500 bg-blue-50 hover:bg-blue-100' },
-              { icon: BarChart2,label: 'Analytics',    desc: 'Charts & Reports', href: '/analytics',  cls: 'text-purple-500 bg-purple-50 hover:bg-purple-100' },
-              { icon: Server,   label: 'Devices',      desc: 'All devices',      href: '/overview',   cls: 'text-teal-500 bg-teal-50 hover:bg-teal-100' },
-              { icon: Settings, label: 'Settings',     desc: 'System config',    href: '/settings',   cls: 'text-gray-500 bg-gray-50 hover:bg-gray-100' },
+              { icon: Monitor,  label: uiCopy.liveMonitor, desc: uiCopy.realTimeData,   href: '/monitor',    cls: 'text-blue-500 bg-blue-50 hover:bg-blue-100' },
+              { icon: BarChart2,label: uiCopy.analytics,    desc: uiCopy.chartsReports, href: '/analytics',  cls: 'text-purple-500 bg-purple-50 hover:bg-purple-100' },
+              { icon: Server,   label: uiCopy.devices,      desc: uiCopy.allDevices,      href: '/overview',   cls: 'text-teal-500 bg-teal-50 hover:bg-teal-100' },
+              { icon: Settings, label: uiCopy.settings,     desc: uiCopy.systemConfig,    href: '/settings',   cls: 'text-gray-500 bg-gray-50 hover:bg-gray-100' },
             ].map(item => (
               <button key={item.label} onClick={() => router.push(item.href)}
                 className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-all group text-left">
@@ -646,7 +904,7 @@ export default function DashboardPage() {
                       </div>
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${device.isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${device.isOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                        {device.isOnline ? 'Online' : 'Offline'}
+                        {device.isOnline ? uiCopy.online : uiCopy.offline}
                       </span>
                     </div>
 
@@ -671,7 +929,7 @@ export default function DashboardPage() {
                     {/* Voltage Line-to-Line */}
                     <div className="mb-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-                        Voltage (Line-to-Line)
+                        {uiCopy.voltageLineToLine}
                       </p>
                       <div className="grid grid-cols-3 gap-2">
                         {[
@@ -689,12 +947,21 @@ export default function DashboardPage() {
 
                     {/* Current Trend: Before vs After */}
                     {device.beforeCurrentABC && device.beforeCurrentABC.some(v => v !== null) && (
-                      <CurrentTrendChart deviceId={device.deviceID} currentReduction={device.currentReduction} />
+                      <CurrentTrendChart
+                        deviceId={device.deviceID}
+                        currentReduction={device.currentReduction}
+                        labels={{
+                          trendTitle: uiCopy.trendTitle,
+                          reduction: uiCopy.reduction,
+                          before: uiCopy.beforeKsave,
+                          after: uiCopy.afterKsave
+                        }}
+                      />
                     )}
 
                     <div className="mb-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-                        {dashboardCopy.phaseCurrent} & THD
+                        {dashboardCopy.phaseCurrent} & {uiCopy.thd}
                       </p>
                       <div className="grid grid-cols-3 gap-2">
                         {phases.map((phase) => (
@@ -702,11 +969,11 @@ export default function DashboardPage() {
                             <p className="text-xs font-semibold mb-1.5">{phase.label}</p>
                             <div className="space-y-1">
                               <div>
-                                <p className="text-[10px] text-gray-500 uppercase">Current</p>
+                                <p className="text-[10px] text-gray-500 uppercase">{uiCopy.current}</p>
                                 <p className="text-base font-bold">{formatAmp(phase.value)}</p>
                               </div>
                               <div>
-                                <p className="text-[10px] text-gray-500 uppercase">THD</p>
+                                <p className="text-[10px] text-gray-500 uppercase">{uiCopy.thd}</p>
                                 <p className="text-base font-bold">
                                   {phase.thd === null || phase.thd === undefined ? '--' : `${phase.thd.toFixed(1)}%`}
                                 </p>
@@ -744,7 +1011,20 @@ export default function DashboardPage() {
 }
 
 // Current Trend Chart Component
-function CurrentTrendChart({ deviceId, currentReduction }: { deviceId: string | number, currentReduction?: number | null }) {
+function CurrentTrendChart({
+  deviceId,
+  currentReduction,
+  labels
+}: {
+  deviceId: string | number
+  currentReduction?: number | null
+  labels: {
+    trendTitle: string
+    reduction: string
+    before: string
+    after: string
+  }
+}) {
   // Generate smooth sine-wave like data (20 points for smooth curves)
   const generateSmoothData = () => {
     const data = []
@@ -771,20 +1051,27 @@ function CurrentTrendChart({ deviceId, currentReduction }: { deviceId: string | 
   }
 
   const chartData = generateSmoothData()
-  const latestData = chartData[chartData.length - 1]
+  const deviceLabel = String(deviceId).trim()
 
   return (
     <div className="mb-3">
       <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-xl border-2 border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-700">
-            Current Trend (Last 30 min)
+            {labels.trendTitle}
           </p>
-          {currentReduction && (
-            <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-              ↓ {currentReduction.toFixed(1)}% Reduction
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {deviceLabel && (
+              <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-gray-500 border border-gray-200">
+                {deviceLabel}
+              </span>
+            )}
+            {currentReduction && (
+              <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                ↓ {currentReduction.toFixed(1)}% {labels.reduction}
+              </span>
+            )}
+          </div>
         </div>
 
         <ResponsiveContainer width="100%" height={180}>
@@ -811,7 +1098,7 @@ function CurrentTrendChart({ deviceId, currentReduction }: { deviceId: string | 
                 fontSize: '11px',
                 padding: '8px'
               }}
-              formatter={(value: any) => [`${value} A`, '']}
+              formatter={(value: number | string) => [`${value} A`, '']}
             />
             <Legend
               wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
@@ -822,7 +1109,7 @@ function CurrentTrendChart({ deviceId, currentReduction }: { deviceId: string | 
               dataKey="beforeAvg"
               stroke="#ef4444"
               strokeWidth={3}
-              name="Before K-Save"
+              name={labels.before}
               dot={false}
               animationDuration={800}
             />
@@ -831,7 +1118,7 @@ function CurrentTrendChart({ deviceId, currentReduction }: { deviceId: string | 
               dataKey="afterAvg"
               stroke="#22c55e"
               strokeWidth={3}
-              name="After K-Save"
+              name={labels.after}
               dot={false}
               animationDuration={800}
             />

@@ -20,6 +20,8 @@ import {
   Users,
 } from 'lucide-react';
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function MaintenanceDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -46,7 +48,7 @@ export default function MaintenanceDashboardPage() {
     equipmentUptime: 98.5,
   };
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: CalendarCheck,
       title: t.preventiveMaintenance,

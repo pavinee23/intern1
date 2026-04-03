@@ -258,7 +258,7 @@ export default function QAReportsPage() {
         const res = await fetch('/api/korea/qa-reports', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: editing.id, ...payload }),
+          body: JSON.stringify({ ...payload, id: editing.id }),
         });
         const api = await readApiResponse(res);
         if (api.success) {

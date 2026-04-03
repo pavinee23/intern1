@@ -1,14 +1,14 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
 import SupplierSearch from '../../components/SupplierSearch'
 
 type Row = { id?: number; doc_no?: string; doc_date?: string; supplier_id?: number; supplier_name?: string; subtotal?: number; vat?: number; total?: number; status?: string; note?: string }
 const empty: Row = { doc_date: new Date().toISOString().slice(0, 10), supplier_name: '', subtotal: 0, vat: 0, total: 0, status: 'draft', note: '' }
-const th: any = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
-const td: any = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
-const inp: any = { width: '100%', padding: '3px 6px', border: '1px solid', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, boxSizing: 'border-box' }
-const btn = (bg: string, c = '#1f2937'): any => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
+const th: React.CSSProperties = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
+const td: React.CSSProperties = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
+const inp: React.CSSProperties = { width: '100%', padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, boxSizing: 'border-box' }
+const btn = (bg: string, c = '#1f2937'): React.CSSProperties => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
 const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function PurchaseDepositPage() {
@@ -21,26 +21,31 @@ export default function PurchaseDepositPage() {
   const [msg, setMsg] = useState('')
   const [supplierDisplay, setSupplierDisplay] = useState('')
 
-  const load = async () => { const r = await fetch('/api/accounting/purchase-orders?doc_type=deposit' + (search ? '&q=' + encodeURIComponent(search) : '')); const d = await r.json(); if (d.ok) setData(d.data) }
-  useEffect(() => { load() }, [])
+  const load = useCallback(async (q = '') => {
+    const r = await fetch('/api/accounting/purchase-orders?doc_type=deposit' + (q ? '&q=' + encodeURIComponent(q) : ''))
+    const d = await r.json()
+    if (d.ok) setData(d.data as Row[])
+  }, [])
+  useEffect(() => { void load('') }, [load])
 
   const save = async () => {
     setLoading(true); setMsg('')
     const method = form.id ? 'PUT' : 'POST'
     const res = await fetch('/api/accounting/purchase-orders', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, doc_type: 'deposit' }) })
     const d = await res.json()
-    if (d.ok) { setShowForm(false); setForm(empty); load(); setMsg(L('Saved','บันทึกสำเร็จ')) } else setMsg('Error: ' + d.error)
+    if (d.ok) { setShowForm(false); setForm(empty); void load(search); setMsg(L('Saved','บันทึกสำเร็จ')) } else setMsg('Error: ' + d.error)
     setLoading(false)
   }
-  const del = async (id: number) => { if (!confirm(L('Delete?','ลบ?'))) return; await fetch('/api/accounting/purchase-orders?id=' + id, { method: 'DELETE' }); load() }
+  const del = async (id: number) => { if (!confirm(L('Delete?','ลบ?'))) return; await fetch('/api/accounting/purchase-orders?id=' + id, { method: 'DELETE' }); void load(search) }
+  const handleDelete = (id?: number) => { if (typeof id === 'number') void del(id) }
 
   return (
     <AccWindow title={L('Pay Deposit','จ่ายเงินมัดจำ')}>
       <div style={{ padding: 12 }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button style={btn('#f3f4f6')} onClick={() => { setForm(empty); setSupplierDisplay(''); setShowForm(true) }}>+ {L('New','เพิ่มใหม่')}</button>
-          <input style={{ ...inp, width: 200 }} placeholder={L('Search...','ค้นหา...')} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} />
-          <button style={btn('#f3f4f6')} onClick={load}>{L('Search','ค้นหา')}</button>
+          <input style={{ ...inp, width: 200 }} placeholder={L('Search...','ค้นหา...')} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && void load(search)} />
+          <button style={btn('#f3f4f6')} onClick={() => void load(search)}>{L('Search','ค้นหา')}</button>
           {msg && <span style={{ color: msg.startsWith('Error') ? 'red' : 'green', fontSize: 13 }}>{msg}</span>}
         </div>
         <div style={{ overflowX: 'auto', border: '1px solid #d1d5db', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
@@ -48,13 +53,13 @@ export default function PurchaseDepositPage() {
             <thead><tr>{[L('Doc No','เลขที่'), L('Date','วันที่'), L('Supplier','ผู้จำหน่าย'), L('Amount','จำนวนเงิน'), L('Status','สถานะ'), ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {data.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#888', padding: 20 }}>{L('No data','ไม่มีข้อมูล')}</td></tr>}
-              {data.map((r: any, i) => (
+              {data.map((r, i) => (
                 <tr key={r.id} style={{ background: i % 2 ? '#f5f5f5' : '#fff' }}>
                   <td style={td}>{r.doc_no}</td><td style={td}>{r.doc_date?.slice(0, 10)}</td><td style={td}>{r.supplier_name}</td>
                   <td style={{ ...td, textAlign: 'right' }}>{fmt(r.total || 0)}</td><td style={{ ...td, textAlign: 'center' }}>{r.status}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={() => { setForm({ ...r }); setSupplierDisplay(r.supplier_name || ''); setShowForm(true) }}>{L('Edit','แก้ไข')}</button>
-                    <button style={btn('#f3f4f6', '#dc2626')} onClick={() => del(r.id)}>{L('Del','ลบ')}</button>
+                    <button style={btn('#f3f4f6', '#dc2626')} onClick={() => handleDelete(r.id)}>{L('Del','ลบ')}</button>
                   </td>
                 </tr>))}
             </tbody>

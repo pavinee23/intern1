@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
-import { ChevronDown, Search, Trash2, Users, FolderOpen, LayoutDashboard, Plus } from 'lucide-react';
+import { ChevronDown, Trash2, Users, FolderOpen, LayoutDashboard, Plus } from 'lucide-react';
 
 interface Project {
   no: number;
@@ -20,7 +20,7 @@ interface Project {
 
 export default function DashboardSettingPage() {
   const { t } = useLocale();
-  const [projects, setProjects] = useState<Project[]>([
+  const [projects] = useState<Project[]>([
     {
       no: 1,
       projectName: 'PTT',
@@ -48,8 +48,6 @@ export default function DashboardSettingPage() {
       country: 'Korea',
     },
   ]);
-  const [ownerFilter, setOwnerFilter] = useState('all');
-  const [projectNameFilter, setProjectNameFilter] = useState('all');
   const [searchCriteria, setSearchCriteria] = useState('');
   const [searchText, setSearchText] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);

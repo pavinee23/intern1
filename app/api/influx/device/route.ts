@@ -76,13 +76,13 @@ export async function GET(req: Request) {
     const sMatch = raw.match(/"series(?:_name)?"\s*:\s*"([^"]+)"/i)
     const nameMatch = raw.match(/"name"\s*:\s*"([^"]+)"/i)
 
-    parsed.seriesName = (kMatch && kMatch[1]) || (sMatch && sMatch[1]) || (mMatch && mMatch[1]) || (nameMatch && nameMatch[1])
+    parsed.seriesName = kMatch?.[1] ?? sMatch?.[1] ?? mMatch?.[1] ?? nameMatch?.[1] ?? undefined
 
   // series number heuristics: look for series_no, no, id, device numeric value, or a numeric _value
     const snMatch = raw.match(/"series_no"\s*:\s*"?([0-9]+(?:\.[0-9]+)?)"?/i)
     const idMatch = raw.match(/"(?:device|host|machine|id)"\s*:\s*"?([0-9]+(?:\.[0-9]+)?)"?/i)
     const valueMatch = raw.match(/"_value"\s*:\s*([0-9.+\-eE]+)/i)
-    parsed.seriesNo = (snMatch && snMatch[1]) || (idMatch && idMatch[1]) || (valueMatch && valueMatch[1]) || undefined
+    parsed.seriesNo = snMatch?.[1] ?? idMatch?.[1] ?? valueMatch?.[1] ?? undefined
 
   // try to find a location/site tag
   const locMatch = raw.match(/"location"\s*:\s*"([^"]+)"/i)

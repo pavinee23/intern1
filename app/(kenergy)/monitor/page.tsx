@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSite } from "@/lib/SiteContext";
 import { useLocale } from "@/lib/LocaleContext";
+import { formatCurrencyBySite, getCurrencyCodeBySite } from "@/lib/currency";
 import { ChevronDown, RefreshCw, Clock, Wifi, WifiOff, X, Zap, Activity, Gauge, Leaf, BarChart2, TrendingDown } from "lucide-react";
 import MonitorCard from "@/components/MonitorCard";
 import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar, Cell, LabelList,
+  AreaChart, Area, BarChart, Bar, LabelList,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
@@ -42,9 +43,19 @@ interface MonitoringMetrics {
   thdAfter:  number | null;
 }
 
+interface DeviceSettingsRecord {
+  deviceID?: string | number;
+  deviceName?: string;
+  location?: string;
+  customerName?: string;
+}
+
+type ChartValue = string | number | null | undefined;
+type ChartPoint = Record<string, ChartValue>;
+
 export default function MonitorPage() {
   const { selectedSite } = useSite();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -58,34 +69,49 @@ export default function MonitorPage() {
   const [devicesLoading, setDevicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<ChartPoint[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [energyHistory, setEnergyHistory] = useState<any[]>([]);
+  const [energyHistory, setEnergyHistory] = useState<ChartPoint[]>([]);
   const [energyLoading, setEnergyLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // Chart controls — constants first so useState initialisers can use them
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  // Chart controls — compute dates on client side to avoid hydration mismatch
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const yesterday = useMemo(() => new Date(Date.now() - 86400000).toISOString().slice(0, 10), []);
+  const thirtyDaysAgo = useMemo(() => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10), []);
 
-  const [energyDate, setEnergyDate] = useState(today);
+  // Initialize with empty strings to avoid SSR hydration mismatch
+  // Will be set to correct dates in useEffect
+  const [energyDate, setEnergyDate] = useState('');
   const [trendMetric, setTrendMetric] = useState('voltageL1');
   const [period, setPeriod] = useState<'minute'|'hour'|'day'>('minute');
-  const [fromDate, setFromDate] = useState(yesterday);
-  const [toDate, setToDate] = useState(today);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [showLimits, setShowLimits] = useState(false);
   const [showMetricMenu, setShowMetricMenu] = useState(false);
   const [showPeriodMenu, setShowPeriodMenu] = useState(false);
 
   // Energy Historical chart (separate date range + data)
-  const [histFromDate, setHistFromDate] = useState(thirtyDaysAgo);
-  const [histToDate, setHistToDate] = useState(today);
-  const [histData, setHistData] = useState<any[]>([]);
+  const [histFromDate, setHistFromDate] = useState('');
+  const [histToDate, setHistToDate] = useState('');
+  const [histData, setHistData] = useState<ChartPoint[]>([]);
   const [histDataLoading, setHistDataLoading] = useState(false);
 
   // Event Viewer date range
-  const [evFromDate, setEvFromDate] = useState(yesterday);
-  const [evToDate, setEvToDate] = useState(today);
+  const [evFromDate, setEvFromDate] = useState('');
+  const [evToDate, setEvToDate] = useState('');
+
+  useEffect(() => {
+    setIsClient(true);
+    // Initialize dates on client side only
+    setEnergyDate(today);
+    setFromDate(yesterday);
+    setToDate(today);
+    setHistFromDate(thirtyDaysAgo);
+    setHistToDate(today);
+    setEvFromDate(yesterday);
+    setEvToDate(today);
+  }, [today, yesterday, thirtyDaysAgo]);
 
   // Format time label: show only HH:MM for minute/hour, date for day
   const formatXTick = (val: string) => {
@@ -96,8 +122,10 @@ export default function MonitorPage() {
     // day period: YYYY-MM-DD → DD MMM
     const parts = val.split('-');
     if (parts.length === 3) {
-      const d = new Date(val);
-      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = parts[2];
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      return `${day} ${monthNames[monthIndex]}`;
     }
     return val;
   };
@@ -111,8 +139,122 @@ export default function MonitorPage() {
     ['thdBefore','THD Before (%)','%'], ['thdAfter','THD After (%)','%'],
   ];
   const activeMetric = metricOptions.find(([key]) => key === trendMetric) ?? metricOptions[0];
+  const currencyCode = getCurrencyCodeBySite(selectedSite, locale);
 
-  useEffect(() => { fetchCustomers(); }, [selectedSite]);
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setCustomersLoading(true);
+      const res = await fetch(`/api/kenergy/customers-by-site?site=${selectedSite}`);
+      const json = await res.json();
+      if (json.success) {
+        setCustomers(json.customers || []);
+        setSelectedCustomer("");
+        setSelectedDevice("");
+        setDevices([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+    } finally {
+      setCustomersLoading(false);
+    }
+  }, [selectedSite]);
+
+  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+  const fetchDevicesForCustomer = useCallback(async (customerName: string) => {
+    try {
+      setDevicesLoading(true);
+      const res = await fetch(`/api/kenergy/devices-setting?site=${selectedSite}`);
+      const json = await res.json();
+      if (json.success) {
+        const customerDevices = (json.devices as DeviceSettingsRecord[]).filter((d) => d.customerName === customerName);
+        setDevices(customerDevices.map((d) => ({
+          deviceID: String(d.deviceID ?? ''),
+          deviceName: d.deviceName ?? '',
+          location: d.location ?? ''
+        })));
+        if (customerDevices.length === 1 && customerDevices[0]?.deviceID != null) {
+          setSelectedDevice(String(customerDevices[0].deviceID));
+        } else {
+          setSelectedDevice("");
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch devices:', err);
+    } finally {
+      setDevicesLoading(false);
+    }
+  }, [selectedSite]);
+
+  const fetchMonitoringData = useCallback(async () => {
+    if (!selectedDevice) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`/api/kenergy/device-monitoring?deviceId=${selectedDevice}`);
+      const json = await res.json();
+      if (json.success) {
+        setMonitoringData(json.data.metrics);
+        setLastUpdate(json.data.lastUpdate);
+      } else {
+        setError(json.error || 'Failed to load monitoring data');
+        setMonitoringData(null);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
+      setMonitoringData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDevice]);
+
+  const fetchHistory = useCallback(async (p?: string, f?: string, t?: string) => {
+    if (!selectedDevice) return;
+    try {
+      setHistoryLoading(true);
+      const per = p ?? period;
+      const fr  = f ?? fromDate;
+      const to_ = t ?? toDate;
+      const res = await fetch(`/api/kenergy/device-history?deviceId=${selectedDevice}&period=${per}&from=${fr}&to=${to_}&limit=1440`);
+      const json = await res.json();
+      if (json.success) setHistory((json.history || []) as ChartPoint[]);
+    } catch (err) {
+      console.error('History fetch error:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [fromDate, period, selectedDevice, toDate]);
+
+  const fetchEnergyHistory = useCallback(async (date?: string) => {
+    if (!selectedDevice) return;
+    try {
+      setEnergyLoading(true);
+      const d = date ?? energyDate;
+      const res = await fetch(`/api/kenergy/device-history?deviceId=${selectedDevice}&period=hour&from=${d}&to=${d}&limit=48`);
+      const json = await res.json();
+      if (json.success) setEnergyHistory((json.history || []) as ChartPoint[]);
+    } catch (err) {
+      console.error('Energy history fetch error:', err);
+    } finally {
+      setEnergyLoading(false);
+    }
+  }, [energyDate, selectedDevice]);
+
+  const fetchHistData = useCallback(async (f?: string, t?: string) => {
+    if (!selectedDevice) return;
+    try {
+      setHistDataLoading(true);
+      const fr = f ?? histFromDate;
+      const to_ = t ?? histToDate;
+      const res = await fetch(`/api/kenergy/device-history?deviceId=${selectedDevice}&period=hour&from=${fr}&to=${to_}&limit=720`);
+      const json = await res.json();
+      if (json.success) setHistData((json.history || []) as ChartPoint[]);
+    } catch (err) {
+      console.error('HistData fetch error:', err);
+    } finally {
+      setHistDataLoading(false);
+    }
+  }, [histFromDate, histToDate, selectedDevice]);
 
   useEffect(() => {
     if (selectedDevice) {
@@ -129,120 +271,7 @@ export default function MonitorPage() {
       setIsLive(true);
       return () => { clearInterval(interval); setIsLive(false); };
     }
-  }, [selectedDevice]);
-
-  const fetchCustomers = async () => {
-    try {
-      setCustomersLoading(true);
-      const res = await fetch(`/api/kenergy/customers-by-site?site=${selectedSite}`);
-      const json = await res.json();
-      if (json.success) {
-        setCustomers(json.customers || []);
-        setSelectedCustomer("");
-        setSelectedDevice("");
-        setDevices([]);
-      }
-    } catch (err) {
-      console.error('Failed to fetch customers:', err);
-    } finally {
-      setCustomersLoading(false);
-    }
-  };
-
-  const fetchDevicesForCustomer = async (customerName: string) => {
-    try {
-      setDevicesLoading(true);
-      const res = await fetch(`/api/kenergy/devices-setting?site=${selectedSite}`);
-      const json = await res.json();
-      if (json.success) {
-        const customerDevices = json.devices.filter((d: any) => d.customerName === customerName);
-        setDevices(customerDevices.map((d: any) => ({
-          deviceID: String(d.deviceID),
-          deviceName: d.deviceName,
-          location: d.location
-        })));
-        if (customerDevices.length === 1) {
-          setSelectedDevice(String(customerDevices[0].deviceID));
-        } else {
-          setSelectedDevice("");
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch devices:', err);
-    } finally {
-      setDevicesLoading(false);
-    }
-  };
-
-  const fetchMonitoringData = async () => {
-    if (!selectedDevice) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`/api/kenergy/device-monitoring?deviceId=${selectedDevice}`);
-      const json = await res.json();
-      if (json.success) {
-        setMonitoringData(json.data.metrics);
-        setLastUpdate(json.data.lastUpdate);
-      } else {
-        setError(json.error || 'Failed to load monitoring data');
-        setMonitoringData(null);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Network error');
-      setMonitoringData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchHistory = async (p?: string, f?: string, t?: string) => {
-    if (!selectedDevice) return;
-    try {
-      setHistoryLoading(true);
-      const per = p ?? period;
-      const fr  = f ?? fromDate;
-      const to_ = t ?? toDate;
-      const res = await fetch(`/api/kenergy/device-history?deviceId=${selectedDevice}&period=${per}&from=${fr}&to=${to_}&limit=1440`);
-      const json = await res.json();
-      if (json.success) setHistory(json.history || []);
-    } catch (err) {
-      console.error('History fetch error:', err);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const fetchEnergyHistory = async (date?: string) => {
-    if (!selectedDevice) return;
-    try {
-      setEnergyLoading(true);
-      const d = date ?? energyDate;
-      const res = await fetch(`/api/kenergy/device-history?deviceId=${selectedDevice}&period=hour&from=${d}&to=${d}&limit=48`);
-      const json = await res.json();
-      if (json.success) setEnergyHistory(json.history || []);
-    } catch (err) {
-      console.error('Energy history fetch error:', err);
-    } finally {
-      setEnergyLoading(false);
-    }
-  };
-
-  const fetchHistData = async (f?: string, t?: string) => {
-    if (!selectedDevice) return;
-    try {
-      setHistDataLoading(true);
-      const fr = f ?? histFromDate;
-      const to_ = t ?? histToDate;
-      const res = await fetch(`/api/kenergy/device-history?deviceId=${selectedDevice}&period=hour&from=${fr}&to=${to_}&limit=720`);
-      const json = await res.json();
-      if (json.success) setHistData(json.history || []);
-    } catch (err) {
-      console.error('HistData fetch error:', err);
-    } finally {
-      setHistDataLoading(false);
-    }
-  };
+  }, [fetchEnergyHistory, fetchHistData, fetchHistory, fetchMonitoringData, selectedDevice]);
 
   const currentDevice = devices.find(d => d.deviceID === selectedDevice);
 
@@ -272,7 +301,7 @@ export default function MonitorPage() {
               : <WifiOff className="w-4 h-4 text-gray-400" />
             }
             <Clock className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs text-gray-500">{new Date(lastUpdate).toLocaleString()}</span>
+            <span className="text-xs text-gray-500">{isClient ? new Date(lastUpdate).toLocaleString() : lastUpdate}</span>
           </div>
         )}
       </div>
@@ -537,7 +566,7 @@ export default function MonitorPage() {
                     />
                     <Tooltip
                       contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}
-                      formatter={(v: any) => [`${Number(v).toFixed(2)} ${activeMetric[2]}`, activeMetric[1]]}
+                      formatter={(v: number | string) => [`${Number(v).toFixed(2)} ${activeMetric[2]}`, activeMetric[1]]}
                       labelFormatter={(val) => `🕐 ${val}`}
                       labelStyle={{ color: '#6b7280', fontSize: 11 }}
                     />
@@ -611,15 +640,15 @@ export default function MonitorPage() {
                           <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={36}
                             label={{ value: 'Energy Usage', angle: -90, position: 'insideLeft', fontSize: 9, fill: '#9ca3af', dx: -2 }} />
                           <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                            formatter={(v: any, n: string) => [`${Number(v).toFixed(2)} kWh`, n]} />
+                            formatter={(v: number | string, n: string) => [`${Number(v).toFixed(2)} kWh`, n]} />
                           <Legend wrapperStyle={{ fontSize: 11 }} />
                           <Bar dataKey="offPeak" name="OFF PEAK" fill="#0f766e" radius={[3,3,0,0]} maxBarSize={28}>
                             <LabelList dataKey="offPeak" position="top" style={{ fontSize: 8, fill: '#0f766e' }}
-                              formatter={(v: any) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
+                              formatter={(v: number | string) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
                           </Bar>
                           <Bar dataKey="onPeak" name="ON PEAK" fill="#fca5a5" radius={[3,3,0,0]} maxBarSize={28}>
                             <LabelList dataKey="onPeak" position="top" style={{ fontSize: 8, fill: '#ef4444' }}
-                              formatter={(v: any) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
+                              formatter={(v: number | string) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -642,7 +671,7 @@ export default function MonitorPage() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
                         <span className="w-2.5 h-2.5 rounded-sm bg-teal-600 inline-block" />
-                        Energy Cost (THB)
+                        {`Energy Cost (${currencyCode})`}
                       </span>
                       <ZoomIcons />
                     </div>
@@ -655,17 +684,20 @@ export default function MonitorPage() {
                           <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false}
                             tickFormatter={formatXTick} interval="preserveStartEnd" />
                           <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={40}
-                            label={{ value: 'Energy Cost', angle: -90, position: 'insideLeft', fontSize: 9, fill: '#9ca3af', dx: -2 }} />
+                            label={{ value: `Energy Cost (${currencyCode})`, angle: -90, position: 'insideLeft', fontSize: 9, fill: '#9ca3af', dx: -2 }} />
                           <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                            formatter={(v: any, n: string) => [`${Number(v).toFixed(2)} ฿`, n]} />
+                            formatter={(v: number | string, n: string) => [
+                              formatCurrencyBySite(Number(v), selectedSite, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                              n,
+                            ]} />
                           <Legend wrapperStyle={{ fontSize: 11 }} />
                           <Bar dataKey="costOffPeak" name="OFF PEAK" fill="#0f766e" radius={[3,3,0,0]} maxBarSize={28}>
                             <LabelList dataKey="costOffPeak" position="top" style={{ fontSize: 8, fill: '#0f766e' }}
-                              formatter={(v: any) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
+                              formatter={(v: number | string) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
                           </Bar>
                           <Bar dataKey="costOnPeak" name="ON PEAK" fill="#fca5a5" radius={[3,3,0,0]} maxBarSize={28}>
                             <LabelList dataKey="costOnPeak" position="top" style={{ fontSize: 8, fill: '#ef4444' }}
-                              formatter={(v: any) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
+                              formatter={(v: number | string) => Number(v) > 0 ? Number(v).toFixed(1) : ''} />
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -730,7 +762,7 @@ export default function MonitorPage() {
                       <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={36}
                         label={{ value: 'Energy (KwH)', angle: -90, position: 'insideLeft', fontSize: 9, fill: '#9ca3af', dx: -2 }} />
                       <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                        formatter={(v: any) => [`${Number(v).toFixed(2)} kWh`, 'Energy']}
+                        formatter={(v: number | string) => [`${Number(v).toFixed(2)} kWh`, 'Energy']}
                         labelFormatter={(val) => `🕐 ${val}`} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Area type="monotone" dataKey="energy" name="Energy (KWH)"
@@ -937,4 +969,3 @@ export default function MonitorPage() {
     </div>
   );
 }
-

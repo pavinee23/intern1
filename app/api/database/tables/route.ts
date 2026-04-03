@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       data = await query(`SELECT * FROM "${table}" ORDER BY 1 DESC LIMIT 100`);
       countResult = await query(`SELECT COUNT(*) as count FROM "${table}"`);
     }
-    const totalRows = countResult?.[0]?.count || 0;
+    const totalRows = (countResult as Array<{ count?: number }>)?.[0]?.count || 0;
 
     return NextResponse.json({ 
       success: true,

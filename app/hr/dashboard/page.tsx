@@ -25,6 +25,8 @@ import {
   Shield,
 } from 'lucide-react';
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function HRDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -51,7 +53,7 @@ export default function HRDashboardPage() {
     pendingInvoices: 23,
   };
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: ShoppingCart,
       title: t.purchaseOrders,

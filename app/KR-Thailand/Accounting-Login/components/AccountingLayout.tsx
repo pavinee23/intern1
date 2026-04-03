@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import styles from '../../Admin-Login/admin-theme.module.css'
@@ -41,20 +42,23 @@ type Props = {
   children: React.ReactNode
   title?: string
   titleTh?: string
-  subtitle?: string
-  subtitleTh?: string
+}
+
+type AccountingUser = {
+  userId: string | null
+  username: string | null
+  fullname: string
+  typeID: number
 }
 
 export default function AccountingLayout({
   children,
   title = 'Dashboard',
   titleTh = 'แดชบอร์ด',
-  subtitle,
-  subtitleTh,
 }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<AccountingUser | null>(null)
   const [lang, setLang] = useState<'en' | 'th'>('th')
   const [mounted, setMounted] = useState(false)
 
@@ -63,7 +67,7 @@ export default function AccountingLayout({
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'en' || l === 'th') setLang(l)
       else setLang('th')
-    } catch (_) {}
+    } catch {}
     setMounted(true)
 
     // Auth check
@@ -82,7 +86,7 @@ export default function AccountingLayout({
         fullname: localStorage.getItem('fullname') || '',
         typeID: typeID ? parseInt(typeID) : 0,
       })
-    } catch (_) {
+    } catch {
       router.push('/Thailand/Accounting-Login')
     }
   }, [router])
@@ -95,7 +99,7 @@ export default function AccountingLayout({
       localStorage.removeItem('typeID')
       localStorage.removeItem('site')
       localStorage.removeItem('token')
-    } catch (_) {}
+    } catch {}
     router.push('/Thailand/Accounting-Login')
   }
 
@@ -108,7 +112,7 @@ export default function AccountingLayout({
       localStorage.setItem('locale', newLang)
       window.dispatchEvent(new CustomEvent('k-system-lang', { detail: newLang }))
       window.dispatchEvent(new CustomEvent('locale-changed', { detail: { locale: newLang } }))
-    } catch (_) {}
+    } catch {}
   }
 
   return (
@@ -118,9 +122,12 @@ export default function AccountingLayout({
         background: 'linear-gradient(180deg, #059669 0%, #047857 100%)'
       }}>
         <div className={styles.headerLogo}>
-          <img
+          <Image
             src="/k-energy-save-logo.jpg"
             alt="K Energy Save Co., Ltd."
+            width={96}
+            height={48}
+            unoptimized
             style={{ height: 48, width: 'auto', objectFit: 'contain', display: 'block', borderRadius: 6, marginRight: 12 }}
           />
           <div>

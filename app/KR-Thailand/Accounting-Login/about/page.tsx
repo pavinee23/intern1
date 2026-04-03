@@ -5,7 +5,7 @@ export default function Page() {
     <AccWindow title="เกี่ยวกับระบบ">
       <div style={{ padding: 32, fontFamily: '"Sarabun","Tahoma",sans-serif' }}>
         <div style={{
-          background: '#fff', border: '2px solid',
+          background: '#fff',
           border: '1px solid #d1d5db', borderRadius: 8,
           padding: '28px 40px', display: 'inline-block', minWidth: 380, textAlign: 'center'
         }}>

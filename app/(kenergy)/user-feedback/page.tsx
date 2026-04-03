@@ -60,7 +60,7 @@ export default function UserFeedbackPage() {
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Failed to submit feedback' });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Feedback submission error:', error);
       setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {

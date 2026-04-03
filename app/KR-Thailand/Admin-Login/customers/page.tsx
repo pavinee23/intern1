@@ -11,6 +11,7 @@ type Customer = {
   phone?: string | null,
   company?: string | null,
   tax_id?: string | null,
+  address?: string | null,
   house_number?: string | null,
   moo?: string | null,
   tambon?: string | null,

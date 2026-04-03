@@ -403,7 +403,7 @@ export default function ThailandAdminDashboard() {
         const j = await res.json()
         if (j && j.success && Array.isArray(j.activities) && mounted) {
           const items = (j.activities as ActivityApiItem[]).map((a) => ({
-            type: a.type,
+            type: a.type || 'activity',
             descEn: a.title || '-',
             descTh: a.title || '-',
             ts: a.ts

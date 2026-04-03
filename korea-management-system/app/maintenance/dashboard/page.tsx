@@ -30,7 +30,15 @@ export default function MaintenanceDashboardPage() {
     equipmentUptime: 98.5,
   };
 
-  const menuCards = [
+  const menuCards: Array<{
+    icon: typeof Workflow;
+    title: string;
+    description: string;
+    href: string;
+    color: string;
+    count: number | null;
+    external?: boolean;
+  }> = [
     {
       icon: CalendarCheck,
       title: t.preventiveMaintenance,

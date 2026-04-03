@@ -459,7 +459,7 @@ export default function SalesExpenseReportsPage() {
                 className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
               >
                 <Printer className="w-4 h-4" />
-                {locale === 'ko' ? '인쇄 리포트' : locale === 'th' ? 'พิมพ์รายงาน' : locale === 'vi' ? 'In Báo Cáo' : 'Print Report'}
+                {locale === 'ko' ? '인쇄 리포트' : 'Print Report'}
               </button>
             </div>
           </div>

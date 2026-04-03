@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/mysql'
 
+type ReadingSet = {
+  L1_N?: number | null
+  L2_N?: number | null
+  L3_N?: number | null
+  kWh?: number | null
+  P?: number | null
+  Q?: number | null
+  S?: number | null
+  PF?: number | null
+  THD?: number | null
+  F?: number | null
+}
+
+type SyncPayload = {
+  ksaveID?: string
+  deviceName?: string
+  time?: string
+  power_before?: ReadingSet
+  power_metrics?: ReadingSet
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json() as SyncPayload
     const { ksaveID, deviceName, time, power_before, power_metrics } = body
 
     if (!ksaveID || !time) {
@@ -55,7 +76,7 @@ export async function POST(request: NextRequest) {
       power_metrics?.F || null,
     ]
 
-    const result = await query(sql, values)
+    const result = await query(sql, values) as Array<{ id?: number }>
 
     return NextResponse.json({
       success: true,

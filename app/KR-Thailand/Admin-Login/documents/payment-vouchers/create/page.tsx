@@ -63,7 +63,11 @@ export default function CreatePaymentVoucherPage() {
 
   function updateItem(i: number, key: keyof ItemType, value: any) {
     const copy = [...items]
-    copy[i][key] = key === 'amount' ? Number(value) : value
+    const item = { ...copy[i] }
+    if (key === 'amount') item.amount = Number(value)
+    else if (key === 'invoice_ref') item.invoice_ref = String(value)
+    else item.description = String(value)
+    copy[i] = item
     setItems(copy)
   }
 

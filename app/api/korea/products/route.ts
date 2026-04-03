@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/mysql'
 
+type KoreaProductRow = Record<string, unknown> & {
+  specs?: unknown
+  features?: unknown
+}
+
+type KoreaProductPayload = {
+  name?: string
+  category?: string
+  price?: number
+  rating?: number
+  reviews?: number
+  inStock?: boolean
+  description?: string
+  specs?: unknown[]
+  features?: unknown[]
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
 
     if (id) {
-      const rows = await query('SELECT * FROM kr_products WHERE id = ?', [id])
+      const rows = await query('SELECT * FROM kr_products WHERE id = ?', [id]) as KoreaProductRow[]
       const row = rows[0]
       if (!row) return NextResponse.json(null)
       return NextResponse.json({
@@ -17,8 +34,8 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const rows = await query('SELECT * FROM kr_products ORDER BY name ASC')
-    return NextResponse.json(rows.map((r: any) => ({
+    const rows = await query('SELECT * FROM kr_products ORDER BY name ASC') as KoreaProductRow[]
+    return NextResponse.json(rows.map((r) => ({
       ...r,
       specs: r.specs ? (typeof r.specs === 'string' ? JSON.parse(r.specs) : r.specs) : [],
       features: r.features ? (typeof r.features === 'string' ? JSON.parse(r.features) : r.features) : []
@@ -30,7 +47,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const body = await req.json() as KoreaProductPayload
     const { name, category, price, rating, reviews, inStock, description, specs, features } = body
     const result = await query(
       'INSERT INTO kr_products (name, category, price, rating, reviews, inStock, description, specs, features) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',

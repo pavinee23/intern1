@@ -18,6 +18,8 @@ import {
   Users,
 } from 'lucide-react';
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function AfterSalesDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -44,7 +46,7 @@ export default function AfterSalesDashboardPage() {
     satisfactionRate: 94.2,
   };
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: Ticket,
       title: t.customerTickets,

@@ -119,7 +119,15 @@ export default function DomesticMarketDashboardPage() {
     completedTests: currentData.equipmentTest,
   };
 
-  const menuCards = [
+  const menuCards: Array<{
+    icon: typeof Workflow;
+    title: string;
+    description: string;
+    href: string;
+    color: string;
+    count: number | null;
+    external?: boolean;
+  }> = [
     {
       icon: ClipboardCheck,
       title: t.salesApprovals,

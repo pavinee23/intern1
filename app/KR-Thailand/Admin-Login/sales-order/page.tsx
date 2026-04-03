@@ -247,7 +247,7 @@ export default function SalesOrderPage() {
       const copy = [...prev]
       copy[idx] = {
         ...copy[idx],
-        product_id: p.id || null,
+        product_id: p.id ? Number(p.id) : null,
         sku: p.sku || null,
         productName: p.name || '',
         unitPrice: Number(p.price || 0)
@@ -608,7 +608,7 @@ export default function SalesOrderPage() {
                                       const copy = [...prev]
                                       copy[idx] = {
                                         ...copy[idx],
-                                        product_id: p.id || null,
+                                        product_id: p.id ? Number(p.id) : null,
                                         sku: p.sku || null,
                                         productName: p.name || '',
                                         unitPrice: Number(p.price || 0)

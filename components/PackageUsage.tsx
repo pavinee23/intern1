@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Radio, MessageCircle, Send, Key, Layout, Database, Zap, Smartphone } from "lucide-react";
 import { useSite } from "@/lib/SiteContext";
 import { useLocale } from "@/lib/LocaleContext";
@@ -8,9 +9,20 @@ import CountryFlag from "./CountryFlag";
 export default function PackageUsage() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Different data based on selected site
-  const siteData = {
+  const siteData: Record<string, {
+    devices: { current: number; total: number; percentage: number };
+    lineMessages: { current: number; total: number; percentage: number };
+    apiRequests: { current: number; total: number; percentage: number };
+    apiKeys: number;
+    dashboards: { current: number; total: number };
+  }> = {
     thailand: {
       devices: { current: 3, total: 5, percentage: 60 },
       lineMessages: { current: 0, total: 250, percentage: 0 },
@@ -25,9 +37,30 @@ export default function PackageUsage() {
       apiKeys: 1,
       dashboards: { current: 1, total: 1 },
     },
+    vietnam: {
+      devices: { current: 0, total: 5, percentage: 0 },
+      lineMessages: { current: 0, total: 250, percentage: 0 },
+      apiRequests: { current: 0, total: 10000, percentage: 0 },
+      apiKeys: 0,
+      dashboards: { current: 1, total: 1 },
+    },
+    malaysia: {
+      devices: { current: 0, total: 5, percentage: 0 },
+      lineMessages: { current: 0, total: 250, percentage: 0 },
+      apiRequests: { current: 0, total: 10000, percentage: 0 },
+      apiKeys: 0,
+      dashboards: { current: 1, total: 1 },
+    },
   };
 
-  const data = siteData[selectedSite];
+  const data = siteData[selectedSite] ?? siteData.thailand;
+  const selectedSiteLabel = selectedSite === "thailand"
+    ? t("thailand")
+    : selectedSite === "korea"
+      ? t("republicOfKorea")
+      : selectedSite === "vietnam"
+        ? t("vietnam")
+        : t("malaysia");
 
   return (
     <div className="card">
@@ -37,7 +70,7 @@ export default function PackageUsage() {
           <div className="flex items-center space-x-2">
             <CountryFlag country={selectedSite} size="sm" />
             <span className="text-xs text-gray-500">
-              {selectedSite === "thailand" ? t("thailand") : t("republicOfKorea")}
+              {selectedSiteLabel}
             </span>
           </div>
         </div>
@@ -95,8 +128,10 @@ export default function PackageUsage() {
             <Database className="w-5 h-5 text-gray-400" />
           </div>
           <div className="mb-2">
-            <span className="text-2xl font-bold text-gray-800">{data.apiRequests.current.toLocaleString()}</span>
-            <span className="text-gray-500"> / {data.apiRequests.total.toLocaleString()}</span>
+            <span className="text-2xl font-bold text-gray-800">
+              {isClient ? data.apiRequests.current.toLocaleString() : data.apiRequests.current}
+            </span>
+            <span className="text-gray-500"> / {isClient ? data.apiRequests.total.toLocaleString() : data.apiRequests.total}</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${data.apiRequests.percentage}%` }}></div>

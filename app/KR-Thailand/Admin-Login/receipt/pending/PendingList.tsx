@@ -19,7 +19,9 @@ type ReceiptRow = {
 function getAuthHeaders() {
   try {
     const token = localStorage.getItem('k_system_admin_token') || ''
-    return token ? { Authorization: `Bearer ${token}` } : {}
+    const headers: Record<string, string> = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    return headers
   } catch {
     return {}
   }

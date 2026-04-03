@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the latest power record for the device
+    // Cast deviceId to appropriate type - it might be string or int
     const powerRecords = await queryKsave(
       `SELECT
         device_id,
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
         co2_reduction,
         before_kWh
        FROM power_records
-       WHERE device_id = ?
+       WHERE device_id = CAST(? AS UNSIGNED)
        ORDER BY record_time DESC
        LIMIT 1`,
       [deviceId]

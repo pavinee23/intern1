@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ ok: false, error: 'No file provided' }, { status: 400 })
 
     const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    const buffer: Buffer = Buffer.from(bytes) as Buffer
 
     // Generate doc_no and filename
     const docNo = await nextDocNo()

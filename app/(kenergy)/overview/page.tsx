@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
 import DeviceCard from '@/components/DeviceCard';
-import { ChevronDown, Plus, RefreshCw, Server, Wifi, WifiOff } from 'lucide-react';
+import { Plus, RefreshCw, Server, Wifi, WifiOff } from 'lucide-react';
 
 interface Device {
   deviceID: string;
@@ -20,12 +19,10 @@ interface Device {
 
 export default function OverviewPage() {
   const router = useRouter();
-  const { selectedSite } = useSite();
   const { t } = useLocale();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState('all');
 
   const fetchDevices = async () => {
     try {
@@ -39,8 +36,8 @@ export default function OverviewPage() {
       } else {
         setError(json.error || 'Failed to load devices');
       }
-    } catch (err: any) {
-      setError(err.message || 'Network error');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
     }

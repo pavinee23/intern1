@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import CountryFlag from "./CountryFlag";
 
 type Site = "thailand" | "korea" | "vietnam" | "malaysia";
-type Locale = "ko" | "en" | "th" | "cn" | "vn";
+type Locale = "ko" | "en" | "th" | "cn" | "vn" | "ms";
 
 const siteConfig: { value: Site; flagCode: "TH" | "KR" | "VN" | "MY"; nameKey: string }[] = [
   { value: "thailand", flagCode: "TH", nameKey: "thailand" },
@@ -16,11 +16,12 @@ const siteConfig: { value: Site; flagCode: "TH" | "KR" | "VN" | "MY"; nameKey: s
   { value: "malaysia", flagCode: "MY", nameKey: "malaysia" },
 ];
 
-const languageConfig: { value: Locale; label: string; flagCode: "KR" | "GB" | "TH" | "CN" | "VN" }[] = [
+const languageConfig: { value: Locale; label: string; flagCode: "KR" | "GB" | "TH" | "CN" | "VN" | "MY" }[] = [
   { value: "ko", label: "한국어", flagCode: "KR" },
   { value: "en", label: "English", flagCode: "GB" },
-  { value: "th", label: "ไทย", flagCode: "TH" },
   { value: "cn", label: "中文", flagCode: "CN" },
+  { value: "ms", label: "Bahasa Melayu", flagCode: "MY" },
+  { value: "th", label: "ไทย", flagCode: "TH" },
   { value: "vn", label: "Tiếng Việt", flagCode: "VN" },
 ];
 
@@ -119,7 +120,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="bg-white shadow-sm border-b px-8 py-4">
+    <header className="relative z-[120] bg-white shadow-sm border-b px-8 py-4 overflow-visible">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {/* Site Selector */}
@@ -157,30 +158,41 @@ export default function Header() {
           <div className="relative" ref={langMenuRef}>
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-lg transition-all duration-200 shadow-sm hover:shadow border border-gray-200"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 rounded-lg transition-all duration-200 shadow-sm hover:shadow border border-gray-200 min-w-[15rem]"
             >
               <Globe className="w-4 h-4 text-gray-600" />
               <CountryFlag country={currentLang.flagCode} size="sm" />
-              <span className="text-sm font-medium text-gray-700">{currentLang.label}</span>
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">{currentLang.label}</span>
               <ChevronDown className="w-4 h-4 text-gray-500" />
             </button>
             {showLangMenu && (
-              <div className="absolute left-0 mt-2 w-44 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50">
-                {languageConfig.map((lang) => (
-                  <button
-                    key={lang.value}
-                    onClick={() => { setLocale(lang.value); setShowLangMenu(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors ${
-                      locale === lang.value ? "bg-blue-50 border-l-4 border-blue-500" : ""
-                    }`}
-                  >
-                    <CountryFlag country={lang.flagCode} size="sm" />
-                    <span className={`text-sm font-medium ${
-                      locale === lang.value ? "text-blue-700" : "text-gray-700"
-                    }`}>{lang.label}</span>
-                    {locale === lang.value && <span className="ml-auto text-blue-600">✓</span>}
-                  </button>
-                ))}
+              <div className="absolute left-0 mt-2 w-[18rem] bg-white rounded-xl shadow-xl border border-gray-200 p-2 z-[130] overflow-visible">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {languageConfig.map((lang) => (
+                    <button
+                      key={lang.value}
+                      onClick={() => {
+                        setLocale(lang.value);
+                        try {
+                          localStorage.setItem('locale', lang.value);
+                          localStorage.setItem('k_system_lang', lang.value);
+                          window.dispatchEvent(new CustomEvent('k-system-lang', { detail: lang.value }));
+                          window.dispatchEvent(new CustomEvent('locale-changed', { detail: { locale: lang.value } }));
+                        } catch (_) {}
+                        setShowLangMenu(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors ${
+                        locale === lang.value ? "bg-blue-50 ring-1 ring-blue-200" : ""
+                      }`}
+                    >
+                      <CountryFlag country={lang.flagCode} size="sm" />
+                      <span className={`text-sm font-medium ${
+                        locale === lang.value ? "text-blue-700" : "text-gray-700"
+                      } whitespace-nowrap`}>{lang.label}</span>
+                      {locale === lang.value && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

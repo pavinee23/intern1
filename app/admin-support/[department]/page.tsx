@@ -224,7 +224,7 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
       id: '1',
       sender: locale === 'ko' ? '연구개발 부서' : 'Research & Development',
       role: 'admin',
-      text: t.adminWelcomeMessage.replace('{department}', departmentName),
+      text: String(t.adminWelcomeMessage).replace('{department}', String(departmentName)),
       timestamp: new Date(Date.now() - 60000),
       status: 'read',
       department: params.department
@@ -703,7 +703,7 @@ export default function DepartmentAdminSupportPage({ params }: { params: { depar
                 {departmentName} - {t.administratorSupport}
               </h4>
               <p className="text-sm text-gray-700">
-                {t.chatWithDepartmentAdmin.replace('{department}', departmentName)}
+                {String(t.chatWithDepartmentAdmin).replace('{department}', String(departmentName))}
               </p>
             </div>
           </div>

@@ -52,6 +52,8 @@ const EMPTY_STATS: StatShape = {
   dailyIssues: 0,
 };
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function ProductionDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -199,7 +201,7 @@ export default function ProductionDashboardPage() {
     { key: 'brunei', name: locale === 'ko' ? '브루나이' : 'Brunei', emoji: '🇧🇳', stats: branchStats.brunei || EMPTY_STATS },
   ];
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: Package,
       title: t.pendingProductionOrdersByBranch,

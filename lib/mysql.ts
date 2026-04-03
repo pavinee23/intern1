@@ -17,13 +17,20 @@ type PoolWithInternalState = mysql.Pool & {
   pool?: InternalPoolInfo
 }
 
+type GlobalMysqlState = typeof globalThis & {
+  __ksystem_mysql_pool__?: mysql.Pool
+  __ksystem_mysql_monitor_started__?: boolean
+}
+
 // Create a connection pool for MySQL
 // Connection pool settings can be configured via environment variables
 // Reduced limits to prevent "Too many connections" errors
 const connectionLimit = parseInt(process.env.MYSQL_CONNECTION_LIMIT || '5')
 const queueLimit = parseInt(process.env.MYSQL_QUEUE_LIMIT || '20')
 
-const pool = globalThis.__ksystem_mysql_pool__ ?? mysql.createPool({
+const globalForMysql = globalThis as GlobalMysqlState
+
+const pool: mysql.Pool = globalForMysql.__ksystem_mysql_pool__ ?? mysql.createPool({
   host: process.env.MYSQL_HOST || '127.0.0.1',
   port: parseInt(process.env.MYSQL_PORT || '3306'),
   database: process.env.MYSQL_DATABASE || 'ksystem',
@@ -40,15 +47,15 @@ const pool = globalThis.__ksystem_mysql_pool__ ?? mysql.createPool({
   timezone: '+00:00'
 })
 
-globalThis.__ksystem_mysql_pool__ = pool
+globalForMysql.__ksystem_mysql_pool__ = pool
 
 // Log pool configuration on startup
 console.log(`[MySQL Pool] Configured with connectionLimit=${connectionLimit}, queueLimit=${queueLimit}`)
 
 // Monitor connection pool usage every 30 seconds
 let lastWarningTime = 0
-if (!globalThis.__ksystem_mysql_monitor_started__) {
-  globalThis.__ksystem_mysql_monitor_started__ = true
+if (!globalForMysql.__ksystem_mysql_monitor_started__) {
+  globalForMysql.__ksystem_mysql_monitor_started__ = true
   setInterval(() => {
     try {
       const poolInfo = (pool as PoolWithInternalState).pool
@@ -137,10 +144,11 @@ export async function query(sql: string, values?: unknown[], retries = 2): Promi
 
     try {
       // Get connection from pool
-      connection = await pool.getConnection()
+      const dbConnection = await pool.getConnection()
+      connection = dbConnection
 
       // Execute query with converted SQL
-      const [results] = await connection.query(convertedSql, values)
+      const [results] = await dbConnection.query(convertedSql, values)
 
       return Array.isArray(results) ? results : [results]
 

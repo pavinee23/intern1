@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 interface MonitorCardProps {
   title: string;
   value: number | null | undefined;
@@ -19,6 +21,11 @@ export default function MonitorCard({
   icon,
   highlight = false,
 }: MonitorCardProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   const colorMap = {
     yellow:  { border: "border-yellow-400",  bg: "bg-yellow-50",  text: "text-yellow-700",  badge: "bg-yellow-100 text-yellow-600" },
     blue:    { border: "border-blue-400",    bg: "bg-blue-50",    text: "text-blue-700",    badge: "bg-blue-100 text-blue-600" },
@@ -74,7 +81,7 @@ export default function MonitorCard({
       <div className="flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
         <span className="text-xs text-gray-400">
-          {lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : "Live"}
+          {lastUpdate ? (isClient ? new Date(lastUpdate).toLocaleTimeString() : '--:--:--') : "Live"}
         </span>
       </div>
     </div>

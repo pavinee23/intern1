@@ -9,29 +9,36 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const period = searchParams.get('period') || '30' // days
     const deviceId = searchParams.get('deviceId') // optional device filter
+    const site = (searchParams.get('site') || 'thailand').toLowerCase()
 
     // Build WHERE clause
-    let whereClause = `WHERE record_time >= DATE_SUB(NOW(), INTERVAL ${period} DAY)`
+    let whereClause = `WHERE pr.record_time >= DATE_SUB(NOW(), INTERVAL ${period} DAY)`
     const params: any[] = []
 
+    const validSites = ['thailand', 'korea', 'vietnam', 'malaysia']
+    const safeSite = validSites.includes(site) ? site : 'thailand'
+    whereClause += " AND LOWER(COALESCE(d.site, d.location, '')) LIKE ?"
+    params.push(`%${safeSite}%`)
+
     if (deviceId) {
-      whereClause += ' AND device_id = ?'
+      whereClause += ' AND pr.device_id = ?'
       params.push(deviceId)
     }
 
     // 1. Get daily aggregated energy data
     const dailyData = await queryKsave(
       `SELECT
-        DATE(record_time) as date,
-        COUNT(DISTINCT device_id) as active_devices,
-        SUM(energy_reduction) as total_energy_saved,
-        SUM(co2_reduction) as total_co2_saved,
-        AVG(before_kWh) as avg_before_kwh,
-        AVG(metrics_kWh) as avg_after_kwh,
-        AVG(metrics_P) as avg_power
-       FROM power_records
+        DATE(pr.record_time) as date,
+        COUNT(DISTINCT pr.device_id) as active_devices,
+        SUM(pr.energy_reduction) as total_energy_saved,
+        SUM(pr.co2_reduction) as total_co2_saved,
+        AVG(pr.before_kWh) as avg_before_kwh,
+        AVG(pr.metrics_kWh) as avg_after_kwh,
+        AVG(pr.metrics_P) as avg_power
+       FROM power_records pr
+       JOIN devices d ON pr.device_id = d.deviceID
        ${whereClause}
-       GROUP BY DATE(record_time)
+       GROUP BY DATE(pr.record_time)
        ORDER BY date ASC`,
       params
     )
@@ -39,12 +46,13 @@ export async function GET(request: NextRequest) {
     // 2. Get total summary statistics
     const summaryResult = await queryKsave(
       `SELECT
-        SUM(energy_reduction) as total_energy_saved,
-        SUM(co2_reduction) as total_co2_saved,
-        AVG(before_kWh) as avg_before,
-        AVG(metrics_kWh) as avg_after,
-        COUNT(DISTINCT device_id) as device_count
-       FROM power_records
+        SUM(pr.energy_reduction) as total_energy_saved,
+        SUM(pr.co2_reduction) as total_co2_saved,
+        AVG(pr.before_kWh) as avg_before,
+        AVG(pr.metrics_kWh) as avg_after,
+        COUNT(DISTINCT pr.device_id) as device_count
+       FROM power_records pr
+       JOIN devices d ON pr.device_id = d.deviceID
        ${whereClause}`,
       params
     )
@@ -58,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Calculate cost savings (assuming 4 THB/kWh average rate)
-    const electricityRate = 4 // THB per kWh
+    const electricityRate = Number(searchParams.get('rate') || 4)
     const costSavings = Math.round((summary.total_energy_saved || 0) * electricityRate)
 
     // 4. Calculate percentage reduction
@@ -69,17 +77,24 @@ export async function GET(request: NextRequest) {
       : 0
 
     // 5. Get hourly pattern data (last 24 hours for chart)
+    const hourlyParams: any[] = [`%${safeSite}%`]
+    let hourlyWhere = "WHERE pr.record_time >= NOW() - INTERVAL 24 HOUR AND LOWER(COALESCE(d.site, d.location, '')) LIKE ?"
+    if (deviceId) {
+      hourlyWhere += ' AND pr.device_id = ?'
+      hourlyParams.push(deviceId)
+    }
+
     const hourlyPattern = await queryKsave(
       `SELECT
-        HOUR(record_time) as hour,
-        AVG(metrics_P) as avg_power,
-        AVG(energy_reduction) as avg_savings
-       FROM power_records
-       WHERE record_time >= NOW() - INTERVAL 24 HOUR
-       ${deviceId ? 'AND device_id = ?' : ''}
-       GROUP BY HOUR(record_time)
+        HOUR(pr.record_time) as hour,
+        AVG(pr.metrics_P) as avg_power,
+        AVG(pr.energy_reduction) as avg_savings
+       FROM power_records pr
+       JOIN devices d ON pr.device_id = d.deviceID
+       ${hourlyWhere}
+       GROUP BY HOUR(pr.record_time)
        ORDER BY hour ASC`,
-      deviceId ? [deviceId] : []
+      hourlyParams
     )
 
     return NextResponse.json({

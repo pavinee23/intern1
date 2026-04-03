@@ -23,7 +23,7 @@ export async function GET(req: Request) {
       [limit, offset]
     )
 
-    const total = await query(`SELECT COUNT(*) as count FROM user_list`)
+    const total = await query(`SELECT COUNT(*) as count FROM user_list`) as Array<{ count?: number }>
     const totalCount = total[0]?.count || 0
 
     return NextResponse.json({
@@ -107,10 +107,10 @@ export async function DELETE(req: Request) {
       }, { status: 400 })
     }
 
-    const result = await query(`DELETE FROM user_list WHERE userId = ?`, [parseInt(userID)])
+    const result = await query(`DELETE FROM user_list WHERE userId = ?`, [parseInt(userID)]) as { affectedRows?: number }[]
 
     // result is OK even if no rows affected; check affected rows
-    const affected = (result && result.affectedRows) || 0
+    const affected = result[0]?.affectedRows || 0
     if (affected === 0) {
       return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 })
     }

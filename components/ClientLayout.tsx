@@ -13,9 +13,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-visible">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden w-full lg:w-auto">
+      <div className="flex-1 flex flex-col overflow-visible w-full lg:w-auto">
         <Header />
         <main className="flex-1 overflow-y-auto">
           {children}

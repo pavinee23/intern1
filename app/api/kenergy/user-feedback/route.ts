@@ -13,7 +13,18 @@ const BRANCH_KEYWORDS: Record<string, string[]> = {
 }
 
 async function ensureFeedbackBranchColumn() {
-  await queryUser(`ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS branch VARCHAR(50) DEFAULT NULL`)
+  const rows = await queryUser(
+    `SELECT COUNT(*) AS count
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'user_feedback'
+       AND COLUMN_NAME = 'branch'`
+  )
+
+  const columnExists = Number((rows as any[])[0]?.count || 0) > 0
+  if (!columnExists) {
+    await queryUser(`ALTER TABLE user_feedback ADD COLUMN branch VARCHAR(50) DEFAULT NULL`)
+  }
 }
 
 /**

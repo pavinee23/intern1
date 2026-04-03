@@ -207,7 +207,7 @@ export default function ProductsPage() {
               
               {/* Features Pills */}
               <div className="flex flex-wrap gap-1 mb-3">
-                {product.features.map((feature, idx) => (
+                {product.features.map((feature: string, idx: number) => (
                   <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
                     {feature}
                   </span>
@@ -216,7 +216,7 @@ export default function ProductsPage() {
 
               {/* Specs */}
               <div className="mb-3 space-y-1">
-                {product.specs.slice(0, 2).map((spec, idx) => (
+                {product.specs.slice(0, 2).map((spec: string, idx: number) => (
                   <div key={idx} className="flex items-start gap-2 text-xs text-gray-600">
                     <span className="text-green-600 mt-0.5">✓</span>
                     <span>{spec}</span>

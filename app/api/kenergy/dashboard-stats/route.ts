@@ -25,6 +25,10 @@ type RawRecentDevice = {
   metrics_THD: number | string | null
 }
 
+type ColumnNameRow = {
+  COLUMN_NAME: string
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get site parameter from query string
@@ -62,6 +66,33 @@ export async function GET(request: NextRequest) {
     const energySaved = Math.round(energySavedResult[0]?.total_energy || 0)
 
     // 4. Get latest record for all devices in the selected site
+    // Some environments may still run an older power_records schema.
+    // Build a safe SELECT list that falls back to NULL for missing columns.
+    const optionalPowerColumns = [
+      'before_current_L1',
+      'before_current_L2',
+      'before_current_L3',
+      'before_THD',
+      'metrics_THD'
+    ]
+    const placeholders = optionalPowerColumns.map(() => '?').join(', ')
+    const availableColumnsRows = await queryKsave(
+      `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'power_records'
+         AND COLUMN_NAME IN (${placeholders})`,
+      optionalPowerColumns
+    )
+    const availableColumns = new Set(
+      (availableColumnsRows as ColumnNameRow[]).map((row) => row.COLUMN_NAME)
+    )
+    const selectOptionalColumn = (columnName: string) => (
+      availableColumns.has(columnName)
+        ? `p.${columnName}`
+        : `NULL AS ${columnName}`
+    )
+
     const recentDevices = await queryKsave(
       `SELECT
         d.deviceID,
@@ -74,26 +105,22 @@ export async function GET(request: NextRequest) {
         p.before_L1,
         p.before_L2,
         p.before_L3,
-        p.before_current_L1,
-        p.before_current_L2,
-        p.before_current_L3,
+        ${selectOptionalColumn('before_current_L1')},
+        ${selectOptionalColumn('before_current_L2')},
+        ${selectOptionalColumn('before_current_L3')},
         p.metrics_L1,
         p.metrics_L2,
         p.metrics_L3,
-        p.before_THD,
-        p.metrics_THD
+        ${selectOptionalColumn('before_THD')},
+        ${selectOptionalColumn('metrics_THD')}
        FROM devices d
-       LEFT JOIN (
-         SELECT device_id, record_time, before_L1, before_L2, before_L3,
-                before_current_L1, before_current_L2, before_current_L3,
-                metrics_L1, metrics_L2, metrics_L3, before_THD, metrics_THD
-         FROM power_records
-         WHERE (device_id, record_time) IN (
-           SELECT device_id, MAX(record_time)
-           FROM power_records
-           GROUP BY device_id
-         )
-       ) p ON d.deviceID = p.device_id
+       LEFT JOIN power_records p ON p.id = (
+         SELECT pr.id
+         FROM power_records pr
+         WHERE pr.device_id = d.deviceID
+         ORDER BY pr.record_time DESC, pr.id DESC
+         LIMIT 1
+       )
        WHERE d.site = ?
        ORDER BY p.record_time DESC, d.deviceID ASC`,
       [site]

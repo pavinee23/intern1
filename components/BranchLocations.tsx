@@ -6,7 +6,18 @@ import { useLocale } from "@/lib/LocaleContext";
 import CountryFlag from "./CountryFlag";
 
 // Branch data by site
-const branchData = {
+type Branch = {
+  id: number;
+  name: string;
+  address: string;
+  district: string;
+  city: string;
+  phone: string;
+  email: string;
+  isHeadquarter: boolean;
+};
+
+const branchData: Record<string, Branch[]> = {
   thailand: [
     {
       id: 1,
@@ -61,14 +72,23 @@ const branchData = {
       isHeadquarter: false,
     },
   ],
+  vietnam: [],
+  malaysia: [],
 };
 
 export default function BranchLocations() {
   const { selectedSite } = useSite();
   const { t } = useLocale();
 
-  const branches = branchData[selectedSite];
+  const branches = branchData[selectedSite] ?? [];
   const totalBranches = branches.length;
+  const selectedSiteLabel = selectedSite === "thailand"
+    ? t("thailand")
+    : selectedSite === "korea"
+      ? t("republicOfKorea")
+      : selectedSite === "vietnam"
+        ? t("vietnam")
+        : t("malaysia");
 
   return (
     <div className="card">
@@ -78,7 +98,7 @@ export default function BranchLocations() {
           <div className="flex items-center space-x-2">
             <CountryFlag country={selectedSite} size="sm" />
             <span className="text-xs text-gray-500">
-              {selectedSite === "thailand" ? t("thailand") : t("republicOfKorea")}
+              {selectedSiteLabel}
             </span>
           </div>
         </div>
@@ -171,7 +191,7 @@ export default function BranchLocations() {
           {" · "}
           Group of Zera
           {" · "}
-          Serving customers across {selectedSite === "thailand" ? "Thailand" : "Republic of Korea"}
+          Serving customers across {selectedSiteLabel}
         </p>
       </div>
     </div>

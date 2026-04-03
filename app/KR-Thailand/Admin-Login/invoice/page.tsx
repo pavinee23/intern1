@@ -463,7 +463,7 @@ export default function InvoicePage() {
                         />
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                        {(it.qty * it.price).toFixed(2)} ฿
+                        {(Number(it.qty || 0) * Number(it.price || 0)).toFixed(2)} ฿
                       </td>
                       <td>
                         <button type="button" onClick={() => removeItem(i)} className={styles.btnOutline} style={{ padding: '4px 8px' }}>

@@ -28,6 +28,8 @@ import {
   Factory,
 } from 'lucide-react';
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function InternationalMarketDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -190,7 +192,7 @@ export default function InternationalMarketDashboardPage() {
           },
         ].filter((branch) => branch.pendingProductionOrders > 0);
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: ClipboardCheck,
       title: locale === 'ko' ? '판매 승인' : 'Sales Approvals',
@@ -723,12 +725,12 @@ export default function InternationalMarketDashboardPage() {
                 {locale === 'ko' ? '지점별 활동 비교' : 'Activity Comparison by Branch'}
               </h3>
               <div className="space-y-3">
-                {[
+                {([
                   { key: 'salesApprovals', label: locale === 'ko' ? '판매 승인' : 'Sales Approvals', color: 'blue' },
                   { key: 'siteInspection', label: locale === 'ko' ? '현장 점검' : 'Site Inspections', color: 'green' },
                   { key: 'salesContracts', label: locale === 'ko' ? '판매 계약' : 'Sales Contracts', color: 'purple' },
                   { key: 'equipmentTest', label: locale === 'ko' ? '장비 테스트' : 'Equipment Tests', color: 'red' },
-                ].map((metric) => {
+                ] as Array<{ key: keyof typeof currentData; label: string; color: string }>).map((metric) => {
                   const total = branches.filter(b => b.id !== 'all').reduce((sum, b) => sum + branchData[b.id][metric.key], 0);
                   
                   return (

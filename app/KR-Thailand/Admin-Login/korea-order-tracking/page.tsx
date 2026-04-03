@@ -190,7 +190,10 @@ export default function KoreaOrderTrackingPage() {
       thailand_est_delivery: rec.thailand_est_delivery ? rec.thailand_est_delivery.split('T')[0] : '',
       thailand_actual_delivery: rec.thailand_actual_delivery ? rec.thailand_actual_delivery.split('T')[0] : '',
       thailand_delivery_address: rec.thailand_delivery_address || '',
-      thailand_delivery_notes: rec.thailand_delivery_notes || ''
+      thailand_delivery_notes: rec.thailand_delivery_notes || '',
+      pr_id: rec.pr_id ? String(rec.pr_id) : '',
+      pdo_id: rec.pdo_id ? String(rec.pdo_id) : '',
+      pdoNo: rec.pdo_id ? `PDO-${rec.pdo_id}` : ''
     })
     setShowForm(true)
   }
@@ -271,7 +274,7 @@ export default function KoreaOrderTrackingPage() {
       const s = String(v).replace(/"/g, '""')
       return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s
     }
-    const dateLoc = selectedLang === 'th' ? 'th-TH' : 'en-US'
+    const dateLoc = lang === 'th' ? 'th-TH' : 'en-US'
     const fmtDate = (v: string) => v ? new Date(v).toLocaleDateString(dateLoc) : ''
     const csvRows = [
       headers.join(','),

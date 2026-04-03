@@ -4,12 +4,74 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PanelFrame from '@/components/grafana/PanelFrame'
 
+type NumericValue = number | string | null | undefined
+
+interface PowerSnapshot {
+  current?: NumericValue
+  I?: NumericValue
+  P?: NumericValue
+  p?: NumericValue
+  Q?: NumericValue
+  q?: NumericValue
+  S?: NumericValue
+  s?: NumericValue
+  PF?: NumericValue
+  pf?: NumericValue
+  THD?: NumericValue
+  thd?: NumericValue
+  F?: NumericValue
+  f?: NumericValue
+}
+
+interface PowerRecordRow {
+  device?: string
+  ksave?: string
+  time?: string
+  location?: string
+  series_no?: string
+  seriesNo?: string
+  ipAddress?: string
+  phone?: string
+  beforeMeterNo?: string
+  metricsMeterNo?: string
+  ok?: boolean
+  current?: NumericValue
+  _value?: NumericValue
+  P?: NumericValue
+  Q?: NumericValue
+  S?: NumericValue
+  PF?: NumericValue
+  THD?: NumericValue
+  F?: NumericValue
+  power_before?: PowerSnapshot
+  before?: PowerSnapshot
+  power_metrics?: PowerSnapshot
+  metrics?: PowerSnapshot
+}
+
+interface ParsedDeviceData {
+  location?: string
+  ok?: boolean
+  current?: NumericValue
+  P?: NumericValue
+  p?: NumericValue
+  Q?: NumericValue
+  q?: NumericValue
+  S?: NumericValue
+  s?: NumericValue
+  PF?: NumericValue
+  pf?: NumericValue
+  THD?: NumericValue
+  thd?: NumericValue
+  F?: NumericValue
+  f?: NumericValue
+}
+
 export default function CompareMonitoringPage() {
   const router = useRouter()
-  const [rows, setRows] = useState<Array<any>>([])
+  const [rows, setRows] = useState<PowerRecordRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [now, setNow] = useState<Date>(() => new Date())
   const [siteFilter, setSiteFilter] = useState<string>('All')
   const [seriesNoFilter, setSeriesNoFilter] = useState<string>('All')
 
@@ -27,8 +89,8 @@ export default function CompareMonitoringPage() {
           return
         }
         if (mounted) setRows(body.rows || [])
-      } catch (e: any) {
-        if (mounted) setError(String(e?.message || e))
+      } catch (e: unknown) {
+        if (mounted) setError(e instanceof Error ? e.message : String(e))
       } finally {
         if (mounted) setLoading(false)
       }
@@ -44,28 +106,9 @@ export default function CompareMonitoringPage() {
     }
   }, [])
 
-  // update `now` every second so timestamps / "ago" labels refresh in real-time
-  useEffect(() => {
-    const iv = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(iv)
-  }, [])
-
-  function timeAgo(d: Date | null, ref: Date) {
-    if (!d) return ''
-    const s = Math.max(0, Math.floor((ref.getTime() - d.getTime()) / 1000))
-    if (s < 5) return 'just now'
-    if (s < 60) return `${s}s ago`
-    const m = Math.floor(s / 60)
-    if (m < 60) return `${m}m ago`
-    const h = Math.floor(m / 60)
-    if (h < 24) return `${h}h ago`
-    const days = Math.floor(h / 24)
-    return `${days}d ago`
-  }
-
   // group rows by device/ksave for card rendering
   const groups = useMemo(() => {
-    const map = new Map<string, Array<any>>()
+    const map = new Map<string, PowerRecordRow[]>()
     for (const r of rows) {
       const key = (r.device || r.ksave || 'Unknown') as string
       if (!map.has(key)) map.set(key, [])
@@ -80,13 +123,13 @@ export default function CompareMonitoringPage() {
       return { k, items, latestTime }
     })
     entries.sort((a, b) => b.latestTime - a.latestTime)
-    return entries.map(e => [e.k, e.items] as [string, Array<any>])
+    return entries.map(e => [e.k, e.items] as [string, PowerRecordRow[]])
   }, [rows])
 
   // Extract unique sites and series numbers for filters
   const uniqueSites = useMemo(() => {
     const sites = new Set<string>()
-    for (const [_, items] of groups) {
+    for (const [, items] of groups) {
       const latest = items[0]
       const site = latest?.location || 'Unknown'
       sites.add(site)
@@ -119,31 +162,26 @@ export default function CompareMonitoringPage() {
   }, [groups, siteFilter, seriesNoFilter])
 
   // ComparisonCard: render a single device card comparing Power Before and Power Metrics
-  function ComparisonCard({ device, displayName, items, now }: { device: string; displayName?: string; items: any[]; now: Date }) {
-    const router = useRouter()
-    const [parsed, setParsed] = useState<any | null>(null)
-    const [loadingParsed, setLoadingParsed] = useState(false)
+  function ComparisonCard({ device, displayName, items }: { device: string; displayName?: string; items: PowerRecordRow[] }) {
+    const [parsed, setParsed] = useState<ParsedDeviceData | null>(null)
 
     useEffect(() => {
       let mounted = true
       async function fetchParsed() {
-        setLoadingParsed(true)
         try {
           const res = await fetch(`/api/influx/device?id=${encodeURIComponent(device)}`)
           const body = await res.json().catch(() => ({}))
           if (!mounted) return
-          if (res.ok && body && body.parsed) setParsed(body.parsed)
-        } catch (e) {
+          if (res.ok && body && body.parsed) setParsed(body.parsed as ParsedDeviceData)
+        } catch {
           // ignore
-        } finally {
-          if (mounted) setLoadingParsed(false)
         }
       }
       fetchParsed()
       return () => { mounted = false }
     }, [device])
 
-    const sorted = items.slice().sort((a: any, b: any) => (new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime()))
+    const sorted = items.slice().sort((a, b) => (new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime()))
     const latest = sorted[0]
 
     // prefer parsed values from /api/influx/device when available
@@ -196,11 +234,7 @@ export default function CompareMonitoringPage() {
 
     // Calculate percentage savings for power
     const savingsPercent_P = before_P > 0 ? ((savings_P / before_P) * 100) : 0
-    const savingsPercent_I = before_I > 0 ? ((savings_I / before_I) * 100) : 0
-
-    // last seen timestamp for this device (used for "Last seen" label)
     const lastSeenDate = latest?.time ? new Date(latest.time) : null
-    const lastSeenAgo = timeAgo(lastSeenDate, now)
     const lastSeenStr = lastSeenDate ? lastSeenDate.toLocaleString() : '—'
 
     return (
@@ -477,7 +511,7 @@ export default function CompareMonitoringPage() {
                 {filteredGroups.map(([device, items], idx) => {
                   // display names: KSave01, KSave02, ...
                   const displayName = `KSave${String(idx + 1).padStart(2, '0')}`
-                  return <ComparisonCard key={device} device={device} displayName={displayName} items={items} now={now} />
+                  return <ComparisonCard key={device} device={device} displayName={displayName} items={items} />
                 })}
               </div>
             )}

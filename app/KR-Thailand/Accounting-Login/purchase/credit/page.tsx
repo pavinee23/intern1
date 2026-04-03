@@ -1,12 +1,13 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
 import SupplierSearch from '../../components/SupplierSearch'
 
 type Row = {
   id?: number; doc_no?: string; doc_date?: string; supplier_id?: number; supplier_name?: string
   price_exempt?: number; price_before_vat?: number; vat?: number; wht_rate?: number; wht?: number
-  total?: number; status?: string; note?: string; due_date?: string
+  total?: number; status?: string; note?: string; due_date?: string; po_ref?: string
+  subtotal?: number; wht_amount?: number; vat_amount?: number
 }
 const WHT_RATES = [1, 2, 3, 5, 10, 15]
 const empty: Row = {
@@ -21,15 +22,15 @@ const calcTotals = (price_exempt: number, price_before_vat: number, wht_rate: nu
   const total = price_exempt + price_before_vat + vat - wht
   return { vat: +vat.toFixed(2), wht: +wht.toFixed(2), total: +total.toFixed(2) }
 }
-const th: any = { padding:'4px 8px',background:'#4b5563',color:'#fff',border:'1px solid #d1d5db',fontSize:13,textAlign:'left',whiteSpace:'nowrap' }
-const td: any = { padding:'3px 8px',borderBottom:'1px solid #e5e7eb',fontSize:13 }
-const inp: any = { width:'100%',padding:'3px 6px',border:'1px solid #d1d5db',borderRadius:8,background:'#fff',fontSize:13,boxSizing:'border-box' }
-const inpRo: any = { ...inp, background:'#f3f4f6', color:'#374151', fontWeight:600 }
-const btn = (bg:string,c='#000'):any => ({ padding:'3px 14px',background:bg,color:c,fontSize:13,cursor:'pointer',border:'1px solid #d1d5db',borderRadius:8,fontFamily:'"Sarabun","Tahoma",sans-serif' })
+const th: React.CSSProperties = { padding:'4px 8px',background:'#4b5563',color:'#fff',border:'1px solid #d1d5db',fontSize:13,textAlign:'left',whiteSpace:'nowrap' }
+const td: React.CSSProperties = { padding:'3px 8px',borderBottom:'1px solid #e5e7eb',fontSize:13 }
+const inp: React.CSSProperties = { width:'100%',padding:'3px 6px',border:'1px solid #d1d5db',borderRadius:8,background:'#fff',fontSize:13,boxSizing:'border-box' }
+const inpRo: React.CSSProperties = { ...inp, background:'#f3f4f6', color:'#374151', fontWeight:600 }
+const btn = (bg:string,c='#000'):React.CSSProperties => ({ padding:'3px 14px',background:bg,color:c,fontSize:13,cursor:'pointer',border:'1px solid #d1d5db',borderRadius:8,fontFamily:'"Sarabun","Tahoma",sans-serif' })
 const fmt = (n:number) => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
-const rowStyle: any = { display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:'1px solid #f0f0f0',fontSize:13 }
-const labelStyle: any = { color:'#374151',minWidth:200 }
-const valueStyle: any = { fontWeight:600,minWidth:100,textAlign:'right' }
+const rowStyle: React.CSSProperties = { display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:'1px solid #f0f0f0',fontSize:13 }
+const labelStyle: React.CSSProperties = { color:'#374151',minWidth:200 }
+const valueStyle: React.CSSProperties = { fontWeight:600,minWidth:100,textAlign:'right' }
 
 type PoRow = { id: number; doc_no: string; doc_date: string; supplier_id?: number; supplier_name?: string; supplier_tax_id?: string; subtotal?: number; vat_amount?: number; total?: number; note?: string; status?: string; payment_type?: string }
 
@@ -39,7 +40,11 @@ export default function CreditPurchasePage() {
   const [loading,setLoading] = useState(false); const [search,setSearch] = useState(''); const [msg,setMsg] = useState(''); const [supplierDisplay,setSupplierDisplay] = useState('')
   const [showPoPicker,setShowPoPicker] = useState(false); const [poList,setPoList] = useState<PoRow[]>([]); const [poQ,setPoQ] = useState(''); const [poLoading,setPoLoading] = useState(false)
 
-  const load = async () => { const r=await fetch('/api/accounting/purchase-orders?doc_type=credit'+(search?'&q='+encodeURIComponent(search):'')); const d=await r.json(); if(d.ok) setData(d.data) }
+  const load = useCallback(async (q = '') => {
+    const r = await fetch('/api/accounting/purchase-orders?doc_type=credit' + (q ? '&q=' + encodeURIComponent(q) : ''))
+    const d = await r.json()
+    if (d.ok) setData(d.data as Row[])
+  }, [])
 
   const openPoPicker = async () => {
     setShowPoPicker(true); setPoLoading(true); setPoQ('')
@@ -59,11 +64,11 @@ export default function CreditPurchasePage() {
       { price_before_vat: subtotal, price_exempt: 0, supplier_id: po.supplier_id, supplier_name: po.supplier_name||'' },
       { ...empty, doc_date: form.doc_date||empty.doc_date!, due_date: form.due_date||'', wht_rate: form.wht_rate||0, status: form.status||'draft' }
     )
-    setForm(f => ({ ...updated, po_ref: po.doc_no } as any))
+    setForm({ ...updated, po_ref: po.doc_no })
     setSupplierDisplay(po.supplier_name||'')
     setShowPoPicker(false)
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load('') }, [load])
 
   const updateCalc = (patch: Partial<Row>, current: Row) => {
     const merged = { ...current, ...patch }
@@ -75,17 +80,18 @@ export default function CreditPurchasePage() {
     setLoading(true); setMsg(''); const method=form.id?'PUT':'POST'
     const payload = { ...form, doc_type:'credit', subtotal:(form.price_exempt||0)+(form.price_before_vat||0) }
     const res=await fetch('/api/accounting/purchase-orders',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-    const d=await res.json(); if(d.ok){setShowForm(false);setForm(empty);setSupplierDisplay('');load();setMsg(L('Saved','บันทึกสำเร็จ'))} else setMsg('Error: '+d.error); setLoading(false)
+    const d=await res.json(); if(d.ok){setShowForm(false);setForm(empty);setSupplierDisplay('');void load(search);setMsg(L('Saved','บันทึกสำเร็จ'))} else setMsg('Error: '+d.error); setLoading(false)
   }
-  const del = async (id:number) => { if(!confirm(L('Delete?','ลบ?'))) return; await fetch('/api/accounting/purchase-orders?id='+id,{method:'DELETE'}); load() }
+  const del = async (id:number) => { if(!confirm(L('Delete?','ลบ?'))) return; await fetch('/api/accounting/purchase-orders?id='+id,{method:'DELETE'}); void load(search) }
+  const handleDelete = (id?: number) => { if (typeof id === 'number') void del(id) }
 
   return (
     <AccWindow title={L('Credit Purchase','ซื้อเงินเชื่อ')}>
       <div style={{padding:12}}>
         <div style={{display:'flex',gap:6,marginBottom:8,alignItems:'center',flexWrap:'wrap'}}>
           <button style={btn('#f3f4f6')} onClick={()=>{setForm(empty);setSupplierDisplay('');setShowForm(true)}}>+ {L('New','เพิ่มใหม่')}</button>
-          <input style={{...inp,width:200}} placeholder={L('Search...','ค้นหา...')} value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&load()} />
-          <button style={btn('#f3f4f6')} onClick={load}>{L('Search','ค้นหา')}</button>
+          <input style={{...inp,width:200}} placeholder={L('Search...','ค้นหา...')} value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&void load(search)} />
+          <button style={btn('#f3f4f6')} onClick={() => void load(search)}>{L('Search','ค้นหา')}</button>
           {msg&&<span style={{color:msg.startsWith('Error')?'red':'green',fontSize:13}}>{msg}</span>}
         </div>
         <div style={{overflowX:'auto',border:'1px solid #d1d5db',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 6px rgba(0,0,0,0.08)'}}>
@@ -93,7 +99,7 @@ export default function CreditPurchasePage() {
             <thead><tr>{[L('Doc No','เลขที่'),L('Date','วันที่'),L('Supplier','ผู้จำหน่าย'),L('Total','รวม'),L('Status','สถานะ'),''].map((h,i)=><th key={i} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {data.length===0&&<tr><td colSpan={6} style={{...td,textAlign:'center',color:'#888',padding:20}}>{L('No data','ไม่มีข้อมูล')}</td></tr>}
-              {data.map((r:any,i)=>(
+              {data.map((r,i)=>(
                 <tr key={r.id} style={{background:i%2?'#f5f5f5':'#fff'}}>
                   <td style={td}>{r.doc_no}</td><td style={td}>{r.doc_date?.slice(0,10)}</td><td style={td}>{r.supplier_name}</td>
                   <td style={{...td,textAlign:'right',fontWeight:700}}>{fmt(r.total||0)}</td><td style={{...td,textAlign:'center'}}>{r.status}</td>
@@ -111,7 +117,7 @@ export default function CreditPurchasePage() {
                       setForm({...loaded, vat, wht, total})
                       setSupplierDisplay(r.supplier_name||''); setShowForm(true)
                     }}>{L('Edit','แก้ไข')}</button>
-                    <button style={btn('#f3f4f6','#dc2626')} onClick={()=>del(r.id)}>{L('Del','ลบ')}</button>
+                    <button style={btn('#f3f4f6','#dc2626')} onClick={() => handleDelete(r.id)}>{L('Del','ลบ')}</button>
                   </td>
                 </tr>))}
             </tbody>

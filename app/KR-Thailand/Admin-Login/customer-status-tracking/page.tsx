@@ -49,6 +49,7 @@ type ExistingCustomer = {
   name_en?: string
   phone?: string
   contact_name?: string
+  email?: string
 }
 
 const reactionColors: Record<string, { color: string; bg: string }> = {
@@ -236,8 +237,9 @@ export default function CustomerStatusTrackingPage() {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       if (l === 'en' || l === 'th') setLang(l)
     } catch {}
-    const handler = (e: CustomEvent<string | { locale?: string }>) => {
-      const v = e.detail?.locale || e.detail
+    const handler: EventListener = (event) => {
+      const detail = (event as CustomEvent<string | { locale?: string }>).detail
+      const v = typeof detail === 'string' ? detail : detail?.locale
       if (v === 'en' || v === 'th') setLang(v)
     }
     window.addEventListener('locale-changed', handler)

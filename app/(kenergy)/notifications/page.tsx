@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSite } from '@/lib/SiteContext';
 import { useLocale } from '@/lib/LocaleContext';
-import { ChevronDown, Search, Edit2, X, CheckCircle, AlertCircle, Bell, BellRing } from 'lucide-react';
+import { ChevronDown, Edit2, X, CheckCircle, AlertCircle, Bell, BellRing } from 'lucide-react';
 
 interface DeviceNotification {
   no?: number;
@@ -35,11 +35,7 @@ export default function NotificationsPage() {
   const [submitStatus, setSubmitStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   // Fetch notification settings from API
-  useEffect(() => {
-    fetchNotifications();
-  }, [selectedSite]);
-
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -52,13 +48,17 @@ export default function NotificationsPage() {
       } else {
         setError(data.error || 'Failed to fetch notification settings');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch notifications error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedSite]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   async function handleSaveSettings() {
     if (!editingDevice || !editingDevice.deviceID) {
@@ -97,7 +97,7 @@ export default function NotificationsPage() {
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Failed to update settings' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Update notification settings error:', err);
       setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {

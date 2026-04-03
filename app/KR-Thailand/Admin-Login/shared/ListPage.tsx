@@ -7,7 +7,14 @@ import styles from '../admin-theme.module.css'
 type Column = { key: string; label: string }
 
 function getAuthHeaders() {
-  try { const t = localStorage.getItem('k_system_admin_token') || ''; return t ? { Authorization: `Bearer ${t}` } : {} } catch { return {} }
+  try {
+    const t = localStorage.getItem('k_system_admin_token') || ''
+    const headers: Record<string, string> = {}
+    if (t) headers.Authorization = `Bearer ${t}`
+    return headers
+  } catch {
+    return {}
+  }
 }
 
 function StatusCell({ current, apiPath, rowId, onUpdate, rowIdKey, editable = true }: { current: string, apiPath: string, rowId: any, rowIdKey: string, onUpdate?: (val: string, followUp?: any) => void, editable?: boolean }) {
@@ -105,7 +112,7 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
   apiPath: string
   createPath?: string
   columns: Column[]
-  link?: { columnKey: string; path: string; paramName?: string }
+  link?: { columnKey: string; path: string; paramName?: string; idKey?: string }
   , print?: { path: string; paramName?: string; idKey?: string; newTab?: boolean }
   , edit?: { path: string; paramName?: string; idKey?: string }
   , selectable?: boolean
@@ -828,7 +835,7 @@ export default function ListPage({ title, apiPath, createPath, columns, link, pr
                       // Render Select button; disable if receipt already used
                       <td>
                         {(() => {
-                          const used = apiPath && apiPath.includes('/receipts') && !!(r && (r.invoice_no || r.invID || r.invoice || r.invoiceNo))
+                          const used = Boolean(apiPath && apiPath.includes('/receipts') && !!(r && (r.invoice_no || r.invID || r.invoice || r.invoiceNo)))
                           return (
                             <button
                                 onClick={() => {

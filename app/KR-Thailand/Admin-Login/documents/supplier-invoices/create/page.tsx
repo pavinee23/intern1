@@ -67,7 +67,12 @@ export default function CreateSupplierInvoicePage() {
 
   function updateItem(i: number, key: keyof ItemType, value: any) {
     const copy = [...items]
-    copy[i][key] = (key === 'product_code' || key === 'product_name') ? value : Number(value)
+    const item = { ...copy[i] }
+    if (key === 'quantity') item.quantity = Number(value)
+    else if (key === 'unit_price') item.unit_price = Number(value)
+    else if (key === 'product_code') item.product_code = String(value)
+    else item.product_name = String(value)
+    copy[i] = item
     setItems(copy)
   }
 

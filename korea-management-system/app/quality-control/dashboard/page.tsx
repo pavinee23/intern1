@@ -30,7 +30,15 @@ export default function QualityControlDashboardPage() {
     pendingReview: 18,
   };
 
-  const menuCards = [
+  const menuCards: Array<{
+    icon: typeof Workflow;
+    title: string;
+    description: string;
+    href: string;
+    color: string;
+    count: number | null;
+    external?: boolean;
+  }> = [
     {
       icon: ClipboardCheck,
       title: t.inspectionRecords,

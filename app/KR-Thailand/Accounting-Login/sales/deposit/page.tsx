@@ -1,7 +1,26 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow, { useLang } from '../../components/AccWindow'
+
+type SalesDepositRow = {
+  id?: number
+  doc_no?: string
+  doc_date?: string
+  customer_name?: string
+  total?: number
+  status?: string
+  doc_type?: string
+}
+
+const createEmptyForm = (): SalesDepositRow => ({
+  doc_no: '',
+  doc_date: new Date().toISOString().slice(0, 10),
+  customer_name: '',
+  total: 0,
+  status: '',
+  doc_type: 'deposit'
+})
 
 // Styles
 const styles = {
@@ -57,41 +76,34 @@ export default function SalesDepositPage() {
   const { L } = useLang()
 
   // State
-  const [data, setData] = useState<any[]>([])
-  const [form, setForm] = useState<any>({
-    doc_no: '',
-    doc_date: new Date().toISOString().slice(0, 10),
-    customer_name: '',
-    total: 0,
-    status: '',
-    doc_type: 'deposit'
-  })
+  const [data, setData] = useState<SalesDepositRow[]>([])
+  const [form, setForm] = useState<SalesDepositRow>(createEmptyForm)
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [msg, setMsg] = useState('')
 
   // Load data
-  const loadData = async () => {
+  const loadData = useCallback(async (q = '') => {
     try {
       const url = '/api/accounting/sales-invoices?doc_type=deposit' +
-                  (search ? '&q=' + encodeURIComponent(search) : '')
+                  (q ? '&q=' + encodeURIComponent(q) : '')
       const response = await fetch(url)
       const result = await response.json()
 
       if (result.ok) {
-        setData(result.data || [])
+        setData((result.data || []) as SalesDepositRow[])
       } else {
         setMsg('Error: ' + result.error)
       }
-    } catch (error: any) {
-      setMsg('Error: ' + error.message)
+    } catch (error: unknown) {
+      setMsg('Error: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
-  }, [])
+    void loadData('')
+  }, [loadData])
 
   // Save data
   const saveData = async () => {
@@ -113,21 +125,14 @@ export default function SalesDepositPage() {
 
       if (result.ok) {
         setShowForm(false)
-        setForm({
-          doc_no: '',
-          doc_date: new Date().toISOString().slice(0, 10),
-          customer_name: '',
-          total: 0,
-          status: '',
-          doc_type: 'deposit'
-        })
-        loadData()
+        setForm(createEmptyForm())
+        void loadData(search)
         setMsg(L('Saved successfully', 'บันทึกสำเร็จ'))
       } else {
         setMsg('Error: ' + result.error)
       }
-    } catch (error: any) {
-      setMsg('Error: ' + error.message)
+    } catch (error: unknown) {
+      setMsg('Error: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -141,27 +146,21 @@ export default function SalesDepositPage() {
       await fetch('/api/accounting/sales-invoices?id=' + id, {
         method: 'DELETE'
       })
-      loadData()
-    } catch (error: any) {
-      setMsg('Error: ' + error.message)
+      void loadData(search)
+    } catch (error: unknown) {
+      setMsg('Error: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
+  const handleDelete = (id?: number) => { if (typeof id === 'number') void deleteData(id) }
 
   // Handle new form
   const handleNew = () => {
-    setForm({
-      doc_no: '',
-      doc_date: new Date().toISOString().slice(0, 10),
-      customer_name: '',
-      total: 0,
-      status: '',
-      doc_type: 'deposit'
-    })
+    setForm(createEmptyForm())
     setShowForm(true)
   }
 
   // Handle edit
-  const handleEdit = (record: any) => {
+  const handleEdit = (record: SalesDepositRow) => {
     setForm({ ...record, doc_type: 'deposit' })
     setShowForm(true)
   }
@@ -187,10 +186,10 @@ export default function SalesDepositPage() {
             placeholder={L('Search...', 'ค้นหา...')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && loadData()}
+            onKeyDown={e => e.key === 'Enter' && void loadData(search)}
           />
 
-          <button style={buttonStyle('#f3f4f6')} onClick={loadData}>
+          <button style={buttonStyle('#f3f4f6')} onClick={() => void loadData(search)}>
             {L('Search', 'ค้นหา')}
           </button>
 
@@ -274,7 +273,7 @@ export default function SalesDepositPage() {
                     </button>
                     <button
                       style={buttonStyle('#f3f4f6', '#dc2626')}
-                      onClick={() => deleteData(row.id)}
+                      onClick={() => handleDelete(row.id)}
                     >
                       {L('Del', 'ลบ')}
                     </button>

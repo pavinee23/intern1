@@ -1,5 +1,16 @@
 interface CountryFlagProps {
-  country?: 'KR' | 'GB' | 'TH' | 'BN' | 'VN' | 'CN' | 'MY';
+  country?:
+    | 'KR'
+    | 'GB'
+    | 'TH'
+    | 'BN'
+    | 'VN'
+    | 'CN'
+    | 'MY'
+    | 'korea'
+    | 'thailand'
+    | 'vietnam'
+    | 'malaysia';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -23,7 +34,14 @@ export default function CountryFlag({ country, size = 'md', className = '' }: Co
     );
   }
 
-  const code = country.toLowerCase();
+  const codeMap = {
+    korea: 'kr',
+    thailand: 'th',
+    vietnam: 'vn',
+    malaysia: 'my',
+  } as const;
+
+  const code = codeMap[country as keyof typeof codeMap] ?? country.toLowerCase();
 
   return (
     <img

@@ -4,6 +4,7 @@ import AccWindow, { useLang } from '../../components/AccWindow'
 
 type Line = { acc_code: string; description: string; debit: number; credit: number }
 type Entry = { id?: number; doc_no?: string; doc_date: string; description: string; status: string; lines: Line[] }
+type CoaItem = { code: string; name_th: string }
 
 const emptyLine = (): Line => ({ acc_code: '', description: '', debit: 0, credit: 0 })
 const emptyEntry = (): Entry => ({ doc_date: new Date().toISOString().slice(0, 10), description: '', status: 'draft', lines: [emptyLine(), emptyLine()] })
@@ -34,7 +35,7 @@ const btnStyle = (accent = false): React.CSSProperties => ({
 export default function JournalPage() {
   const { L, lang } = useLang()
   const [list, setList] = useState<Entry[]>([])
-  const [coa, setCoa] = useState<any[]>([])
+  const [coa, setCoa] = useState<CoaItem[]>([])
   const [form, setForm] = useState<Entry>(emptyEntry())
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -42,14 +43,14 @@ export default function JournalPage() {
 
   const load = async () => {
     const r = await fetch('/api/accounting/journal-entries')
-    const d = await r.json(); if (d.ok) setList(d.data)
+    const d = await r.json(); if (d.ok) setList(d.data as Entry[])
   }
   useEffect(() => {
     load()
-    fetch('/api/accounting/chart-of-accounts').then(r => r.json()).then(d => { if (d.ok) setCoa(d.data) })
+    fetch('/api/accounting/chart-of-accounts').then(r => r.json()).then(d => { if (d.ok) setCoa(d.data as CoaItem[]) })
   }, [])
 
-  const setLine = (idx: number, field: keyof Line, val: any) => {
+  const setLine = (idx: number, field: keyof Line, val: string | number) => {
     setForm(f => {
       const lines = [...f.lines]
       lines[idx] = { ...lines[idx], [field]: val }
@@ -80,10 +81,10 @@ export default function JournalPage() {
     const d = await r.json()
     if (!d.ok || !d.data) return
 
-    const entry = d.data
+    const entry = d.data as Entry
     const lines = entry.lines || []
-    const totalDebit = lines.reduce((s: number, l: any) => s + (Number(l.debit) || 0), 0)
-    const totalCredit = lines.reduce((s: number, l: any) => s + (Number(l.credit) || 0), 0)
+    const totalDebit = lines.reduce((s, l) => s + (Number(l.debit) || 0), 0)
+    const totalCredit = lines.reduce((s, l) => s + (Number(l.credit) || 0), 0)
 
     // Get current user info
     let currentUser = 'Unknown User'
@@ -93,7 +94,7 @@ export default function JournalPage() {
         const parsed = JSON.parse(userInfo)
         currentUser = parsed.name || parsed.username || parsed.email || 'Unknown User'
       }
-    } catch (e) {
+    } catch {
       // If can't get user, use default
     }
 
@@ -199,7 +200,7 @@ export default function JournalPage() {
             </tr>
           </thead>
           <tbody>
-            ${lines.map((line: any) => `
+            ${lines.map((line) => `
               <tr>
                 <td class="font-mono">${line.acc_code || ''}</td>
                 <td>${line.description || ''}</td>
@@ -283,7 +284,7 @@ export default function JournalPage() {
             </thead>
             <tbody>
               {list.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af', padding: 24 }}>{L('No data', 'ไม่มีข้อมูล')}</td></tr>}
-              {list.map((row: any, i) => (
+              {list.map((row, i) => (
                 <tr key={row.id} style={{ background: i % 2 ? '#f9fafb' : '#fff' }}>
                   <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12.5, color: '#4b5563' }}>{row.doc_no}</td>
                   <td style={{ ...tdStyle, color: '#374151' }}>{row.doc_date ? new Date(row.doc_date).toLocaleDateString('th-TH') : ''}</td>
@@ -302,12 +303,13 @@ export default function JournalPage() {
                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button style={btnStyle()} onClick={async () => {
+                        if (typeof row.id !== 'number') return
                         const r = await fetch('/api/accounting/journal-entries?id=' + row.id)
-                        const d = await r.json(); if (d.ok) { setForm({ ...d.data, lines: d.data.lines || [] }); setShowForm(true) }
+                        const d = await r.json(); if (d.ok) { const loaded = d.data as Entry; setForm({ ...loaded, lines: loaded.lines || [] }); setShowForm(true) }
                       }}>{L('View/Edit', 'ดู/แก้ไข')}</button>
                       <button
                         style={{ ...btnStyle(), background: '#1e40af', color: '#fff', border: '1px solid #1e40af', display: 'flex', alignItems: 'center', gap: 4 }}
-                        onClick={() => printJournalEntry(row.id)}
+                        onClick={() => { if (typeof row.id === 'number') void printJournalEntry(row.id) }}
                         title={L('Print Report', 'พิมพ์รายงาน')}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -383,7 +385,7 @@ export default function JournalPage() {
                             <td style={{ ...tdStyle, width: 140 }}>
                               <select style={{ ...inputStyle, fontSize: 12.5 }} value={line.acc_code} onChange={e => setLine(idx, 'acc_code', e.target.value)}>
                                 <option value="">-- {L('Select', 'เลือก')} --</option>
-                                {coa.map((c: any) => <option key={c.code} value={c.code}>{c.code} {c.name_th}</option>)}
+                                {coa.map((c) => <option key={c.code} value={c.code}>{c.code} {c.name_th}</option>)}
                               </select>
                             </td>
                             <td style={tdStyle}>

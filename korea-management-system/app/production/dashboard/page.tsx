@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale } from '@/lib/LocaleContext';
 import { translations } from '@/lib/translations';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { 
+import {
   Package, 
   Truck, 
   Factory, 
@@ -22,14 +22,27 @@ import {
   Shield
 } from 'lucide-react';
 
+type DepartmentId = 'all' | 'electronics' | 'assembly' | 'quality' | 'packaging' | 'shipping';
+
+type DepartmentStats = {
+  totalOrders: number;
+  inProduction: number;
+  readyToShip: number;
+  shipped: number;
+  qualityTests: number;
+  materialsNeeded: number;
+  efficiency: number;
+  dailyOutput: number;
+};
+
 export default function ProductionDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
   const t = translations[locale];
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentId>('all');
 
   // Department data
-  const departments = [
+  const departments: Array<{ id: DepartmentId; name: string; emoji: string }> = [
     { id: 'all', name: locale === 'ko' ? '전체' : 'All', emoji: '🏭' },
     { id: 'electronics', name: locale === 'ko' ? '전자부품' : 'Electronics', emoji: '⚡' },
     { id: 'assembly', name: locale === 'ko' ? '조립' : 'Assembly', emoji: '🔧' },
@@ -39,7 +52,7 @@ export default function ProductionDashboardPage() {
   ];
 
   // Production data by department
-  const departmentData = {
+  const departmentData: Record<DepartmentId, DepartmentStats> = {
     all: {
       totalOrders: 342,
       inProduction: 89,
@@ -105,7 +118,15 @@ export default function ProductionDashboardPage() {
   // Get current stats based on selected department
   const stats = departmentData[selectedDepartment];
 
-  const menuCards = [
+  const menuCards: Array<{
+    icon: typeof Workflow;
+    title: string;
+    description: string;
+    href: string;
+    color: string;
+    count: number | null;
+    external?: boolean;
+  }> = [
     {
       icon: Package,
       title: t.pendingProductionOrdersByBranch,

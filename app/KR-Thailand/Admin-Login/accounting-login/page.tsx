@@ -27,13 +27,14 @@ export default function AccountingLoginPage() {
     } catch {}
 
     // Listen for language changes
-    const handleLangChange = (e: CustomEvent<string>) => {
-      const newLang = e.detail
+    const handleLangChange: EventListener = (event) => {
+      const newLang = (event as CustomEvent<string>).detail
       if (newLang === 'en' || newLang === 'th') setLocale(newLang)
     }
-    const handleLocaleChange = (e: CustomEvent<{ locale?: string }>) => {
-      if (e.detail?.locale === 'en' || e.detail?.locale === 'th') {
-        setLocale(e.detail.locale)
+    const handleLocaleChange: EventListener = (event) => {
+      const detail = (event as CustomEvent<{ locale?: string }>).detail
+      if (detail?.locale === 'en' || detail?.locale === 'th') {
+        setLocale(detail.locale)
       }
     }
     window.addEventListener('k-system-lang', handleLangChange)

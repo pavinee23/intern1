@@ -1,4 +1,4 @@
-export const translations = {
+const translationData = {
   ko: {
     // Header
     companyName: 'Zera co.,ltd',
@@ -685,19 +685,16 @@ export const translations = {
     viewDetail: '상세보기',
     hourlyCurrentRecords: '시간별 전류 기록',
     clickToView24Hour: '24시간 데이터 보기',
-    every15Minutes: '매15분마다',
+    every15Minutes: '15분 간격',
     timeInterval: '시간 간격',
     closeView: '닫기',
     hourlyData: '시간별 데이터',
-    timeInterval: '시간 사이',
-    every15Minutes: '15분 간격',
     currentTable: '전류 테이블',
     time: '시간',
     l1Phase: 'L1',
     l2Phase: 'L2', 
     l3Phase: 'L3',
     ampere: 'A',
-    time: '시간',
     quarterlyReport: '분기별 보고서',
     q1: '1분기',
     q2: '2분기',
@@ -800,7 +797,6 @@ export const translations = {
     warrantyManagementDesc: '제품 보증 기간 및 클레임 관리',
     serviceSchedule: '서비스 일정',
     serviceScheduleDesc: '현장 서비스 방문 일정 관리',
-    customerSatisfaction: '고객 만족도',
     customerSatisfactionDesc: '고객 만족도 조사 및 분석',
     openTickets: '대기 티켓',
     resolvedToday: '오늘 해결',
@@ -826,7 +822,6 @@ export const translations = {
     // Research & Development Department
     rdDashboard: '연구개발 대시보드',
     rdDashboardDesc: '연구 프로젝트 및 혁신 현황',
-    activeProjects: '진행 프로젝트',
     activeProjectsDesc: '현재 진행 중인 R&D 프로젝트 관리',
     prototypeTesting: '시제품 테스트',
     prototypeTestingDesc: '시제품 테스트 결과 및 피드백',
@@ -847,12 +842,10 @@ export const translations = {
     role: '역할',
     emailAddress: '이메일 주소',
     phoneNumber: '전화번호',
-    department: '부서',
     companyAddress: '회사 주소',
     editProfile: '프로필 편집',
     saveChanges: '저장',
     cancelEdit: '취소',
-    notificationSettings: '알림 설정',
     emailNotifications: '이메일 알림',
     emailNotificationsDesc: '이메일로 기기 알림 및 시스템 업데이트 받기',
     smsNotifications: 'SMS 알림',
@@ -908,8 +901,6 @@ export const translations = {
     projectManagement: '프로젝트 관리',
     projectList: '프로젝트 목록',
     projectName: '프로젝트 이름',
-    addNew: '새로 추가',
-
     // Kenergy Location
     devicesLocation: '기기 위치',
     searchLocation: '위치 검색...',
@@ -926,8 +917,6 @@ export const translations = {
     port: '포트',
     interval: '인터벌 (ms)',
     connection: '연결',
-    username: '사용자명',
-    password: '비밀번호',
     ksaveID: 'K-Save 기기 ID',
     saving: '저장 중...',
     myAPIKeys: '내 API 키',
@@ -990,7 +979,6 @@ export const translations = {
     myTickets: '내 티켓',
     newTicket: '새 티켓',
     ticketId: '티켓 ID',
-    category: '카테고리',
     priority: '우선순위',
     enterSubject: '제목 입력',
     pleaseProvideDetails: '문제에 대한 자세한 내용을 입력하세요',
@@ -1728,19 +1716,16 @@ export const translations = {
     viewDetail: 'View Detail',
     hourlyCurrentRecords: 'Hourly Current Records',
     clickToView24Hour: 'Click to view 24-hour data',
-    every15Minutes: 'Every 15 minutes',
+    every15Minutes: '15-minute intervals',
     timeInterval: 'Time Interval',
     closeView: 'Close',
     hourlyData: 'Hourly Data',
-    timeInterval: 'Time Interval',
-    every15Minutes: '15-minute intervals',
     currentTable: 'Current Table',
     time: 'Time',
     l1Phase: 'L1',
     l2Phase: 'L2',
     l3Phase: 'L3',
     ampere: 'A',
-    time: 'Time',
     quarterlyReport: 'Quarterly Report',
     q1: 'Q1',
     q2: 'Q2',
@@ -1843,7 +1828,6 @@ export const translations = {
     warrantyManagementDesc: 'Product warranty period and claim management',
     serviceSchedule: 'Service Schedule',
     serviceScheduleDesc: 'On-site service visit schedule management',
-    customerSatisfaction: 'Customer Satisfaction',
     customerSatisfactionDesc: 'Customer satisfaction survey and analysis',
     openTickets: 'Open Tickets',
     resolvedToday: 'Resolved Today',
@@ -1869,7 +1853,6 @@ export const translations = {
     // Research & Development Department
     rdDashboard: 'R&D Dashboard',
     rdDashboardDesc: 'Research projects and innovation overview',
-    activeProjects: 'Active Projects',
     activeProjectsDesc: 'Currently active R&D project management',
     prototypeTesting: 'Prototype Testing',
     prototypeTestingDesc: 'Prototype test results and feedback',
@@ -1890,12 +1873,10 @@ export const translations = {
     role: 'Role',
     emailAddress: 'Email Address',
     phoneNumber: 'Phone Number',
-    department: 'Department',
     companyAddress: 'Company Address',
     editProfile: 'Edit Profile',
     saveChanges: 'Save Changes',
     cancelEdit: 'Cancel',
-    notificationSettings: 'Notification Settings',
     emailNotifications: 'Email Notifications',
     emailNotificationsDesc: 'Receive device alerts and system updates via email',
     smsNotifications: 'SMS Notifications',
@@ -1925,7 +1906,6 @@ export const translations = {
     userProfile: 'User Profile',
 
     // Kenergy Dashboard Stats
-    welcomeMessage: 'Welcome to your energy management dashboard',
     totalDevices: 'Total Devices',
     onlineDevices: 'Online Devices',
     offlineDevices: 'Offline Devices',
@@ -1952,8 +1932,6 @@ export const translations = {
     projectManagement: 'Project Management',
     projectList: 'Project List',
     projectName: 'Project Name',
-    addNew: 'Add New',
-
     // Kenergy Location
     devicesLocation: 'Devices Location',
     searchLocation: 'Search location...',
@@ -1970,8 +1948,6 @@ export const translations = {
     port: 'Port',
     interval: 'Interval (ms)',
     connection: 'Connection',
-    username: 'Username',
-    password: 'Password',
     ksaveID: 'K-Save Device ID',
     saving: 'Saving...',
     myAPIKeys: 'My API Keys',
@@ -2034,7 +2010,6 @@ export const translations = {
     myTickets: 'My Tickets',
     newTicket: 'New Ticket',
     ticketId: 'Ticket ID',
-    category: 'Category',
     priority: 'Priority',
     enterSubject: 'Enter subject',
     pleaseProvideDetails: 'Please provide details about your issue',
@@ -2910,10 +2885,12 @@ export const translations = {
     vietnamese: 'Tiếng Việt',
     malay: 'Melayu',
   },
-};
+} as const;
+
+export const translations = translationData as unknown as Record<keyof typeof translationData, typeof translationData.en>;
 
 export type Locale = keyof typeof translations;
-export type TranslationKeys = keyof typeof translations.ko;
+export type TranslationKeys = keyof typeof translationData.ko;
 
 /**
  * Returns a translation object for the given locale.

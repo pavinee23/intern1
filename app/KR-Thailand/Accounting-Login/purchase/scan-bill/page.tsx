@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import Image from 'next/image'
 import AccWindow, { useLang } from '../../components/AccWindow'
 
 type Bill = {
@@ -10,10 +11,10 @@ type Bill = {
 }
 const emptyBill: Bill = { bill_date: '', vendor_name: '', tax_id: '', subtotal: 0, vat: 0, total: 0, category: 'expense', status: 'draft', note: '' }
 
-const th: any = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
-const td: any = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
-const inp: any = { width: '100%', padding: '3px 6px', border: '1px solid', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, boxSizing: 'border-box' }
-const btn = (bg: string, c = '#1f2937'): any => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
+const th: React.CSSProperties = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
+const td: React.CSSProperties = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
+const inp: React.CSSProperties = { width: '100%', padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, boxSizing: 'border-box' }
+const btn = (bg: string, c = '#1f2937'): React.CSSProperties => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
 const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function ScanBillPage() {
@@ -59,7 +60,7 @@ export default function ScanBillPage() {
         videoRef.current.srcObject = stream
         videoRef.current.play()
       }
-    } catch (e) {
+    } catch {
       setMsg(L('Camera access denied', 'ไม่สามารถเข้าถึงกล้อง'))
     }
   }, [L])
@@ -100,8 +101,8 @@ export default function ScanBillPage() {
         setMsg('Error: ' + d.error)
         setOcrProgress('')
       }
-    } catch (e: any) {
-      setMsg('Error: ' + e.message)
+    } catch (e: unknown) {
+      setMsg('Error: ' + (e instanceof Error ? e.message : 'Unknown error'))
       setOcrProgress('')
     }
     setLoading(false)
@@ -137,6 +138,11 @@ export default function ScanBillPage() {
     await fetch('/api/accounting/scan-bill?id=' + id, { method: 'DELETE' })
     load()
   }, [L, load])
+  const handleDelete = useCallback((id?: number) => {
+    if (typeof id === 'number') {
+      void del(id)
+    }
+  }, [del])
 
   const openScan = useCallback(() => {
     setPreview(null)
@@ -180,7 +186,7 @@ export default function ScanBillPage() {
             </tr></thead>
             <tbody>
               {data.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#888', padding: 20 }}>{L('No data', 'ไม่มีข้อมูล')}</td></tr>}
-              {data.map((r: any, i) => (
+              {data.map((r, i) => (
                 <tr key={r.id} style={{ background: i % 2 ? '#f5f5f5' : '#fff' }}>
                   <td style={td}>{r.doc_no}</td>
                   <td style={td}>{r.scan_date?.slice(0, 10)}</td>
@@ -193,13 +199,13 @@ export default function ScanBillPage() {
                     </span>
                   </td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                    <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={() => setShowImage(r.id)}>
+                    <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={() => setShowImage(r.id ?? null)}>
                       {L('View', 'ดูบิล')}
                     </button>
                     <button style={{ ...btn('#f3f4f6'), marginRight: 3 }} onClick={() => { setForm({ ...r }); setOcrRaw(r.ocr_text || ''); setShowEdit(true) }}>
                       {L('Edit', 'แก้ไข')}
                     </button>
-                    <button style={btn('#f3f4f6', '#dc2626')} onClick={() => del(r.id)}>{L('Del', 'ลบ')}</button>
+                    <button style={btn('#f3f4f6', '#dc2626')} onClick={() => handleDelete(r.id)}>{L('Del', 'ลบ')}</button>
                   </td>
                 </tr>
               ))}
@@ -255,7 +261,7 @@ export default function ScanBillPage() {
                 {/* Preview */}
                 {preview && (
                   <div>
-                    <img src={preview} alt="preview" style={{ width: '100%', maxHeight: 300, objectFit: 'contain', border: '1px solid #d1d5db', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', background: '#fff' }} />
+                    <Image src={preview} alt="preview" width={1200} height={900} unoptimized style={{ width: '100%', height: 'auto', maxHeight: 300, objectFit: 'contain', border: '1px solid #d1d5db', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', background: '#fff' }} />
                     <div style={{ marginTop: 8, display: 'flex', gap: 6, justifyContent: 'center' }}>
                       <button style={btn('#f3f4f6')} onClick={() => setPreview(null)}>{L('Retake', 'ถ่ายใหม่')}</button>
                       <button style={btn('#f3f4f6', '#4b5563')} disabled={loading} onClick={doUpload}>
@@ -381,10 +387,13 @@ export default function ScanBillPage() {
                 <span style={{ cursor: 'pointer' }} onClick={() => setShowImage(null)}>X</span>
               </div>
               <div style={{ padding: 8 }}>
-                <img
+                <Image
                   src={`/api/accounting/scan-bill/image?id=${showImage}`}
                   alt="bill"
-                  style={{ maxWidth: '85vw', maxHeight: '80vh', objectFit: 'contain', border: '1px solid #d1d5db', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}
+                  width={1400}
+                  height={1800}
+                  unoptimized
+                  style={{ maxWidth: '85vw', height: 'auto', maxHeight: '80vh', objectFit: 'contain', border: '1px solid #d1d5db', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}
                 />
               </div>
             </div>

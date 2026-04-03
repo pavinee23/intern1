@@ -51,8 +51,17 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error('❌ User login error:', err.message || err)
+    console.error('❌ Full error stack:', err.stack || 'No stack trace')
+    console.error('❌ Error details:', {
+      name: err.name,
+      code: err.code,
+      errno: err.errno,
+      sqlState: err.sqlState,
+      message: err.message
+    })
     return NextResponse.json({
-      error: 'An error occurred during login. Please try again.'
+      error: 'An error occurred during login. Please try again.',
+      debug: process.env.NODE_ENV === 'development' ? err.message : undefined
     }, { status: 500 })
   }
 }

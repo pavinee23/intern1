@@ -1,17 +1,18 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AccWindow from '../../components/AccWindow'
 
 type Item = { product_id?: number; description: string; qty: number; unit: string; unit_price: number; amount: number }
 type Inv = { id?: number; doc_no?: string; doc_date: string; customer_id?: number; customer_name?: string; doc_type: string; status: string; due_date?: string; subtotal: number; discount: number; vat_amount: number; total: number; paid_amount: number; note?: string; items?: Item[] }
+type Customer = { id: number; name_th: string }
 
 const emptyItem = (): Item => ({ description: '', qty: 1, unit: 'ชิ้น', unit_price: 0, amount: 0 })
 const emptyInv = (): Inv => ({ doc_date: new Date().toISOString().slice(0, 10), doc_type: 'credit', status: 'draft', subtotal: 0, discount: 0, vat_amount: 0, total: 0, paid_amount: 0, items: [emptyItem()] })
 
-const th: any = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
-const td: any = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
-const inp: any = { padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13.5, width: '100%', boxSizing: 'border-box', fontFamily: '"Sarabun","Tahoma",sans-serif', outline: 'none' }
-const btn = (bg: string, c = '#1f2937'): any => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
+const th: React.CSSProperties = { padding: '8px 14px', background: '#4b5563', color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }
+const td: React.CSSProperties = { padding: '7px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 13.5 }
+const inp: React.CSSProperties = { padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13.5, width: '100%', boxSizing: 'border-box', fontFamily: '"Sarabun","Tahoma",sans-serif', outline: 'none' }
+const btn = (bg: string, c = '#1f2937'): React.CSSProperties => ({ padding: '7px 18px', background: bg === '#f3f4f6' ? '#f3f4f6' : bg, color: c, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: '"Sarabun","Tahoma",sans-serif', transition: 'all 0.2s' })
 
 function calcItems(items: Item[], discount: number, vatRate: number) {
   const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
@@ -26,7 +27,7 @@ const statusColor: Record<string, string> = { draft: '#888', confirmed: '#0055aa
 
 export default function SalesInvoicePage() {
   const [list, setList] = useState<Inv[]>([])
-  const [customers, setCustomers] = useState<any[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [form, setForm] = useState<Inv>(emptyInv())
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -34,17 +35,17 @@ export default function SalesInvoicePage() {
   const [msg, setMsg] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const r = await fetch('/api/accounting/sales-invoices')
-    const d = await r.json(); if (d.ok) setList(d.data)
-  }
-
-  useEffect(() => {
-    load()
-    fetch('/api/accounting/customers').then(r => r.json()).then(d => { if (d.ok) setCustomers(d.data) })
+    const d = await r.json(); if (d.ok) setList(d.data as Inv[])
   }, [])
 
-  const setItem = (idx: number, field: keyof Item, val: any) => {
+  useEffect(() => {
+    void load()
+    void fetch('/api/accounting/customers').then(r => r.json()).then(d => { if (d.ok) setCustomers(d.data as Customer[]) })
+  }, [load])
+
+  const setItem = (idx: number, field: keyof Item, val: string | number) => {
     setForm(f => {
       const items = [...(f.items || [])]
       const item = { ...items[idx], [field]: val }
@@ -60,11 +61,11 @@ export default function SalesInvoicePage() {
     const method = form.id ? 'PUT' : 'POST'
     const res = await fetch('/api/accounting/sales-invoices', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     const d = await res.json()
-    if (d.ok) { setShowForm(false); load(); setMsg('บันทึกสำเร็จ') } else setMsg('Error: ' + d.error)
+    if (d.ok) { setShowForm(false); void load(); setMsg('บันทึกสำเร็จ') } else setMsg('Error: ' + d.error)
     setLoading(false)
   }
 
-  const filteredList = typeFilter ? list.filter((r: any) => r.doc_type === typeFilter) : list
+  const filteredList = typeFilter ? list.filter((r) => r.doc_type === typeFilter) : list
 
   return (
     <AccWindow title="ใบกำกับภาษี / ใบขาย">
@@ -72,7 +73,7 @@ export default function SalesInvoicePage() {
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {Object.entries(docTypeLabel).map(([k, v]) => (
             <button key={k} style={{ ...btn(typeFilter === k ? '#4b5563' : '#f3f4f6', typeFilter === k ? '#fff' : '#000'), fontSize: 12 }}
-              onClick={() => { setTypeFilter(k === typeFilter ? '' : k); setForm(f => ({ ...emptyInv(), doc_type: k })) }}>
+              onClick={() => { setTypeFilter(k === typeFilter ? '' : k); setForm({ ...emptyInv(), doc_type: k }) }}>
               {v}
             </button>
           ))}
@@ -85,7 +86,7 @@ export default function SalesInvoicePage() {
             <thead><tr>{['เลขที่','วันที่','ลูกค้า','ประเภท','ยอดรวม','ชำระแล้ว','สถานะ',''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {filteredList.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: '#888', padding: 20 }}>ไม่มีข้อมูล</td></tr>}
-              {filteredList.map((row: any, i) => (
+              {filteredList.map((row, i) => (
                 <tr key={row.id} style={{ background: i % 2 ? '#f5f5f5' : '#fff' }}>
                   <td style={{ ...td, fontFamily: 'monospace' }}>{row.doc_no}</td>
                   <td style={td}>{row.doc_date ? new Date(row.doc_date).toLocaleDateString('th-TH') : ''}</td>
@@ -97,7 +98,7 @@ export default function SalesInvoicePage() {
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
                     <button style={btn('#f3f4f6')} onClick={async () => {
                       const r = await fetch('/api/accounting/sales-invoices?id=' + row.id)
-                      const d = await r.json(); if (d.ok) { setForm(d.data); setShowForm(true) }
+                      const d = await r.json(); if (d.ok) { setForm(d.data as Inv); setShowForm(true) }
                     }}>แก้ไข</button>
                   </td>
                 </tr>
@@ -108,24 +109,26 @@ export default function SalesInvoicePage() {
 
         {showForm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 30, overflowY: 'auto' }}>
-            <div style={{ background: '#fff', border: '2px solid', border: '1px solid #d1d5db', borderRadius: 8, width: '95%', maxWidth: 860, boxShadow: '4px 4px 12px rgba(0,0,0,0.4)', marginBottom: 30 }}>
+            <div style={{ background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, width: '95%', maxWidth: 860, boxShadow: '4px 4px 12px rgba(0,0,0,0.4)', marginBottom: 30 }}>
               <div style={{ background: 'linear-gradient(135deg, #374151 0%, #4b5563 100%)', padding: '3px 8px', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                 <span>{form.id ? 'แก้ไข ' + form.doc_no : 'สร้างเอกสารใหม่'}</span>
                 <span style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)}>✕</span>
               </div>
               <div style={{ padding: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px 12px', marginBottom: 12 }}>
-                  {[['วันที่', 'doc_date', 'date'], ['กำหนดชำระ', 'due_date', 'date']].map(([label, k, t]) => (
-                    <div key={k}>
-                      <div style={{ fontSize: 12, marginBottom: 2 }}>{label}</div>
-                      <input style={inp} type={t} value={(form as any)[k] || ''} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} />
-                    </div>
-                  ))}
+                  <div>
+                    <div style={{ fontSize: 12, marginBottom: 2 }}>วันที่</div>
+                    <input style={inp} type="date" value={form.doc_date || ''} onChange={e => setForm(f => ({ ...f, doc_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, marginBottom: 2 }}>กำหนดชำระ</div>
+                    <input style={inp} type="date" value={form.due_date || ''} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+                  </div>
                   <div>
                     <div style={{ fontSize: 12, marginBottom: 2 }}>ลูกค้า</div>
                     <select style={inp} value={form.customer_id || ''} onChange={e => setForm(f => ({ ...f, customer_id: Number(e.target.value) }))}>
                       <option value="">-- เลือก --</option>
-                      {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name_th}</option>)}
+                      {customers.map((c) => <option key={c.id} value={c.id}>{c.name_th}</option>)}
                     </select>
                   </div>
                   <div>

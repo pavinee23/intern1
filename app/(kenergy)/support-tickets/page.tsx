@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
-import { Search, Download, Plus, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, X, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface Ticket {
   no: number;
@@ -42,11 +42,7 @@ export default function SupportTicketsPage() {
   });
 
   // Fetch tickets from API
-  useEffect(() => {
-    fetchTickets();
-  }, [statusFilter, searchText]);
-
-  async function fetchTickets() {
+  const fetchTickets = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -74,13 +70,17 @@ export default function SupportTicketsPage() {
       } else {
         setError(data.error || 'Failed to fetch tickets');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch tickets error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  }, [searchText, statusFilter]);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   async function handleCreateTicket() {
     if (!newTicket.subject || !newTicket.type) {
@@ -126,7 +126,7 @@ export default function SupportTicketsPage() {
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Failed to create ticket' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Create ticket error:', err);
       setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {

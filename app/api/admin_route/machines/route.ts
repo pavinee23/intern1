@@ -123,7 +123,7 @@ export async function GET(req: Request) {
       LIMIT ? OFFSET ?
     `, [limit, offset])
 
-    const total = await query(`SELECT COUNT(*) as count FROM devices`)
+    const total = await query(`SELECT COUNT(*) as count FROM devices`) as Array<{ count?: number }>
     const totalCount = total[0]?.count || 0
 
     return NextResponse.json({

@@ -105,7 +105,11 @@ export default function CreateExpenseBillPage() {
 
   function updateItem(i: number, key: keyof ItemType, value: string | number) {
     const copy = [...items]
-    copy[i][key] = key === 'description' ? value : Number(value)
+    const item = { ...copy[i] }
+    if (key === 'description') item.description = String(value)
+    else if (key === 'quantity') item.quantity = Number(value)
+    else item.unit_price = Number(value)
+    copy[i] = item
     setItems(copy)
   }
 

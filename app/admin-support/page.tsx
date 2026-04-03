@@ -64,7 +64,7 @@ export default function AdminSupportPage() {
       {/* Top bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <CompanyLogo size={40} />
+          <CompanyLogo size="md" />
           <div>
             <div style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 18 }}>K Energy Save</div>
             <div style={{ color: '#94a3b8', fontSize: 13 }}>Admin Support Portal</div>

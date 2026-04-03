@@ -12,6 +12,8 @@ type Column = {
   character_maximum_length?: number
 }
 
+type RowData = Record<string, any>
+
 export default function DatabasePage() {
   const { locale } = useLocale()
   const t = translations[locale]
@@ -124,7 +126,8 @@ export default function DatabasePage() {
     try {
       const editedData = inlineEdits[rowId]
 
-      let res, body
+      let res: Response
+      let body: { ok?: boolean; error?: string; device?: RowData; user?: RowData } = {}
       if (selectedTable === 'devices') {
         res = await fetch(`/api/admin_route/machines?id=${rowId}`, {
           method: 'PUT',

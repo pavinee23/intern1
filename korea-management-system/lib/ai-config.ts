@@ -180,10 +180,10 @@ export const BRANCH_INFO = {
     language: 'Malay',
     timezone: 'Asia/Brunei',
   },
-  // 'thailand-chat': {
-  //   name: 'Thailand Office',
-  //   country: 'Thailand',
-  //   language: 'Thai',
+  'thailand-chat': {
+    name: 'Thailand Office',
+    country: 'Thailand',
+    language: 'Thai',
     timezone: 'Asia/Bangkok',
   },
   'vietnam-chat': {

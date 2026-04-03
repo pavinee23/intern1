@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
 import { RefreshCw, Grid, ExternalLink } from 'lucide-react';
-import Image from 'next/image';
 
 interface Product {
   id: number;

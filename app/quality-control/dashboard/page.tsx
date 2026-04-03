@@ -20,6 +20,8 @@ import {
   Users,
 } from 'lucide-react';
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function QualityControlDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -46,7 +48,7 @@ export default function QualityControlDashboardPage() {
     pendingReview: 18,
   };
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: ClipboardCheck,
       title: t.inspectionRecords,

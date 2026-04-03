@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
         metrics.THD,
         metrics.F,
         'PG46 RS485'
-      ]
+      ].map((value) => value ?? null)
 
       try {
         const [result] = await pool.execute<ResultSetHeader>(insertQuery, values)

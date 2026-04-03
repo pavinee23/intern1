@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
+import { useSite } from '@/lib/SiteContext';
+import { formatCurrencyBySite, getCurrencyCodeBySite } from '@/lib/currency';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -14,30 +16,33 @@ import {
   Shield,
 } from 'lucide-react';
 
-// ─── Sample data (monthly before/after installation) ───────────────────────
-const monthlyData = [
-  { month: 'ม.ค.',  monthEn: 'Jan', monthKo: '1월', before: 4820, after: 3210, costBefore: 18716, costAfter: 12470 },
-  { month: 'ก.พ.',  monthEn: 'Feb', monthKo: '2월', before: 4530, after: 2980, costBefore: 17595, costAfter: 11578 },
-  { month: 'มี.ค.', monthEn: 'Mar', monthKo: '3월', before: 5110, after: 3380, costBefore: 19837, costAfter: 13127 },
-  { month: 'เม.ย.', monthEn: 'Apr', monthKo: '4월', before: 5630, after: 3720, costBefore: 21875, costAfter: 14450 },
-  { month: 'พ.ค.',  monthEn: 'May', monthKo: '5월', before: 5890, after: 3850, costBefore: 22872, costAfter: 14954 },
-  { month: 'มิ.ย.', monthEn: 'Jun', monthKo: '6월', before: 6120, after: 3990, costBefore: 23766, costAfter: 15498 },
-  { month: 'ก.ค.',  monthEn: 'Jul', monthKo: '7월', before: 6340, after: 4105, costBefore: 24622, costAfter: 15948 },
-  { month: 'ส.ค.',  monthEn: 'Aug', monthKo: '8월', before: 6210, after: 4020, costBefore: 24117, costAfter: 15618 },
-  { month: 'ก.ย.',  monthEn: 'Sep', monthKo: '9월', before: 5870, after: 3810, costBefore: 22802, costAfter: 14805 },
-  { month: 'ต.ค.',  monthEn: 'Oct', monthKo: '10월', before: 5420, after: 3530, costBefore: 21058, costAfter: 13712 },
-  { month: 'พ.ย.',  monthEn: 'Nov', monthKo: '11월', before: 4980, after: 3260, costBefore: 19344, costAfter: 12665 },
-  { month: 'ธ.ค.',  monthEn: 'Dec', monthKo: '12월', before: 4750, after: 3100, costBefore: 18452, costAfter: 12040 },
-];
+interface MonthlyComparisonRow {
+  monthKey: string;
+  year: number;
+  monthIndex: number;
+  before: number;
+  after: number;
+  costBefore: number;
+  costAfter: number;
+  savedKwh: number;
+}
 
-const totalBefore     = monthlyData.reduce((s, d) => s + d.before, 0);
-const totalAfter      = monthlyData.reduce((s, d) => s + d.after, 0);
-const totalSavedKwh   = totalBefore - totalAfter;
-const totalCostBefore = monthlyData.reduce((s, d) => s + d.costBefore, 0);
-const totalCostAfter  = monthlyData.reduce((s, d) => s + d.costAfter, 0);
-const totalSavedBaht  = totalCostBefore - totalCostAfter;
-const savingPct       = ((totalSavedKwh / totalBefore) * 100).toFixed(1);
-const co2Saved        = (totalSavedKwh * 0.5313).toFixed(0);
+interface MonitoringSnapshot {
+  status: 'online' | 'offline';
+  totalPower: number;
+  currentL1: number;
+  currentL2: number;
+  currentL3: number;
+  powerFactor: number;
+  voltageL1: number;
+  voltageL2: number;
+  voltageL3: number;
+  frequency: number;
+  thdBefore: number;
+  thdAfter: number;
+  energySaved: number;
+  co2Saved: number;
+}
 
 function L(locale: string, th: string, ko: string, en: string) {
   if (locale === 'th') return th;
@@ -55,28 +60,97 @@ const staffList = [
 
 export default function CustomersPage() {
   const { locale } = useLocale();
+  const { selectedSite } = useSite();
   const [activeTab, setActiveTab] = useState<'energy' | 'cost' | 'live' | 'contact'>('energy');
+  const [monthlyData, setMonthlyData] = useState<MonthlyComparisonRow[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(true);
+  const [monthlyError, setMonthlyError] = useState<string | null>(null);
 
   // ── Live monitoring state ──
   const [devices, setDevices] = useState<any[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [liveData, setLiveData] = useState<any[]>([]);
-  const [snapshot, setSnapshot] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<MonitoringSnapshot | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveMetric, setLiveMetric] = useState<'current' | 'power' | 'voltage'>('current');
   const [deviceDetails, setDeviceDetails] = useState<any>(null);
   const liveTimer = useRef<NodeJS.Timeout | null>(null);
+  const [sendingContact, setSendingContact] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+
+  const totalBefore = monthlyData.reduce((s, d) => s + d.before, 0);
+  const totalAfter = monthlyData.reduce((s, d) => s + d.after, 0);
+  const totalSavedKwh = totalBefore - totalAfter;
+  const totalCostBefore = monthlyData.reduce((s, d) => s + d.costBefore, 0);
+  const totalCostAfter = monthlyData.reduce((s, d) => s + d.costAfter, 0);
+  const totalSavedBaht = totalCostBefore - totalCostAfter;
+  const savingPct = totalBefore > 0 ? ((totalSavedKwh / totalBefore) * 100).toFixed(1) : '0.0';
+  const co2Saved = (totalSavedKwh * 0.5313).toFixed(0);
+  const currencyCode = getCurrencyCodeBySite(selectedSite, locale);
+  const formatCost = (n: number) => formatCurrencyBySite(n, selectedSite, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+  const normalizeSnapshot = (raw: unknown, connection?: string): MonitoringSnapshot => {
+    const payload = raw as { metrics?: Record<string, unknown> } | null;
+    const metrics = payload?.metrics ?? (raw as Record<string, unknown> | null) ?? {};
+    const toNumber = (value: unknown) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    return {
+      status: String(connection || '').toUpperCase() === 'ONLINE' ? 'online' : 'offline',
+      totalPower: toNumber(metrics.totalPower),
+      currentL1: toNumber((metrics.current as number[] | undefined)?.[0] ?? metrics.currentL1),
+      currentL2: toNumber((metrics.current as number[] | undefined)?.[1] ?? metrics.currentL2),
+      currentL3: toNumber((metrics.current as number[] | undefined)?.[2] ?? metrics.currentL3),
+      powerFactor: toNumber(metrics.powerFactor),
+      voltageL1: toNumber((metrics.voltageLL as number[] | undefined)?.[0] ?? metrics.voltageL1),
+      voltageL2: toNumber((metrics.voltageLL as number[] | undefined)?.[1] ?? metrics.voltageL2),
+      voltageL3: toNumber((metrics.voltageLL as number[] | undefined)?.[2] ?? metrics.voltageL3),
+      frequency: toNumber(metrics.frequency),
+      thdBefore: toNumber(metrics.thdBefore),
+      thdAfter: toNumber(metrics.thdAfter),
+      energySaved: toNumber(metrics.energySaved),
+      co2Saved: toNumber(metrics.co2Saved),
+    };
+  };
 
   useEffect(() => {
-    fetch('/api/kenergy/dashboard-stats?site=thailand')
+    fetch(`/api/kenergy/dashboard-stats?site=${selectedSite}`)
       .then(r => r.json())
       .then(j => {
         if (j.success && j.data?.recentDevices) {
           setDevices(j.data.recentDevices);
-          if (j.data.recentDevices.length > 0) setSelectedDeviceId(j.data.recentDevices[0].deviceID);
+          if (j.data.recentDevices.length > 0) setSelectedDeviceId(String(j.data.recentDevices[0].deviceID));
         }
       }).catch(() => {});
-  }, []);
+  }, [selectedSite]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch(`/api/kenergy/customer-dashboard?site=${selectedSite}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!active) return;
+        if (j.success && Array.isArray(j.data?.monthly)) {
+          setMonthlyData(j.data.monthly);
+          setMonthlyError(null);
+        } else {
+          setMonthlyError(j.error || 'Failed to load monthly comparison data');
+        }
+      })
+      .catch(() => {
+        if (active) setMonthlyError('Failed to load monthly comparison data');
+      })
+      .finally(() => {
+        if (active) setMonthlyLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSite]);
 
   useEffect(() => {
     if (!selectedDeviceId) return;
@@ -98,12 +172,21 @@ export default function CustomersPage() {
       const histJson = await histRes.json();
       const snapJson = await snapRes.json();
       const devJson  = await devRes.json();
-      if (histJson.success) setLiveData([...histJson.data].reverse());
-      if (snapJson.success) setSnapshot(snapJson.data);
+      if (histJson.success) {
+        const history = Array.isArray(histJson.history)
+          ? histJson.history
+          : Array.isArray(histJson.data)
+            ? histJson.data
+            : [];
+        setLiveData(history);
+      }
+
+      let found: any = null;
       if (devJson.success) {
-        const found = devJson.devices?.find((d: any) => d.deviceID === selectedDeviceId);
+        found = devJson.devices?.find((d: any) => String(d.deviceID) === String(selectedDeviceId));
         if (found) setDeviceDetails(found);
       }
+      if (snapJson.success) setSnapshot(normalizeSnapshot(snapJson.data, found?.connection));
     } catch {}
     setLiveLoading(false);
   }
@@ -113,33 +196,66 @@ export default function CustomersPage() {
     try {
       const r = await fetch(`/api/kenergy/device-monitoring?deviceId=${selectedDeviceId}`);
       const j = await r.json();
-      if (j.success) setSnapshot(j.data);
+      if (j.success) setSnapshot(normalizeSnapshot(j.data, deviceDetails?.connection));
     } catch {}
   }
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
   const [contactForm, setContactForm] = useState({ name: '', phone: '', email: '', message: '' });
   const [sent, setSent] = useState(false);
 
-  const monthLabel = (d: typeof monthlyData[0]) =>
-    locale === 'th' ? d.month : locale === 'ko' ? d.monthKo : d.monthEn;
+  const monthLabel = (d: MonthlyComparisonRow) => {
+    const th = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const en = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const ko = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+    const idx = Math.max(0, Math.min(11, d.monthIndex - 1));
+    return locale === 'th' ? th[idx] : locale === 'ko' ? ko[idx] : en[idx];
+  };
 
   const chartData = monthlyData.map(d => ({
     name: monthLabel(d),
     [L(locale,'ก่อนติดตั้ง','설치 전','Before')]: d.before,
     [L(locale,'หลังติดตั้ง','설치 후','After')]: d.after,
-    [L(locale,'ก่อน (บาท)','이전 비용','Cost Before')]: d.costBefore,
-    [L(locale,'หลัง (บาท)','이후 비용','Cost After')]: d.costAfter,
+    [L(locale,`ก่อน (${currencyCode})`,`이전 비용 (${currencyCode})`,`Cost Before (${currencyCode})`)]: d.costBefore,
+    [L(locale,`หลัง (${currencyCode})`,`이후 비용 (${currencyCode})`,`Cost After (${currencyCode})`)]: d.costAfter,
   }));
 
   const keyBefore  = L(locale,'ก่อนติดตั้ง','설치 전','Before');
   const keyAfter   = L(locale,'หลังติดตั้ง','설치 후','After');
-  const keyCostB   = L(locale,'ก่อน (บาท)','이전 비용','Cost Before');
-  const keyCostA   = L(locale,'หลัง (บาท)','이후 비용','Cost After');
+  const keyCostB   = L(locale,`ก่อน (${currencyCode})`,`이전 비용 (${currencyCode})`,`Cost Before (${currencyCode})`);
+  const keyCostA   = L(locale,`หลัง (${currencyCode})`,`이후 비용 (${currencyCode})`,`Cost After (${currencyCode})`);
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    setSent(true);
-    setContactForm({ name: '', phone: '', email: '', message: '' });
+
+    setSendingContact(true);
+    setContactError(null);
+
+    try {
+      const response = await fetch('/api/kenergy/user-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'General Feedback',
+          subject: `Customer Dashboard Contact - ${contactForm.name}`,
+          message: `Name: ${contactForm.name}\nPhone: ${contactForm.phone}\nEmail: ${contactForm.email || '-'}\n\n${contactForm.message}`,
+          rating: 5,
+          branch: selectedSite
+        })
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Failed to send message');
+      }
+
+      setSent(true);
+      setContactForm({ name: '', phone: '', email: '', message: '' });
+    } catch (error: unknown) {
+      setContactError(error instanceof Error ? error.message : 'Failed to send message');
+      setSent(false);
+    } finally {
+      setSendingContact(false);
+    }
   }
 
   return (
@@ -177,7 +293,7 @@ export default function CustomersPage() {
         <div className="relative grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-5 md:mt-8">
           {[
             { icon: Zap,          val: `${fmt(totalSavedKwh)} kWh`, label: L(locale,'ไฟฟ้าที่ประหยัด','절약 전력량','Energy Saved'),    color: 'from-yellow-400 to-amber-400', ring: 'ring-yellow-300/30' },
-            { icon: DollarSign,   val: `฿${fmt(totalSavedBaht)}`,  label: L(locale,'ค่าไฟที่ประหยัด','절약 비용','Cost Saved'),         color: 'from-emerald-400 to-green-400', ring: 'ring-emerald-300/30' },
+            { icon: DollarSign,   val: formatCost(totalSavedBaht),  label: L(locale,'ค่าไฟที่ประหยัด','절약 비용','Cost Saved'),         color: 'from-emerald-400 to-green-400', ring: 'ring-emerald-300/30' },
             { icon: TrendingDown, val: `${savingPct}%`,             label: L(locale,'% ที่ประหยัด','절약률','Saving Rate'),              color: 'from-sky-400 to-blue-400', ring: 'ring-sky-300/30' },
             { icon: Leaf,         val: `${fmt(Number(co2Saved))} kg`,label: L(locale,'CO₂ ที่ลดได้','CO₂ 절감량','CO₂ Reduced'),        color: 'from-teal-400 to-cyan-400', ring: 'ring-teal-300/30' },
           ].map(({ icon: Icon, val, label, color, ring }) => (
@@ -244,18 +360,27 @@ export default function CustomersPage() {
                 <h2 className="font-bold text-gray-800 text-base md:text-lg mb-1">
                   {activeTab === 'energy'
                     ? L(locale,'การใช้ไฟฟ้ารายเดือน (kWh)','월별 전력 사용량 (kWh)','Monthly Energy Usage (kWh)')
-                    : L(locale,'ค่าใช้จ่ายรายเดือน (บาท)','월별 전기 요금 (THB)','Monthly Cost (THB)')}
+                    : L(locale,`ค่าใช้จ่ายรายเดือน (${currencyCode})`,`월별 전기 요금 (${currencyCode})`,`Monthly Cost (${currencyCode})`)}
                 </h2>
                 <p className="text-gray-500 text-xs md:text-sm mb-4 md:mb-6">
                   {L(locale,'เปรียบเทียบก่อนและหลังติดตั้งเครื่อง K Energy Save','K Energy Save 설치 전후 비교','Before vs after K Energy Save installation')}
                 </p>
-                <ResponsiveContainer width="100%" height={260}>
+                {monthlyLoading ? (
+                  <div className="flex items-center justify-center h-[260px] text-gray-400">
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
                 {chartType === 'bar' ? (
                   <BarChart data={chartData} barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
-                    <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                    <Tooltip formatter={(v: number) =>
+                      activeTab === 'energy'
+                        ? Number(v).toLocaleString()
+                        : formatCurrencyBySite(Number(v), selectedSite, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                    } />
                     <Legend />
                     {activeTab === 'energy' ? <>
                       <Bar dataKey={keyBefore} fill="#ef4444" radius={[4,4,0,0]} />
@@ -270,7 +395,11 @@ export default function CustomersPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
-                    <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                    <Tooltip formatter={(v: number) =>
+                      activeTab === 'energy'
+                        ? Number(v).toLocaleString()
+                        : formatCurrencyBySite(Number(v), selectedSite, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                    } />
                     <Legend />
                     {activeTab === 'energy' ? <>
                       <Line type="monotone" dataKey={keyBefore} stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4 }} />
@@ -281,7 +410,9 @@ export default function CustomersPage() {
                     </>}
                   </LineChart>
                 )}
-              </ResponsiveContainer>
+                  </ResponsiveContainer>
+                )}
+                {monthlyError && <p className="text-xs text-red-500 mt-3">{monthlyError}</p>}
               </div>
             </div>
 
@@ -300,9 +431,9 @@ export default function CustomersPage() {
                         L(locale,'ก่อน (kWh)','ิ전 (kWh)','Before (kWh)'),
                         L(locale,'หลัง (kWh)','이후 (kWh)','After (kWh)'),
                         L(locale,'ไฟฟ้าที่ประหยัด','전력 절약','Saved kWh'),
-                        L(locale,'ก่อน (฿)','이전 비용 (฿)','Before (฿)'),
-                        L(locale,'หลัง (฿)','이후 비용 (฿)','After (฿)'),
-                        L(locale,'ประหยัดค่าไฟ','비용 절약','Saved ฿'),
+                        L(locale,`ก่อน (${currencyCode})`,`이전 비용 (${currencyCode})`,`Before (${currencyCode})`),
+                        L(locale,`หลัง (${currencyCode})`,`이후 비용 (${currencyCode})`,`After (${currencyCode})`),
+                        L(locale,`ประหยัดค่าไฟ (${currencyCode})`,`비용 절약 (${currencyCode})`,`Saved ${currencyCode}`),
                         L(locale,'% ประหยัด','절약률','Save %'),
                       ].map(h => (
                         <th key={h} className="px-4 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
@@ -313,16 +444,16 @@ export default function CustomersPage() {
                     {monthlyData.map((d, i) => {
                       const savedKwh = d.before - d.after;
                       const savedBaht = d.costBefore - d.costAfter;
-                      const pct = ((savedKwh / d.before) * 100).toFixed(1);
+                      const pct = d.before > 0 ? ((savedKwh / d.before) * 100).toFixed(1) : '0.0';
                       return (
                         <tr key={i} className={`hover:bg-blue-50/60 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                          <td className="px-4 py-3 font-semibold text-gray-800">{monthLabel(d)}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-800">{monthLabel(d)} {d.year}</td>
                           <td className="px-4 py-3 text-red-600">{fmt(d.before)}</td>
                           <td className="px-4 py-3 text-green-600">{fmt(d.after)}</td>
                           <td className="px-4 py-3 font-semibold text-blue-700">{fmt(savedKwh)}</td>
-                          <td className="px-4 py-3 text-red-500">฿{fmt(d.costBefore)}</td>
-                          <td className="px-4 py-3 text-green-600">฿{fmt(d.costAfter)}</td>
-                          <td className="px-4 py-3 font-semibold text-emerald-700">฿{fmt(savedBaht)}</td>
+                          <td className="px-4 py-3 text-red-500">{formatCost(d.costBefore)}</td>
+                          <td className="px-4 py-3 text-green-600">{formatCost(d.costAfter)}</td>
+                          <td className="px-4 py-3 font-semibold text-emerald-700">{formatCost(savedBaht)}</td>
                           <td className="px-4 py-3">
                             <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">{pct}%</span>
                           </td>
@@ -336,15 +467,20 @@ export default function CustomersPage() {
                       <td className="px-4 py-3.5 text-red-200">{fmt(totalBefore)}</td>
                       <td className="px-4 py-3.5 text-green-200">{fmt(totalAfter)}</td>
                       <td className="px-4 py-3.5 text-white">{fmt(totalSavedKwh)}</td>
-                      <td className="px-4 py-3.5 text-red-200">฿{fmt(totalCostBefore)}</td>
-                      <td className="px-4 py-3.5 text-green-200">฿{fmt(totalCostAfter)}</td>
-                      <td className="px-4 py-3.5 text-white">฿{fmt(totalSavedBaht)}</td>
+                      <td className="px-4 py-3.5 text-red-200">{formatCost(totalCostBefore)}</td>
+                      <td className="px-4 py-3.5 text-green-200">{formatCost(totalCostAfter)}</td>
+                      <td className="px-4 py-3.5 text-white">{formatCost(totalSavedBaht)}</td>
                       <td className="px-4 py-3.5">
                         <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full ring-1 ring-white/30">{savingPct}%</span>
                       </td>
                     </tr>
                   </tfoot>
                 </table>
+                {!monthlyLoading && monthlyData.length === 0 && (
+                  <div className="p-6 text-center text-sm text-gray-400">
+                    {L(locale,'ยังไม่มีข้อมูลรายเดือนในฐานข้อมูล','월별 데이터가 없습니다','No monthly data in database')}
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -360,7 +496,7 @@ export default function CustomersPage() {
                 <select value={selectedDeviceId} onChange={e => { setSelectedDeviceId(e.target.value); }}
                   className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none cursor-pointer sm:min-w-[220px]">
                   {devices.map(d => (
-                    <option key={d.deviceID} value={d.deviceID}>{d.deviceName || d.deviceID}</option>
+                    <option key={d.deviceID} value={String(d.deviceID)}>{d.deviceName || d.deviceID}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -462,7 +598,7 @@ export default function CustomersPage() {
             {/* Device Detail Card */}
             {snapshot && (() => {
               const d = snapshot;
-              const dev = devices.find(x => x.deviceID === selectedDeviceId);
+              const dev = devices.find(x => String(x.deviceID) === String(selectedDeviceId));
               const dd = deviceDetails;
               return (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden">
@@ -655,10 +791,11 @@ export default function CustomersPage() {
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                       placeholder={L(locale,'พิมพ์ข้อความของคุณ...','메시지를 입력하세요...','Type your message...')} />
                   </div>
-                  <button type="submit" className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-md shadow-blue-200 hover:shadow-lg hover:-translate-y-0.5">
+                  <button type="submit" disabled={sendingContact} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-md shadow-blue-200 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed">
                     <Send className="w-4 h-4" />
-                    {L(locale,'ส่งข้อความ','메시지 보내기','Send Message')}
+                    {sendingContact ? L(locale,'กำลังส่ง...','전송 중...','Sending...') : L(locale,'ส่งข้อความ','메시지 보내기','Send Message')}
                   </button>
+                  {contactError && <p className="text-xs text-red-500">{contactError}</p>}
                 </form>
               )}
               </div>

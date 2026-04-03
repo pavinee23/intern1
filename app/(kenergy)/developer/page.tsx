@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/lib/LocaleContext';
 import { useSite } from '@/lib/SiteContext';
 import { Key, BookOpen, Database, Activity, Copy, Trash2, Eye, EyeOff, X, CheckCircle, AlertCircle } from 'lucide-react';
@@ -47,12 +47,7 @@ export default function DeveloperPage() {
   const [isCreatingKey, setIsCreatingKey] = useState(false);
 
   // Fetch data on mount
-  useEffect(() => {
-    fetchMQTTSettings();
-    fetchAPIKeys();
-  }, [selectedSite]);
-
-  async function fetchMQTTSettings() {
+  const fetchMQTTSettings = useCallback(async () => {
     try {
       const userStr = localStorage.getItem('user');
       const userId = userStr ? JSON.parse(userStr)?.userId : null;
@@ -72,12 +67,12 @@ export default function DeveloperPage() {
           interval: String(data.settings.interval || 30)
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch MQTT settings error:', err);
     }
-  }
+  }, [selectedSite]);
 
-  async function fetchAPIKeys() {
+  const fetchAPIKeys = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -99,13 +94,18 @@ export default function DeveloperPage() {
       } else {
         setError(data.error || 'Failed to fetch API keys');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch API keys error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchMQTTSettings();
+    fetchAPIKeys();
+  }, [fetchMQTTSettings, fetchAPIKeys]);
 
   async function handleSaveMQTT() {
     setIsSaving(true);
@@ -145,7 +145,7 @@ export default function DeveloperPage() {
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Failed to save settings' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Save MQTT settings error:', err);
       setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {
@@ -193,7 +193,7 @@ export default function DeveloperPage() {
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Failed to create API key' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Create API key error:', err);
       setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {
@@ -216,7 +216,7 @@ export default function DeveloperPage() {
       } else {
         alert(data.error || 'Failed to delete API key');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Delete API key error:', err);
       alert('Network error. Please try again.');
     }

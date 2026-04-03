@@ -19,6 +19,8 @@ import {
   Users,
 } from 'lucide-react';
 
+type MenuCard = { icon: any; title: string; description: string; href: string; color: string; count: number | null; external?: boolean };
+
 export default function LogisticsDashboardPage() {
   const router = useRouter();
   const { locale } = useLocale();
@@ -45,7 +47,7 @@ export default function LogisticsDashboardPage() {
     pendingPickup: 15,
   };
 
-  const menuCards = [
+  const menuCards: MenuCard[] = [
     {
       icon: Truck,
       title: t.shipmentTracking,

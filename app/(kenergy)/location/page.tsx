@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Search, Maximize2, MapPin, Navigation } from 'lucide-react';
 import { useSite } from "@/lib/SiteContext";
 import { useLocale } from "@/lib/LocaleContext";
@@ -16,11 +16,7 @@ export default function LocationPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch devices from API
-  useEffect(() => {
-    fetchDevices();
-  }, [selectedSite]);
-
-  async function fetchDevices() {
+  const fetchDevices = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -34,13 +30,17 @@ export default function LocationPage() {
       } else {
         setError(data.error || 'Failed to fetch devices');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch devices error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedSite]);
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   // Filter devices by search query
   const filteredDevices = devices.filter(device =>

@@ -56,7 +56,12 @@ export default function CreateStockTransferPage() {
 
   function updateItem(i: number, key: keyof ItemType, value: any) {
     const copy = [...items]
-    copy[i][key] = (key === 'product_code' || key === 'product_name' || key === 'unit') ? value : Number(value)
+    const item = { ...copy[i] }
+    if (key === 'quantity') item.quantity = Number(value)
+    else if (key === 'product_code') item.product_code = String(value)
+    else if (key === 'product_name') item.product_name = String(value)
+    else item.unit = String(value)
+    copy[i] = item
     setItems(copy)
   }
 
