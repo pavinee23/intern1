@@ -902,7 +902,7 @@ export default function EmployeesPage() {
                       <option value={1}>System Administrator - ผู้ดูแลระบบ</option>
                       <option value={2}>Manager - ผู้จัดการ</option>
                       <option value={3}>นักบัญชี - Accountant</option>
-                      <option value={4}>Marketing Staff - การตลาด</option>
+                      <option value={4}>ผู้บริหาร - Executive</option>
                       <option value={5}>ช่างติดตั้ง - Technician</option>
                       <option value={6}>พนักงานขาย - Sales</option>
                       <option value={7}>Admin - แอดมิน</option>
