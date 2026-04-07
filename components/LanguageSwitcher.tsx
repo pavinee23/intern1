@@ -6,7 +6,13 @@ import { Globe } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import CountryFlag from './CountryFlag';
 
-export default function LanguageSwitcher() {
+type LanguageCode = 'ko' | 'en' | 'cn' | 'ms' | 'th' | 'vn';
+
+type LanguageSwitcherProps = {
+  allowedCodes?: LanguageCode[];
+};
+
+export default function LanguageSwitcher({ allowedCodes }: LanguageSwitcherProps) {
   const { locale, setLocale } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -23,7 +29,7 @@ export default function LanguageSwitcher() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const languages = [
+  const allLanguages = [
     { code: 'ko' as const, name: t.korean || '한국어', flag: 'KR' as const },
     { code: 'en' as const, name: t.english || 'English', flag: 'GB' as const },
     { code: 'cn' as const, name: t.chinese || '中文', flag: 'CN' as const },
@@ -31,6 +37,10 @@ export default function LanguageSwitcher() {
     { code: 'th' as const, name: t.thai || 'ไทย', flag: 'TH' as const },
     { code: 'vn' as const, name: t.vietnamese || 'Tiếng Việt', flag: 'VN' as const },
   ];
+
+  const languages = allowedCodes && allowedCodes.length > 0
+    ? allLanguages.filter(lang => allowedCodes.includes(lang.code))
+    : allLanguages;
 
   const currentLanguage = languages.find(lang => lang.code === locale) || languages[0];
 

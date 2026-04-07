@@ -423,7 +423,7 @@ export default function InternationalMarketDashboardPage() {
                   </span>
                 </div>
               )}
-              <LanguageSwitcher />
+              <LanguageSwitcher allowedCodes={['en', 'ko']} />
             </div>
           </div>
         </div>
