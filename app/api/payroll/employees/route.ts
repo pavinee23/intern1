@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         ) latest ON latest.userId = s1.userId AND latest.maxId = s1.id
       ) es ON es.userId = user_list.userId
       LEFT JOIN cus_type ct ON ct.typeID = user_list.typeID
-      WHERE site = ?
+      WHERE user_list.site = ?
     `
 
     const params: string[] = [site]
