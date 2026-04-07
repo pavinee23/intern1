@@ -126,13 +126,15 @@ export async function authenticateUser(
     FROM user_list ul
     LEFT JOIN cus_type ct ON ul.typeID = ct.typeID
     WHERE TRIM(ul.userName) = ?
+       OR LOWER(TRIM(COALESCE(ul.email, ''))) = LOWER(?)
     LIMIT 1
   `
 
   const connection = await getPool().getConnection()
 
   try {
-    const [rows] = await connection.execute(sql, [username.trim()])
+    const loginInput = username.trim()
+    const [rows] = await connection.execute(sql, [loginInput, loginInput])
     const users = rows as any[]
 
     if (users.length === 0) {

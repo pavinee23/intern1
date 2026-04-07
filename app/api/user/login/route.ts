@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Login successful: ${user.userName} (${user.name}) from ${user.site}`)
 
+    const normalizedUsername = (user.userName || '').toString().trim().toLowerCase()
+    const normalizedDeptId = (user.departmentID || '').toString().trim()
+    const hasGlobalSuperAccess = normalizedUsername === 'pavinee' || normalizedDeptId === 'Executive'
+
     // Return success with user data
     return NextResponse.json({
       success: true,
@@ -45,8 +49,9 @@ export async function POST(req: NextRequest) {
       name: user.name,
       email: user.email,
       site: user.site,
-      typeID: user.typeID,
-      departmentID: user.departmentID
+      typeID: hasGlobalSuperAccess ? 4 : user.typeID,
+      departmentID: hasGlobalSuperAccess ? 'Executive' : user.departmentID,
+      superAccess: hasGlobalSuperAccess
     })
 
   } catch (err: any) {

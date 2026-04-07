@@ -12,19 +12,64 @@ export default function LearningLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const allowedLearningUserIds = new Set([19, 20, 21])
+  const allowedLearningEmails = new Set([
+    'sinad270@gmail.com',
+    'thissana.nhoowhong@gmail.com',
+    'yodin.thanida@gmail.com'
+  ])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    // Check credentials
-    if (username === 'learning' && password === 'learning2025') {
-      // Redirect to learning system
+    try {
+      // Keep legacy account for backward compatibility
+      if (username === 'learning' && password === 'learning2025') {
+        router.push('/admin/main/report')
+        return
+      }
+
+      const res = await fetch('/api/user/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, pageName: '/admin/main/learning-login' })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        setError(data.error || 'Invalid username or password')
+        return
+      }
+
+      const userId = Number(data.userId)
+      const email = (data.email || '').toString().trim().toLowerCase()
+      const isAllowedUser = allowedLearningUserIds.has(userId) || allowedLearningEmails.has(email)
+
+      if (!isAllowedUser) {
+        setError('This account is not authorized for Learning & Training System')
+        return
+      }
+
+      localStorage.setItem('k_system_admin_user', JSON.stringify({
+        userId: data.userId,
+        username: data.username,
+        name: data.name,
+        email: data.email,
+        site: data.site,
+        typeID: Number(data.typeID),
+        departmentID: data.departmentID || ''
+      }))
+      localStorage.setItem('k_system_admin_token', data.token || '')
+
       router.push('/admin/main/report')
-    } else {
-      setError('Invalid username or password')
+    } catch (err: any) {
+      setError(err?.message || 'Connection error occurred')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
