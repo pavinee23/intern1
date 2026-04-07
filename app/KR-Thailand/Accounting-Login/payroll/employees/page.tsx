@@ -910,7 +910,7 @@ export default function EmployeesPage() {
                       <option value={9}>หัวหน้าแผนกการตลาด - M-Marketing</option>
                       <option value={10}>ผู้จัดการสาขา - Branch Manager</option>
                       <option value={11}>หัวหน้าแผนกบัญชี - M-Accounting</option>
-                      <option value={12}>นักศึกษางาน - Internship</option>
+                      <option value={12}>นักศึกษาฝึกงาน - Internship</option>
                     </select>
                   </div>
 

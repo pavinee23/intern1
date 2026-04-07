@@ -168,7 +168,7 @@ function getDepartmentByTypeID(typeID: number): string {
     9: 'การตลาด',
     10: 'ผู้จัดการสาขา',
     11: 'บัญชี',
-    12: 'นักศึกษางาน',
+    12: 'นักศึกษาฝึกงาน',
   }
   return mapping[typeID] || 'ทั่วไป'
 }
@@ -187,7 +187,7 @@ function getPositionByTypeID(typeID: number): string {
     9: 'หัวหน้าแผนกการตลาด (M-Marketing)',
     10: 'ผู้จัดการสาขา (Branch Manager)',
     11: 'หัวหน้าแผนกบัญชี (M-Accounting)',
-    12: 'นักศึกษางาน (Internship)',
+    12: 'นักศึกษาฝึกงาน (Internship)',
   }
   return mapping[typeID] || 'พนักงาน'
 }
