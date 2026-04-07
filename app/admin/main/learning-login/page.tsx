@@ -27,7 +27,7 @@ export default function LearningLoginPage() {
     try {
       // Keep legacy account for backward compatibility
       if (username === 'learning' && password === 'learning2025') {
-        router.push('/admin/main/report')
+        router.push('/admin/main/learning-main')
         return
       }
 
@@ -67,7 +67,7 @@ export default function LearningLoginPage() {
       }))
       localStorage.setItem('k_system_admin_token', data.token || '')
 
-      router.push('/admin/main/report')
+      router.push('/admin/main/learning-main')
     } catch (err: any) {
       setError(err?.message || 'Connection error occurred')
     } finally {

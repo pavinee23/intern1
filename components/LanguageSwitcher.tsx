@@ -10,9 +10,10 @@ type LanguageCode = 'ko' | 'en' | 'cn' | 'ms' | 'th' | 'vn';
 
 type LanguageSwitcherProps = {
   allowedCodes?: LanguageCode[];
+  showBruneiAlias?: boolean;
 };
 
-export default function LanguageSwitcher({ allowedCodes }: LanguageSwitcherProps) {
+export default function LanguageSwitcher({ allowedCodes, showBruneiAlias = false }: LanguageSwitcherProps) {
   const { locale, setLocale } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,9 +39,13 @@ export default function LanguageSwitcher({ allowedCodes }: LanguageSwitcherProps
     { code: 'vn' as const, name: t.vietnamese || 'Tiếng Việt', flag: 'VN' as const },
   ];
 
-  const languages = allowedCodes && allowedCodes.length > 0
+  const bruneiAlias = { code: 'ms' as const, name: t.brunei || 'Brunei', flag: 'BN' as const };
+
+  const filteredLanguages = allowedCodes && allowedCodes.length > 0
     ? allLanguages.filter(lang => allowedCodes.includes(lang.code))
     : allLanguages;
+
+  const languages = showBruneiAlias ? [...filteredLanguages, bruneiAlias] : filteredLanguages;
 
   const currentLanguage = languages.find(lang => lang.code === locale) || languages[0];
 
