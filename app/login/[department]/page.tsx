@@ -217,6 +217,24 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
 
       // Check if this user belongs to the department they are trying to log into
       if (!isSuperUser) {
+        const allowedInternationalUserIds = new Set([19, 20, 21]);
+        const allowedInternationalEmails = new Set([
+          'sinad270@gmail.com',
+          'thissana.nhoowhong@gmail.com',
+          'yodin.thanida@gmail.com'
+        ]);
+        const userEmail = (data.email || '').toString().trim().toLowerCase();
+        const isAllowedInternationalUser =
+          params.department === 'international-market' &&
+          (allowedInternationalUserIds.has(Number(userId)) || allowedInternationalEmails.has(userEmail));
+
+        if (isAllowedInternationalUser) {
+          console.log('✅ Allowlisted user granted access to international-market login:', {
+            userId,
+            username: data.username,
+            email: userEmail
+          });
+        } else {
         const allowedSlugs = deptIDtoSlug[deptID] || [];
         if (!allowedSlugs.includes(params.department)) {
           setError(
@@ -225,6 +243,7 @@ export default function DepartmentLoginPage({ params }: { params: { department: 
               : 'You do not have access to this department.'
           );
           return;
+        }
         }
       }
 

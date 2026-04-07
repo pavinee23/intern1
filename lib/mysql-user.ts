@@ -125,7 +125,7 @@ export async function authenticateUser(
            ct.departmentID
     FROM user_list ul
     LEFT JOIN cus_type ct ON ul.typeID = ct.typeID
-    WHERE TRIM(ul.userName) = ?
+     WHERE LOWER(TRIM(ul.userName)) = LOWER(?)
        OR LOWER(TRIM(COALESCE(ul.email, ''))) = LOWER(?)
     LIMIT 1
   `

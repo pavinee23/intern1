@@ -46,7 +46,10 @@ export default function LearningLoginPage() {
 
       const userId = Number(data.userId)
       const email = (data.email || '').toString().trim().toLowerCase()
-      const isAllowedUser = allowedLearningUserIds.has(userId) || allowedLearningEmails.has(email)
+      const usernameValue = (data.username || '').toString().trim().toLowerCase()
+      const deptID = (data.departmentID || '').toString().trim()
+      const isGlobalAllowed = Boolean(data.superAccess) || usernameValue === 'pavinee' || deptID === 'Executive'
+      const isAllowedUser = isGlobalAllowed || allowedLearningUserIds.has(userId) || allowedLearningEmails.has(email)
 
       if (!isAllowedUser) {
         setError('This account is not authorized for Learning & Training System')
