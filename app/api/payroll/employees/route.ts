@@ -22,6 +22,8 @@ type EmployeeRow = RowDataPacket & {
   name_th: string | null
   email: string
   typeID: number
+  typeName: string | null
+  typeDepartmentName: string | null
   site: string
   created_at: string
   salary: number | string | null
@@ -79,6 +81,8 @@ export async function GET(request: NextRequest) {
         user_list.name_th,
         user_list.email,
         user_list.typeID,
+        ct.TypeName as typeName,
+        ct.departmentName as typeDepartmentName,
         user_list.site,
         user_list.create_datetime as created_at,
         COALESCE(es.salary, 0) as salary,
@@ -101,6 +105,7 @@ export async function GET(request: NextRequest) {
           GROUP BY userId
         ) latest ON latest.userId = s1.userId AND latest.maxId = s1.id
       ) es ON es.userId = user_list.userId
+      LEFT JOIN cus_type ct ON ct.typeID = user_list.typeID
       WHERE site = ?
     `
 
@@ -123,8 +128,8 @@ export async function GET(request: NextRequest) {
       name: emp.name || emp.username,
       name_th: emp.name_th,
       email: emp.email,
-      department: getDepartmentByTypeID(emp.typeID),
-      position: getPositionByTypeID(emp.typeID),
+      department: emp.typeDepartmentName || getDepartmentByTypeID(emp.typeID),
+      position: emp.typeName || getPositionByTypeID(emp.typeID),
       typeID: emp.typeID,
       site: emp.site,
       salary: Number(emp.salary || 0),
