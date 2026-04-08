@@ -9,6 +9,7 @@ type LeaveRequestRecord = {
   requestDate: string
   employeeName: string
   employeeId: string
+  userId?: number
   department: string
   leaveType: string
   startDate: string
@@ -30,12 +31,16 @@ export default function CreateVacationLeaveRequestPage() {
   const [loading, setLoading] = useState(false)
   const [messageBar, setMessageBar] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [errors, setErrors] = useState<string[]>([])
+  const [employeeIdConflict, setEmployeeIdConflict] = useState(false)
+  const [conflictOwnerName, setConflictOwnerName] = useState('')
 
   const [requestNo, setRequestNo] = useState('')
-  const [requestDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [requestDate, setRequestDate] = useState('')
   const [employeeName, setEmployeeName] = useState('')
   const [employeeId, setEmployeeId] = useState('')
+  const [userIdInt, setUserIdInt] = useState<number | null>(null)
   const [department, setDepartment] = useState('')
+  const [loadingDept, setLoadingDept] = useState(false)
   const [leaveType, setLeaveType] = useState('annual_leave')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -60,6 +65,89 @@ export default function CreateVacationLeaveRequestPage() {
     window.addEventListener('locale-changed', handler)
 
     setRequestNo(L('Auto-generated on submit', 'สร้างอัตโนมัติเมื่อกดส่งคำขอ'))
+    setRequestDate(new Date().toISOString().split('T')[0])
+
+    // Auto-fill employee info from logged-in user
+    try {
+      const raw = localStorage.getItem('k_system_admin_user')
+      if (raw) {
+        const user = JSON.parse(raw)
+        const name = user?.name || user?.username || ''
+        const username = user?.username || user?.name || ''
+        const uid = user?.userId ? String(user.userId).padStart(4, '0') : ''
+        // Prefer employeeId stored in DB (via user_list), fallback to generated
+        const empId = user?.employeeId || (uid ? `EMP-TH-${uid}` : '')
+        if (name) {
+          setEmployeeName(name)
+          setRequester(name)
+        }
+        if (user?.userId) {
+          setUserIdInt(Number(user.userId))
+        }
+        if (empId) {
+          setEmployeeId(empId)
+        }
+        // Fetch department AND employeeId from DB via user_list → cus_type
+        if (user?.userId) {
+          setLoadingDept(true)
+          fetch(`/api/user/type-info?userId=${encodeURIComponent(user.userId)}`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.success) {
+                const dept = data.departmentName || data.typeName || ''
+                if (dept) setDepartment(dept)
+
+                // Use employeeId from DB if available, else keep generated fallback
+                const dbEmpId = data.employeeId
+                const finalEmpId = dbEmpId || empId
+                if (finalEmpId) setEmployeeId(finalEmpId)
+
+                // Re-run conflict check with DB employeeId
+                if (finalEmpId && username) {
+                  fetch(`/api/vacation-leave-requests?employeeId=${encodeURIComponent(finalEmpId)}&limit=1`)
+                    .then(r2 => r2.json())
+                    .then(d2 => {
+                      if (d2.success && d2.rows && d2.rows.length > 0) {
+                        const owner = d2.rows[0].created_by
+                        const ownerName = d2.rows[0].employeeName || owner || ''
+                        if (owner && owner !== username) {
+                          setEmployeeIdConflict(true)
+                          setConflictOwnerName(ownerName)
+                        } else {
+                          setEmployeeIdConflict(false)
+                          setConflictOwnerName('')
+                        }
+                      } else {
+                        setEmployeeIdConflict(false)
+                        setConflictOwnerName('')
+                      }
+                    })
+                    .catch(() => {})
+                }
+              }
+            })
+            .catch(() => {})
+            .finally(() => setLoadingDept(false))
+        }
+
+        // Initial conflict check with localStorage employeeId (before API resolves)
+        if (empId && username) {
+          fetch(`/api/vacation-leave-requests?employeeId=${encodeURIComponent(empId)}&limit=1`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.success && data.rows && data.rows.length > 0) {
+                const owner = data.rows[0].created_by
+                const ownerName = data.rows[0].employeeName || owner || ''
+                if (owner && owner !== username) {
+                  setEmployeeIdConflict(true)
+                  setConflictOwnerName(ownerName)
+                }
+              }
+            })
+            .catch(() => {})
+        }
+      }
+    } catch {}
 
     return () => {
       window.removeEventListener('k-system-lang', handler)
@@ -100,6 +188,10 @@ export default function CreateVacationLeaveRequestPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
+    if (employeeIdConflict) {
+      setMessageBar({ type: 'error', text: L('Cannot submit: Employee ID conflict. Please contact admin.', 'ไม่สามารถส่งได้: รหัสพนักงานซ้ำกัน กรุณาติดต่อผู้ดูแลระบบ') })
+      return
+    }
 
     setLoading(true)
     try {
@@ -110,6 +202,7 @@ export default function CreateVacationLeaveRequestPage() {
         requestDate,
         employeeName: employeeName.trim(),
         employeeId: employeeId.trim(),
+        userId: userIdInt ?? undefined,
         department: department.trim(),
         leaveType,
         startDate,
@@ -200,18 +293,33 @@ export default function CreateVacationLeaveRequestPage() {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Employee Name', 'ชื่อพนักงาน')} <span style={{ color: '#dc2626' }}>*</span></label>
-                <input className={styles.formInput} value={employeeName} onChange={e => setEmployeeName(e.target.value)} placeholder={L('Enter employee name', 'กรอกชื่อพนักงาน')} />
+                <input className={styles.formInput} value={employeeName} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Employee ID', 'รหัสพนักงาน')} <span style={{ color: '#dc2626' }}>*</span></label>
-                <input className={styles.formInput} value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder={L('Enter employee ID', 'กรอกรหัสพนักงาน')} />
+                <input className={styles.formInput} value={employeeId} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} />
+                {employeeIdConflict && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ⚠️ {L(
+                      `This Employee ID is already registered to: ${conflictOwnerName || 'another account'}. Please contact admin.`,
+                      `รหัสพนักงานนี้เป็นของ: ${conflictOwnerName || 'บัญชีอื่น'} อยู่แล้ว กรุณาติดต่อผู้ดูแลระบบ`
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Department', 'แผนก')} <span style={{ color: '#dc2626' }}>*</span></label>
-                <input className={styles.formInput} value={department} onChange={e => setDepartment(e.target.value)} placeholder={L('Enter department', 'กรอกแผนก')} />
+                <input
+                  className={styles.formInput}
+                  type="text"
+                  value={loadingDept ? L('Loading...', 'กำลังโหลด...') : department}
+                  readOnly
+                  placeholder={L('Auto-filled from database', 'โหลดจากฐานข้อมูลอัตโนมัติ')}
+                  style={{ background: '#f3f4f6', cursor: 'default' }}
+                />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>{L('Leave Type', 'ประเภทการลา')}</label>
