@@ -28,6 +28,7 @@ type DocumentStats = {
   imports: number
   exports: number
   fieldWorkLogs: number
+  vacationLeaveRequests: number
 }
 
 export default function DocumentsPage() {
@@ -48,10 +49,20 @@ export default function DocumentsPage() {
     productionOrders: 0,
     imports: 0,
     exports: 0,
-    fieldWorkLogs: 0
+    fieldWorkLogs: 0,
+    vacationLeaveRequests: 0
   })
   const [isGenerating, setIsGenerating] = useState(false)
   const [generateResult, setGenerateResult] = useState<string>('')
+
+  // VLR verify modal state
+  const [vlrModal, setVlrModal] = useState(false)
+  const [vlrUsername, setVlrUsername] = useState('')
+  const [vlrPassword, setVlrPassword] = useState('')
+  const [vlrError, setVlrError] = useState('')
+  const [vlrLoading, setVlrLoading] = useState(false)
+  const [userList, setUserList] = useState<{ userName: string; name: string; displayName: string; displayNameTh: string }[]>([])
+  const [isAdminSession, setIsAdminSession] = useState(false)
 
   useEffect(() => {
     // Load language preference
@@ -76,7 +87,14 @@ export default function DocumentsPage() {
     try {
       const raw = localStorage.getItem('k_system_admin_user')
       if (raw) {
-        setUser(JSON.parse(raw))
+        const stored = JSON.parse(raw)
+        setUser(stored)
+        // Admin users (typeID 1/2/7) auto-bypass the VLR modal
+        const isAdmin = [1, 2, 7].includes(Number(stored?.typeID))
+        if (isAdmin && stored?.username) {
+          setVlrUsername(stored.username)
+          setIsAdminSession(true)
+        }
       }
     } catch (e) {
       console.error('Failed to load user data:', e)
@@ -84,6 +102,12 @@ export default function DocumentsPage() {
 
     // Load document stats
     loadStats()
+
+    // Load user list for VLR picker
+    fetch('/api/auth/user-list?site=Thailand')
+      .then(r => r.json())
+      .then(d => { if (d.success) setUserList(d.users || []) })
+      .catch(() => {})
 
     return () => {
       window.removeEventListener('k-system-lang', handleLangChange)
@@ -93,43 +117,47 @@ export default function DocumentsPage() {
   const L = (en: string, th: string) => lang === 'th' ? th : en
 
   const loadStats = async () => {
-    try {
-      const [cn, gr, pv, wt, pr, si, sc, st, sa, eb, po, imp, exp, fwl] = await Promise.all([
-        fetch('/api/credit-notes?limit=1').then(r => r.json()),
-        fetch('/api/goods-receipts?limit=1').then(r => r.json()),
-        fetch('/api/payment-vouchers?limit=1').then(r => r.json()),
-        fetch('/api/warranties?limit=1').then(r => r.json()),
-        fetch('/api/purchase-requests?limit=1').then(r => r.json()),
-        fetch('/api/supplier-invoices?limit=1').then(r => r.json()),
-        fetch('/api/stock-cards?limit=1').then(r => r.json()),
-        fetch('/api/stock-transfers?limit=1').then(r => r.json()),
-        fetch('/api/stock-adjustments?limit=1').then(r => r.json()),
-        fetch('/api/expense-bills?limit=1').then(r => r.json()),
-        fetch('/api/production-orders?limit=1').then(r => r.json()),
-        fetch('/api/imports').then(r => r.json()),
-        fetch('/api/exports').then(r => r.json()),
-        fetch('/api/field-work-logs?limit=1').then(r => r.json())
-      ])
+    // Fetch each API independently so one failure doesn't zero out all counts
+    const safe = (url: string) =>
+      fetch(url)
+        .then(r => r.ok ? r.json() : { total: 0, data: [] })
+        .catch(() => ({ total: 0, data: [] }))
 
-      setStats({
-        creditNotes: cn.total || 0,
-        goodsReceipts: gr.total || 0,
-        paymentVouchers: pv.total || 0,
-        warranties: wt.total || 0,
-        purchaseRequests: pr.total || 0,
-        supplierInvoices: si.total || 0,
-        stockCards: sc.total || 0,
-        stockTransfers: st.total || 0,
-        stockAdjustments: sa.total || 0,
-        expenseBills: eb.total || 0,
-        productionOrders: po.total || 0,
-        imports: imp.data?.length || 0,
-        exports: exp.data?.length || 0,
-        fieldWorkLogs: fwl.total || 0
-      })
-    } catch (e) {
-      console.error('Failed to load document stats:', e)
-    }
+    const [cn, gr, pv, wt, pr, si, sc, st, sa, eb, po, imp, exp, fwl, vlr] = await Promise.all([
+      safe('/api/credit-notes?limit=1'),
+      safe('/api/goods-receipts?limit=1'),
+      safe('/api/payment-vouchers?limit=1'),
+      safe('/api/warranties?limit=1'),
+      safe('/api/purchase-requests?limit=1'),
+      safe('/api/supplier-invoices?limit=1'),
+      safe('/api/stock-cards?limit=1'),
+      safe('/api/stock-transfers?limit=1'),
+      safe('/api/stock-adjustments?limit=1'),
+      safe('/api/expense-bills?limit=1'),
+      safe('/api/production-orders?limit=1'),
+      safe('/api/imports?limit=1'),
+      safe('/api/exports?limit=1'),
+      safe('/api/field-work-logs?limit=1'),
+      safe('/api/vacation-leave-requests?limit=1'),
+    ])
+
+    setStats({
+      creditNotes: Number(cn.total) || 0,
+      goodsReceipts: Number(gr.total) || 0,
+      paymentVouchers: Number(pv.total) || 0,
+      warranties: Number(wt.total) || 0,
+      purchaseRequests: Number(pr.total) || 0,
+      supplierInvoices: Number(si.total) || 0,
+      stockCards: Number(sc.total) || 0,
+      stockTransfers: Number(st.total) || 0,
+      stockAdjustments: Number(sa.total) || 0,
+      expenseBills: Number(eb.total) || 0,
+      productionOrders: Number(po.total) || 0,
+      imports: Number(imp.total ?? imp.data?.length) || 0,
+      exports: Number(exp.total ?? exp.data?.length) || 0,
+      fieldWorkLogs: Number(fwl.total) || 0,
+      vacationLeaveRequests: Number(vlr.total) || 0,
+    })
   }
 
   const handleGenerateNumbers = async () => {
@@ -480,7 +508,7 @@ export default function DocumentsPage() {
           desc: 'Create a vacation leave approval request form',
           descTh: 'สร้างแบบฟอร์มคำขออนุมัติลาพักร้อน',
           href: '/Thailand/Admin-Login/documents/vacation-leave/create',
-          count: 0,
+          count: stats.vacationLeaveRequests,
           icon: (
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -497,91 +525,57 @@ export default function DocumentsPage() {
     }
   ]
 
+  async function handleVlrVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!vlrUsername.trim() || !vlrPassword.trim()) {
+      setVlrError(lang === 'en' ? 'Please enter username and password' : 'กรุณากรอก Username และ Password')
+      return
+    }
+    setVlrLoading(true)
+    setVlrError('')
+    try {
+      const res = await fetch('/api/auth/mysql-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: vlrUsername.trim(), password: vlrPassword.trim() })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setVlrError(lang === 'en' ? 'Incorrect username or password' : 'Username หรือ Password ไม่ถูกต้อง')
+        return
+      }
+      // Admin users (typeID 1/2/7) can view all users' approvals — go to main approvals list
+      const isAdmin = [1, 2, 7].includes(Number(data.typeID))
+      setVlrModal(false)
+      setVlrUsername('')
+      setVlrPassword('')
+      if (isAdmin) {
+        router.push('/KR-Thailand/Admin-Login/my-approvals')
+      } else {
+        router.push(`/KR-Thailand/Admin-Login/my-approvals?user=${encodeURIComponent(data.username)}`)
+      }
+    } catch {
+      setVlrError(lang === 'en' ? 'Connection error, please try again' : 'ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่')
+    } finally {
+      setVlrLoading(false)
+    }
+  }
+
   return (
     <AdminLayout>
       <div className={styles.container}>
         <div className={styles.header}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
-            <div>
-              <h1>{lang === 'en' ? 'Document Management' : 'จัดการเอกสาร'}</h1>
-              <p className={styles.subtitle}>
-                {lang === 'en'
-                  ? 'Organized by categories for easy access'
-                  : 'จัดหมวดหมู่เพื่อหาง่าย เข้าถึงสะดวก'}
-              </p>
-            </div>
-            <button
-              onClick={handleGenerateNumbers}
-              disabled={isGenerating}
-              style={{
-                padding: '12px 24px',
-                background: isGenerating ? '#6c757d' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                whiteSpace: 'nowrap'
-              }}
-              onMouseEnter={(e) => {
-                if (!isGenerating) {
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)'
-              }}
-            >
-              <span style={{ fontSize: '18px' }}>{isGenerating ? '⏳' : '🔄'}</span>
-              <span>
-                {isGenerating
-                  ? (lang === 'en' ? 'Generating...' : 'กำลังสร้าง...')
-                  : (lang === 'en' ? 'Refresh Doc Numbers' : 'รันเลขที่บิล')
-                }
-              </span>
-            </button>
+          <div>
+            <h1>{lang === 'en' ? 'Document Management' : 'จัดการเอกสาร'}</h1>
+            <p className={styles.subtitle}>
+              {lang === 'en'
+                ? 'Organized by categories for easy access'
+                : 'จัดหมวดหมู่เพื่อหาง่าย เข้าถึงสะดวก'}
+            </p>
           </div>
         </div>
 
-        {generateResult && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            background: generateResult.includes('✅') ? '#d1f4e0' : '#f8d7da',
-            border: `1px solid ${generateResult.includes('✅') ? '#28a745' : '#dc3545'}`,
-            borderRadius: '8px',
-            color: '#333',
-            fontSize: '13px',
-            whiteSpace: 'pre-line',
-            position: 'relative'
-          }}>
-            <button
-              onClick={() => setGenerateResult('')}
-              style={{
-                position: 'absolute',
-                top: '8px',
-                right: '8px',
-                background: 'transparent',
-                border: 'none',
-                fontSize: '18px',
-                cursor: 'pointer',
-                color: '#666',
-                padding: '4px 8px'
-              }}
-            >
-              ✕
-            </button>
-            {generateResult}
-          </div>
-        )}
+
 
         {documentCategories.map((category) => (
           <div key={category.category} style={{ marginBottom: '48px' }}>
@@ -699,6 +693,41 @@ export default function DocumentsPage() {
                       {doc.count}
                     </span>
                   </div>
+
+                  {/* VLR-only: ปุ่มตรวจสอบการอนุมัติ */}
+                  {doc.code === 'VLR' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setVlrModal(true)
+                        setVlrError('')
+                        setVlrUsername('')
+                        setVlrPassword('')
+                      }}
+                      style={{
+                        marginTop: 14,
+                        width: '100%',
+                        padding: '9px 14px',
+                        background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                      </svg>
+                      {lang === 'en' ? 'Check Approvals' : 'ตรวจสอบการอนุมัติ'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -723,6 +752,190 @@ export default function DocumentsPage() {
           </p>
         </div>
       </div>
+
+      {/* VLR verify modal */}
+      {vlrModal && (
+        <div
+          onClick={() => setVlrModal(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              padding: '32px 28px',
+              width: '100%',
+              maxWidth: 400,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+              position: 'relative'
+            }}
+          >
+            {/* Close */}
+            <button
+              onClick={() => setVlrModal(false)}
+              style={{
+                position: 'absolute', top: 14, right: 14,
+                background: 'none', border: 'none',
+                fontSize: 20, cursor: 'pointer', color: '#9ca3af', lineHeight: 1
+              }}
+            >✕</button>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: 10,
+                background: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 17, color: '#1e1b4b' }}>
+                  {lang === 'en' ? 'Identity Verification' : 'ยืนยันตัวตน'}
+                </div>
+                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {lang === 'en'
+                    ? 'Enter your credentials to view your approvals'
+                    : 'กรอก Username และ Password ของคุณเพื่อดูคำขออนุมัติ'}
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleVlrVerify}>
+              {/* User picker */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+                  {lang === 'en' ? 'Step 1 — Select your account' : 'ขั้นที่ 1 — เลือกบัญชีของคุณ'}
+                </label>
+                {userList.length === 0 ? (
+                  <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1.5px solid #e2e8f0', color: '#94a3b8', fontSize: 13 }}>
+                    {lang === 'en' ? 'Loading users...' : 'กำลังโหลด...'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxHeight: 200, overflowY: 'auto', padding: 2 }}>
+                    {userList.map(u => {
+                      const isSelected = vlrUsername === u.userName
+                      return (
+                        <button
+                          key={u.userName}
+                          type="button"
+                          onClick={() => {
+                            setVlrUsername(u.userName)
+                            setVlrError('')
+                            if (isAdminSession) {
+                              // Admin: bypass password — navigate immediately
+                              setVlrModal(false)
+                              router.push(`/KR-Thailand/Admin-Login/my-approvals?user=${encodeURIComponent(u.userName)}`)
+                            }
+                          }}
+                          style={{
+                            padding: '9px 10px', borderRadius: 10,
+                            border: isSelected ? '2px solid #7c3aed' : '1.5px solid #e2e8f0',
+                            background: isSelected ? 'linear-gradient(135deg,#ede9fe,#dbeafe)' : '#f8fafc',
+                            cursor: 'pointer', textAlign: 'left',
+                            display: 'flex', alignItems: 'center', gap: 8,
+                          }}
+                        >
+                          <div style={{
+                            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                            background: isSelected ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : '#e2e8f0',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 13, color: isSelected ? '#fff' : '#64748b', fontWeight: 700,
+                          }}>
+                            {(lang === 'th' ? u.displayNameTh : u.displayName).charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#4c1d95' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {lang === 'th' ? u.displayNameTh : u.displayName}
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>@{u.userName}</div>
+                          </div>
+                          {isSelected && <span style={{ marginLeft: 'auto', color: '#7c3aed', fontSize: 14, flexShrink: 0 }}>✓</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected badge */}
+              {vlrUsername && (() => {
+                const sel = userList.find(u => u.userName === vlrUsername)
+                return sel ? (
+                  <div style={{
+                    marginBottom: 14, padding: '9px 12px',
+                    background: 'linear-gradient(135deg,#ede9fe,#dbeafe)',
+                    border: '1px solid #c4b5fd', borderRadius: 9,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <span>👤</span>
+                    <span style={{ fontWeight: 700, color: '#4c1d95', fontSize: 13 }}>
+                      {lang === 'th' ? sel.displayNameTh : sel.displayName}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#7c3aed' }}>@{sel.userName}</span>
+                  </div>
+                ) : null
+              })()}
+
+              {/* Password — only after user selected, hidden for admin */}
+              {vlrUsername && !isAdminSession && (
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                    {lang === 'en' ? 'Step 2 — Enter your password' : 'ขั้นที่ 2 — กรอก Password ของคุณ'}
+                  </label>
+                  <input
+                    type="password"
+                    value={vlrPassword}
+                    onChange={e => setVlrPassword(e.target.value)}
+                    autoComplete="current-password"
+                    autoFocus
+                    placeholder={lang === 'en' ? 'Enter your password' : 'กรอก Password'}
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      padding: '10px 12px', borderRadius: 8,
+                      border: '1.5px solid #d1d5db', fontSize: 14, outline: 'none'
+                    }}
+                  />
+                </div>
+              )}
+
+              {vlrError && (
+                <div style={{
+                  marginBottom: 14, padding: '9px 12px',
+                  background: '#fee2e2', border: '1px solid #fca5a5',
+                  borderRadius: 8, color: '#991b1b', fontSize: 13
+                }}>
+                  ⚠️ {vlrError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={vlrLoading || !vlrUsername || (!isAdminSession && !vlrPassword)}
+                style={{
+                  width: '100%', padding: '11px',
+                  background: (vlrLoading || !vlrUsername || (!isAdminSession && !vlrPassword)) ? '#a78bfa' : 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+                  color: 'white', border: 'none', borderRadius: 8,
+                  fontSize: 15, fontWeight: 700,
+                  cursor: (vlrLoading || !vlrUsername || (!isAdminSession && !vlrPassword)) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {vlrLoading
+                  ? (lang === 'en' ? 'Verifying...' : 'กำลังตรวจสอบ...')
+                  : (lang === 'en' ? 'Verify & View Approvals' : 'ยืนยันและดูคำขออนุมัติ')}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }
