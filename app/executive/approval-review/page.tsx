@@ -161,6 +161,9 @@ const texts = {
     ,
     clickedLeaveSectionTitle: '클릭한 휴가 요청 목록',
     noClickedLeave: '아직 클릭한 휴가 요청이 없습니다.',
+    leaveSummaryTitle: '지점별 휴가 승인 대기 현황',
+    leaveSummaryPending: '대기 중',
+    leaveSummaryView: '보기',
     clickedSuggestionSectionTitle: '클릭한 제안 요청 목록',
     noClickedSuggestion: '아직 클릭한 제안 요청이 없습니다.'
     ,
@@ -236,6 +239,9 @@ const texts = {
     ,
     clickedLeaveSectionTitle: 'Clicked Leave Requests',
     noClickedLeave: 'No leave requests have been clicked yet.',
+    leaveSummaryTitle: 'Pending Leave Requests by Branch',
+    leaveSummaryPending: 'Pending',
+    leaveSummaryView: 'View',
     clickedSuggestionSectionTitle: 'Clicked Suggestion Requests',
     noClickedSuggestion: 'No suggestion requests have been clicked yet.'
     ,
@@ -291,6 +297,8 @@ export default function ApprovalReviewPage() {
   const [approvedPdoRows, setApprovedPdoRows] = useState<ApprovedPdoRow[]>([]);
   const [loadingApprovedPdo, setLoadingApprovedPdo] = useState(false);
   const [approvedPdoError, setApprovedPdoError] = useState('');
+  const [leaveSummary, setLeaveSummary] = useState<Record<BranchKey, number>>({ korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 });
+  const [leaveSummaryLoading, setLeaveSummaryLoading] = useState(false);
 
   const t = useMemo(() => texts[pageLocale], [pageLocale]);
 
@@ -322,6 +330,29 @@ export default function ApprovalReviewPage() {
       }
 
       setMounted(true);
+
+    // Load leave summary for all branches
+    const loadLeaveSummary = async () => {
+      setLeaveSummaryLoading(true);
+      try {
+        const branches: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
+        const results = await Promise.allSettled(
+          branches.map(b =>
+            fetch(`/api/vacation-leave-requests?status=pending&limit=100&branch=${encodeURIComponent(b)}`, { cache: 'no-store' })
+              .then(r => r.json())
+              .then(d => ({ branch: b, count: Array.isArray(d.rows) ? d.rows.length : 0 }))
+              .catch(() => ({ branch: b, count: 0 }))
+          )
+        );
+        const summary: Record<BranchKey, number> = { korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 };
+        results.forEach(r => { if (r.status === 'fulfilled') summary[r.value.branch] = r.value.count; });
+        setLeaveSummary(summary);
+      } catch { /* silent */ } finally {
+        setLeaveSummaryLoading(false);
+      }
+    };
+    loadLeaveSummary();
+
     } catch {
       router.replace('/executive/approval-review-login');
     }
@@ -621,6 +652,41 @@ export default function ApprovalReviewPage() {
           <p className="text-xs text-indigo-600 mt-2">{t.pendingOnly}</p>
           <p className="text-xs text-gray-500 mt-1">{t.selectBranchHint}</p>
           <p className="text-xs text-gray-500 mt-1">{t.selectedBranchLabel}: {selectedBranchLabel}</p>
+
+          {/* Leave summary by branch */}
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-amber-900">🗂 {t.leaveSummaryTitle}</p>
+              {leaveSummaryLoading && <Loader2 className="w-4 h-4 animate-spin text-amber-600" />}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {branchOptions.map(branch => {
+                const count = leaveSummary[branch] ?? 0;
+                return (
+                  <button
+                    key={`summary-${branch}`}
+                    type="button"
+                    onClick={() => setSelectedBranch(branch)}
+                    className={`flex flex-col items-center rounded-xl border p-2 transition-all ${
+                      selectedBranch === branch
+                        ? 'border-amber-500 bg-amber-500 text-white'
+                        : count > 0
+                        ? 'border-amber-300 bg-white hover:bg-amber-100 text-amber-900'
+                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-500'
+                    }`}
+                  >
+                    <span className={`text-2xl font-bold ${
+                      selectedBranch === branch ? 'text-white' : count > 0 ? 'text-amber-600' : 'text-gray-300'
+                    }`}>{count}</span>
+                    <span className="text-xs mt-0.5">{t.branches[branch]}</span>
+                    {count > 0 && selectedBranch !== branch && (
+                      <span className="mt-1 inline-flex rounded-full bg-amber-100 text-amber-700 px-1.5 py-0.5 text-xs">{t.leaveSummaryPending}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="mt-4">
             <p className="text-xs font-semibold text-indigo-700 mb-2">{t.branchPageTitle}</p>
