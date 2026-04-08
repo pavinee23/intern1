@@ -654,116 +654,201 @@ export default function ApprovalReviewPage() {
           <p className="text-xs text-gray-500 mt-1">{t.selectedBranchLabel}: {selectedBranchLabel}</p>
 
           {/* Leave summary by branch */}
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-amber-900">🗂 {t.leaveSummaryTitle}</p>
-              {leaveSummaryLoading && <Loader2 className="w-4 h-4 animate-spin text-amber-600" />}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {branchOptions.map(branch => {
-                const count = leaveSummary[branch] ?? 0;
-                return (
-                  <button
-                    key={`summary-${branch}`}
-                    type="button"
-                    onClick={() => setSelectedBranch(branch)}
-                    className={`flex flex-col items-center rounded-xl border p-2 transition-all ${
-                      selectedBranch === branch
-                        ? 'border-amber-500 bg-amber-500 text-white'
-                        : count > 0
-                        ? 'border-amber-300 bg-white hover:bg-amber-100 text-amber-900'
-                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-500'
-                    }`}
-                  >
-                    <span className={`text-2xl font-bold ${
-                      selectedBranch === branch ? 'text-white' : count > 0 ? 'text-amber-600' : 'text-gray-300'
-                    }`}>{count}</span>
-                    <span className="text-xs mt-0.5">{t.branches[branch]}</span>
-                    {count > 0 && selectedBranch !== branch && (
-                      <span className="mt-1 inline-flex rounded-full bg-amber-100 text-amber-700 px-1.5 py-0.5 text-xs">{t.leaveSummaryPending}</span>
+          {(() => {
+            const branchMeta: Record<string, { flag: string; gradient: string; active: string; badge: string; dot: string }> = {
+              korea:    { flag: '🇰🇷', gradient: 'from-blue-50 to-indigo-50',   active: 'from-indigo-500 to-blue-600',   badge: 'bg-indigo-100 text-indigo-700',  dot: 'bg-indigo-400' },
+              thailand: { flag: '🇹🇭', gradient: 'from-red-50 to-pink-50',      active: 'from-pink-500 to-red-500',      badge: 'bg-red-100 text-red-700',        dot: 'bg-red-400' },
+              vietnam:  { flag: '🇻🇳', gradient: 'from-red-50 to-yellow-50',    active: 'from-red-500 to-yellow-500',    badge: 'bg-yellow-100 text-yellow-700',  dot: 'bg-yellow-500' },
+              malaysia: { flag: '🇲🇾', gradient: 'from-blue-50 to-red-50',      active: 'from-blue-600 to-red-500',      badge: 'bg-blue-100 text-blue-700',      dot: 'bg-blue-400' },
+              brunei:   { flag: '🇧🇳', gradient: 'from-yellow-50 to-orange-50', active: 'from-yellow-500 to-orange-500', badge: 'bg-orange-100 text-orange-700',  dot: 'bg-orange-400' },
+            };
+            const totalLeave = Object.values(leaveSummary).reduce((s, v) => s + (v ?? 0), 0);
+            return (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-400 to-orange-400">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🗂</span>
+                    <p className="text-sm font-bold text-white tracking-wide">{t.leaveSummaryTitle}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {leaveSummaryLoading && <Loader2 className="w-4 h-4 animate-spin text-white/80" />}
+                    {!leaveSummaryLoading && totalLeave > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/25 text-white text-xs font-bold px-2.5 py-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse inline-block" />
+                        {totalLeave} {t.leaveSummaryPending}
+                      </span>
                     )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <p className="text-xs font-semibold text-indigo-700 mb-2">{t.branchPageTitle}</p>
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-              {branchOptions.map((branch) => (
-                <button
-                  key={`page-${branch}`}
-                  type="button"
-                  onClick={() => setSelectedBranch(branch)}
-                  className={`inline-flex whitespace-nowrap min-h-[44px] items-center rounded-xl px-3 text-sm font-medium border transition-colors ${
-                    selectedBranch === branch
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'border-indigo-300 text-indigo-800 bg-indigo-100 hover:bg-indigo-200'
-                  }`}
-                >
-                  {t.branches[branch]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  loadRows();
-                }}
-                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 min-h-[44px] px-4 rounded-xl border border-indigo-700 bg-indigo-700 text-white hover:bg-indigo-800 text-sm font-medium"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {t.refresh}
-              </button>
-              <button
-                type="button"
-                disabled={!selectedBranch || loadingApprovedPdo}
-                onClick={() => {
-                  if (showApprovedPdo) {
-                    setShowApprovedPdo(false);
-                    return;
-                  }
-                  loadApprovedPdoRows();
-                }}
-                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 min-h-[44px] px-4 rounded-xl border border-sky-700 bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-60 text-sm font-medium"
-              >
-                {loadingApprovedPdo ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {t.processing}
-                  </>
-                ) : showApprovedPdo ? t.approvedPdoHideButton : t.approvedPdoButton}
-              </button>
-            </div>
-            <div className="mt-2">
-              <p className="text-xs font-semibold text-sky-700 mb-2">{t.approvedPdoByBranchTitle}</p>
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {branchOptions.map((branch) => (
-                  <button
-                    key={`approved-pdo-${branch}`}
-                    type="button"
-                    disabled={loadingApprovedPdo}
-                    onClick={() => {
-                      setSelectedBranch(branch);
-                      loadApprovedPdoRows(branch);
-                    }}
-                    className={`inline-flex whitespace-nowrap min-h-[40px] items-center rounded-xl px-3 text-xs font-medium border transition-colors disabled:opacity-60 ${
-                      selectedBranch === branch
-                        ? 'bg-sky-700 border-sky-700 text-white'
-                        : 'border-sky-300 text-sky-800 bg-sky-100 hover:bg-sky-200'
-                    }`}
-                  >
-                    {t.branches[branch]}
-                  </button>
-                ))}
+                  </div>
+                </div>
+                {/* Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3">
+                  {branchOptions.map(branch => {
+                    const count = leaveSummary[branch] ?? 0;
+                    const meta = branchMeta[branch] ?? branchMeta.korea;
+                    const isSelected = selectedBranch === branch;
+                    return (
+                      <button
+                        key={`summary-${branch}`}
+                        type="button"
+                        onClick={() => setSelectedBranch(branch)}
+                        className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
+                          isSelected
+                            ? `bg-gradient-to-br ${meta.active} border-transparent text-white`
+                            : `bg-gradient-to-br ${meta.gradient} border-gray-100 text-gray-700`
+                        }`}
+                      >
+                        {/* Active indicator dot */}
+                        {isSelected && (
+                          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />
+                        )}
+                        {/* Flag */}
+                        <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
+                        {/* Count */}
+                        <span className={`text-3xl font-extrabold leading-none ${isSelected ? 'text-white' : count > 0 ? 'text-gray-800' : 'text-gray-300'}`}>
+                          {leaveSummaryLoading ? '—' : count}
+                        </span>
+                        {/* Branch name */}
+                        <span className={`text-xs font-semibold mt-1 ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
+                          {t.branches[branch]}
+                        </span>
+                        {/* Badge */}
+                        {count > 0 && !isSelected && (
+                          <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} inline-block`} />
+                            {t.leaveSummaryPending}
+                          </span>
+                        )}
+                        {isSelected && (
+                          <span className="mt-1.5 inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
+                            ✓ Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
+
+          {/* Branch Page Shortcuts */}
+          {(() => {
+            const branchMeta: Record<string, { flag: string; gradient: string; active: string }> = {
+              korea:    { flag: '🇰🇷', gradient: 'from-blue-50 to-indigo-50',   active: 'from-indigo-500 to-blue-600'   },
+              thailand: { flag: '🇹🇭', gradient: 'from-red-50 to-pink-50',      active: 'from-pink-500 to-red-500'      },
+              vietnam:  { flag: '🇻🇳', gradient: 'from-red-50 to-yellow-50',    active: 'from-red-500 to-yellow-500'    },
+              malaysia: { flag: '🇲🇾', gradient: 'from-blue-50 to-red-50',      active: 'from-blue-600 to-red-500'      },
+              brunei:   { flag: '🇧🇳', gradient: 'from-yellow-50 to-orange-50', active: 'from-yellow-500 to-orange-500' },
+            };
+            return (
+              <div className="mt-4 rounded-2xl border border-indigo-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-500 to-violet-500">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🏢</span>
+                    <p className="text-sm font-bold text-white tracking-wide">{t.branchPageTitle}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadRows()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    {t.refresh}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3">
+                  {branchOptions.map(branch => {
+                    const meta = branchMeta[branch] ?? branchMeta.korea;
+                    const isSelected = selectedBranch === branch;
+                    return (
+                      <button
+                        key={`page-${branch}`}
+                        type="button"
+                        onClick={() => setSelectedBranch(branch)}
+                        className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
+                          isSelected
+                            ? `bg-gradient-to-br ${meta.active} border-transparent`
+                            : `bg-gradient-to-br ${meta.gradient} border-gray-100`
+                        }`}
+                      >
+                        {isSelected && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />}
+                        <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
+                        <span className={`text-xs font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                          {t.branches[branch]}
+                        </span>
+                        {isSelected && (
+                          <span className="mt-1.5 inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
+                            ✓ Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Approved PDO by Branch */}
+          {(() => {
+            const branchMeta: Record<string, { flag: string; gradient: string; active: string }> = {
+              korea:    { flag: '🇰🇷', gradient: 'from-sky-50 to-cyan-50',    active: 'from-sky-500 to-cyan-500'    },
+              thailand: { flag: '🇹🇭', gradient: 'from-teal-50 to-green-50',  active: 'from-teal-500 to-green-500'  },
+              vietnam:  { flag: '🇻🇳', gradient: 'from-cyan-50 to-blue-50',   active: 'from-cyan-600 to-blue-500'   },
+              malaysia: { flag: '🇲🇾', gradient: 'from-sky-50 to-indigo-50',  active: 'from-sky-600 to-indigo-500'  },
+              brunei:   { flag: '🇧🇳', gradient: 'from-teal-50 to-cyan-50',   active: 'from-teal-600 to-cyan-500'   },
+            };
+            return (
+              <div className="mt-4 rounded-2xl border border-sky-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-sky-500 to-cyan-500">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">✅</span>
+                    <p className="text-sm font-bold text-white tracking-wide">{t.approvedPdoByBranchTitle}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!selectedBranch || loadingApprovedPdo}
+                    onClick={() => { showApprovedPdo ? setShowApprovedPdo(false) : loadApprovedPdoRows(); }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                  >
+                    {loadingApprovedPdo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>{showApprovedPdo ? '▲' : '▼'}</span>}
+                    {loadingApprovedPdo ? t.processing : showApprovedPdo ? t.approvedPdoHideButton : t.approvedPdoButton}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3">
+                  {branchOptions.map(branch => {
+                    const meta = branchMeta[branch] ?? branchMeta.korea;
+                    const isSelected = selectedBranch === branch;
+                    return (
+                      <button
+                        key={`approved-pdo-${branch}`}
+                        type="button"
+                        disabled={loadingApprovedPdo}
+                        onClick={() => { setSelectedBranch(branch); loadApprovedPdoRows(branch); }}
+                        className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60 ${
+                          isSelected
+                            ? `bg-gradient-to-br ${meta.active} border-transparent`
+                            : `bg-gradient-to-br ${meta.gradient} border-gray-100`
+                        }`}
+                      >
+                        {isSelected && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />}
+                        <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
+                        <span className={`text-xs font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                          {t.branches[branch]}
+                        </span>
+                        {isSelected && (
+                          <span className="mt-1.5 inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
+                            ✓ Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {message && <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{message}</div>}
           {error && <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
