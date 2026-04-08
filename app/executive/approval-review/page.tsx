@@ -164,6 +164,8 @@ const texts = {
     leaveSummaryTitle: '지점별 휴가 승인 대기 현황',
     leaveSummaryPending: '대기 중',
     leaveSummaryView: '보기',
+    purchaseSummaryTitle: '지점별 구매 승인 대기 현황',
+    purchaseSummaryPending: '대기 중',
     clickedSuggestionSectionTitle: '클릭한 제안 요청 목록',
     noClickedSuggestion: '아직 클릭한 제안 요청이 없습니다.'
     ,
@@ -242,6 +244,8 @@ const texts = {
     leaveSummaryTitle: 'Pending Leave Requests by Branch',
     leaveSummaryPending: 'Pending',
     leaveSummaryView: 'View',
+    purchaseSummaryTitle: 'Pending Purchase Orders by Branch',
+    purchaseSummaryPending: 'Pending',
     clickedSuggestionSectionTitle: 'Clicked Suggestion Requests',
     noClickedSuggestion: 'No suggestion requests have been clicked yet.'
     ,
@@ -299,6 +303,8 @@ export default function ApprovalReviewPage() {
   const [approvedPdoError, setApprovedPdoError] = useState('');
   const [leaveSummary, setLeaveSummary] = useState<Record<BranchKey, number>>({ korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 });
   const [leaveSummaryLoading, setLeaveSummaryLoading] = useState(false);
+  const [purchaseSummary, setPurchaseSummary] = useState<Record<BranchKey, number>>({ korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 });
+  const [purchaseSummaryLoading, setPurchaseSummaryLoading] = useState(false);
 
   const t = useMemo(() => texts[pageLocale], [pageLocale]);
 
@@ -353,7 +359,33 @@ export default function ApprovalReviewPage() {
     };
     loadLeaveSummary();
 
-    } catch {
+    const loadPurchaseSummary = async () => {
+      setPurchaseSummaryLoading(true);
+      try {
+        const branches: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
+        const results = await Promise.allSettled(
+          branches.map(b =>
+            fetch(`/api/purchase-requests?limit=200&branch=${encodeURIComponent(b)}`, { cache: 'no-store' })
+              .then(r => r.json())
+              .then(d => {
+                const rows: PurchaseRequest[] = Array.isArray(d.rows) ? d.rows : [];
+                const count = rows.filter(pr => {
+                  const s = normalizeStatus(pr.status);
+                  return s === 'pending' || s === 'submitted' || s === 'draft';
+                }).length;
+                return { branch: b, count };
+              })
+              .catch(() => ({ branch: b, count: 0 }))
+          )
+        );
+        const summary: Record<BranchKey, number> = { korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 };
+        results.forEach(r => { if (r.status === 'fulfilled') summary[r.value.branch] = r.value.count; });
+        setPurchaseSummary(summary);
+      } catch { /* silent */ } finally {
+        setPurchaseSummaryLoading(false);
+      }
+    };
+    loadPurchaseSummary();
       router.replace('/executive/approval-review-login');
     }
   }, [router]);
@@ -732,51 +764,102 @@ export default function ApprovalReviewPage() {
             );
           })()}
 
-          {/* Branch Page Shortcuts */}
+          {/* Pending Purchase Orders by Branch */}
           {(() => {
-            const branchMeta: Record<string, { flag: string; gradient: string; active: string }> = {
-              korea:    { flag: '🇰🇷', gradient: 'from-blue-50 to-indigo-50',   active: 'from-indigo-500 to-blue-600'   },
-              thailand: { flag: '🇹🇭', gradient: 'from-red-50 to-pink-50',      active: 'from-pink-500 to-red-500'      },
-              vietnam:  { flag: '🇻🇳', gradient: 'from-red-50 to-yellow-50',    active: 'from-red-500 to-yellow-500'    },
-              malaysia: { flag: '🇲🇾', gradient: 'from-blue-50 to-red-50',      active: 'from-blue-600 to-red-500'      },
-              brunei:   { flag: '🇧🇳', gradient: 'from-yellow-50 to-orange-50', active: 'from-yellow-500 to-orange-500' },
+            const branchMeta: Record<string, { flag: string; gradient: string; active: string; badge: string; dot: string }> = {
+              korea:    { flag: '🇰🇷', gradient: 'from-emerald-50 to-teal-50',   active: 'from-teal-500 to-emerald-600',   badge: 'bg-teal-100 text-teal-700',      dot: 'bg-teal-400' },
+              thailand: { flag: '🇹🇭', gradient: 'from-green-50 to-emerald-50',  active: 'from-emerald-500 to-green-500',  badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
+              vietnam:  { flag: '🇻🇳', gradient: 'from-lime-50 to-green-50',     active: 'from-green-500 to-lime-500',     badge: 'bg-green-100 text-green-700',     dot: 'bg-green-500' },
+              malaysia: { flag: '🇲🇾', gradient: 'from-teal-50 to-cyan-50',      active: 'from-cyan-600 to-teal-500',      badge: 'bg-cyan-100 text-cyan-700',       dot: 'bg-cyan-400' },
+              brunei:   { flag: '🇧🇳', gradient: 'from-emerald-50 to-lime-50',   active: 'from-lime-500 to-emerald-500',   badge: 'bg-lime-100 text-lime-700',       dot: 'bg-lime-500' },
             };
+            const totalPurchase = Object.values(purchaseSummary).reduce((s, v) => s + (v ?? 0), 0);
             return (
-              <div className="mt-4 rounded-2xl border border-indigo-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-500 to-violet-500">
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-white shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🏢</span>
-                    <p className="text-sm font-bold text-white tracking-wide">{t.branchPageTitle}</p>
+                    <span className="text-lg">🛒</span>
+                    <p className="text-sm font-bold text-white tracking-wide">{t.purchaseSummaryTitle}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => loadRows()}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    {t.refresh}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {totalPurchase > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-white/25 px-2.5 py-0.5 text-xs font-bold text-white border border-white/30">
+                        {totalPurchase} {t.purchaseSummaryPending}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const loadPurchaseSummaryRefresh = async () => {
+                          setPurchaseSummaryLoading(true);
+                          try {
+                            const branches: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
+                            const results = await Promise.allSettled(
+                              branches.map(b =>
+                                fetch(`/api/purchase-requests?limit=200&branch=${encodeURIComponent(b)}`, { cache: 'no-store' })
+                                  .then(r => r.json())
+                                  .then(d => {
+                                    const rows: PurchaseRequest[] = Array.isArray(d.rows) ? d.rows : [];
+                                    const count = rows.filter(pr => {
+                                      const s = normalizeStatus(pr.status);
+                                      return s === 'pending' || s === 'submitted' || s === 'draft';
+                                    }).length;
+                                    return { branch: b, count };
+                                  })
+                                  .catch(() => ({ branch: b, count: 0 }))
+                              )
+                            );
+                            const summary: Record<BranchKey, number> = { korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 };
+                            results.forEach(r => { if (r.status === 'fulfilled') summary[r.value.branch] = r.value.count; });
+                            setPurchaseSummary(summary);
+                          } catch { /* silent */ } finally {
+                            setPurchaseSummaryLoading(false);
+                          }
+                        };
+                        loadPurchaseSummaryRefresh();
+                      }}
+                      disabled={purchaseSummaryLoading}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                    >
+                      {purchaseSummaryLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      {t.refresh}
+                    </button>
+                  </div>
                 </div>
+                {/* Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3">
                   {branchOptions.map(branch => {
                     const meta = branchMeta[branch] ?? branchMeta.korea;
+                    const count = purchaseSummary[branch] ?? 0;
                     const isSelected = selectedBranch === branch;
                     return (
                       <button
-                        key={`page-${branch}`}
+                        key={`purchase-summary-${branch}`}
                         type="button"
                         onClick={() => setSelectedBranch(branch)}
                         className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
                           isSelected
-                            ? `bg-gradient-to-br ${meta.active} border-transparent`
-                            : `bg-gradient-to-br ${meta.gradient} border-gray-100`
+                            ? `bg-gradient-to-br ${meta.active} border-transparent text-white`
+                            : `bg-gradient-to-br ${meta.gradient} border-gray-100 text-gray-700`
                         }`}
                       >
-                        {isSelected && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />}
+                        {isSelected && (
+                          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />
+                        )}
                         <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
-                        <span className={`text-xs font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                        <span className={`text-3xl font-extrabold leading-none ${isSelected ? 'text-white' : count > 0 ? 'text-gray-800' : 'text-gray-300'}`}>
+                          {purchaseSummaryLoading ? '—' : count}
+                        </span>
+                        <span className={`text-xs font-semibold mt-1 ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
                           {t.branches[branch]}
                         </span>
+                        {count > 0 && !isSelected && (
+                          <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} inline-block`} />
+                            {t.purchaseSummaryPending}
+                          </span>
+                        )}
                         {isSelected && (
                           <span className="mt-1.5 inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
                             ✓ Selected
