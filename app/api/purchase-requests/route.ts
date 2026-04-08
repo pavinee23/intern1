@@ -51,12 +51,13 @@ async function ensurePurchaseRequestTable() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `)
 
-  await pool.query(`ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS branch varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`)
-  await pool.query(`ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS requester_name varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL`)
-  await pool.query(`ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS supplier_id int DEFAULT NULL`)
-  await pool.query(`ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS supplier_name varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL`)
-  await pool.query(`ALTER TABLE purchase_request_items ADD COLUMN IF NOT EXISTS product_name varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL`)
-  await pool.query(`ALTER TABLE purchase_request_items ADD COLUMN IF NOT EXISTS description text COLLATE utf8mb4_unicode_ci`)
+  // Wrap each ALTER in try-catch: MySQL 5.7 does not support ADD COLUMN IF NOT EXISTS
+  try { await pool.query(`ALTER TABLE purchase_requests ADD COLUMN branch varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`) } catch (_) {}
+  try { await pool.query(`ALTER TABLE purchase_requests ADD COLUMN requester_name varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL`) } catch (_) {}
+  try { await pool.query(`ALTER TABLE purchase_requests ADD COLUMN supplier_id int DEFAULT NULL`) } catch (_) {}
+  try { await pool.query(`ALTER TABLE purchase_requests ADD COLUMN supplier_name varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL`) } catch (_) {}
+  try { await pool.query(`ALTER TABLE purchase_request_items ADD COLUMN product_name varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL`) } catch (_) {}
+  try { await pool.query(`ALTER TABLE purchase_request_items ADD COLUMN description text COLLATE utf8mb4_unicode_ci`) } catch (_) {}
 }
 
 function toNumber(value: any): number {

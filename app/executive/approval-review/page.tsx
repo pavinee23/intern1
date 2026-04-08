@@ -164,8 +164,9 @@ const texts = {
     leaveSummaryTitle: '지점별 휴가 승인 대기 현황',
     leaveSummaryPending: '대기 중',
     leaveSummaryView: '보기',
-    purchaseSummaryTitle: '지점별 구매 승인 대기 현황',
+    purchaseSummaryTitle: '구매요청서 승인 대기',
     purchaseSummaryPending: '대기 중',
+    pdoSummaryPending: '대기 중',
     clickedSuggestionSectionTitle: '클릭한 제안 요청 목록',
     noClickedSuggestion: '아직 클릭한 제안 요청이 없습니다.'
     ,
@@ -244,8 +245,9 @@ const texts = {
     leaveSummaryTitle: 'Pending Leave Requests by Branch',
     leaveSummaryPending: 'Pending',
     leaveSummaryView: 'View',
-    purchaseSummaryTitle: 'Pending Purchase Orders by Branch',
+    purchaseSummaryTitle: 'Purchase Request Pending Approval',
     purchaseSummaryPending: 'Pending',
+    pdoSummaryPending: 'Pending',
     clickedSuggestionSectionTitle: 'Clicked Suggestion Requests',
     noClickedSuggestion: 'No suggestion requests have been clicked yet.'
     ,
@@ -286,8 +288,11 @@ export default function ApprovalReviewPage() {
   const [leaveRows, setLeaveRows] = useState<LeaveRequest[]>([]);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRequest[]>([]);
   const [suggestionRows, setSuggestionRows] = useState<SuggestionRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loadingLeave, setLoadingLeave] = useState(false);
+  const [loadingPurchase, setLoadingPurchase] = useState(false);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [leaveError, setLeaveError] = useState('');
+  const [purchaseError, setPurchaseError] = useState('');
   const [message, setMessage] = useState('');
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [processingPurchaseId, setProcessingPurchaseId] = useState<number | null>(null);
@@ -296,7 +301,9 @@ export default function ApprovalReviewPage() {
   const [clickedPurchaseBills, setClickedPurchaseBills] = useState<ClickedPurchaseBill[]>([]);
   const [clickedLeaveBills, setClickedLeaveBills] = useState<ClickedLeaveBill[]>([]);
   const [clickedSuggestionItems, setClickedSuggestionItems] = useState<ClickedSuggestionItem[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState<BranchKey | null>(null);
+  const [selectedLeaveBranch, setSelectedLeaveBranch] = useState<BranchKey | null>(null);
+  const [selectedPurchaseBranch, setSelectedPurchaseBranch] = useState<BranchKey | null>(null);
+  const [selectedPdoBranch, setSelectedPdoBranch] = useState<BranchKey | null>(null);
   const [showApprovedPdo, setShowApprovedPdo] = useState(false);
   const [approvedPdoRows, setApprovedPdoRows] = useState<ApprovedPdoRow[]>([]);
   const [loadingApprovedPdo, setLoadingApprovedPdo] = useState(false);
@@ -305,22 +312,26 @@ export default function ApprovalReviewPage() {
   const [leaveSummaryLoading, setLeaveSummaryLoading] = useState(false);
   const [purchaseSummary, setPurchaseSummary] = useState<Record<BranchKey, number>>({ korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 });
   const [purchaseSummaryLoading, setPurchaseSummaryLoading] = useState(false);
+  const [pdoSummary, setPdoSummary] = useState<Record<BranchKey, number>>({ korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 });
+  const [pdoSummaryLoading, setPdoSummaryLoading] = useState(false);
 
   const t = useMemo(() => texts[pageLocale], [pageLocale]);
 
   const branchOptions: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
-  const selectedBranchLabel = selectedBranch ? t.branches[selectedBranch] : '-';
+  const leaveBranchLabel = selectedLeaveBranch ? t.branches[selectedLeaveBranch] : '-';
+  const purchaseBranchLabel = selectedPurchaseBranch ? t.branches[selectedPurchaseBranch] : '-';
+  const pdoBranchLabel = selectedPdoBranch ? t.branches[selectedPdoBranch] : '-';
   const filteredLeaveRows = useMemo(() => {
-    return selectedBranch ? leaveRows : [];
-  }, [leaveRows, selectedBranch]);
+    return selectedLeaveBranch ? leaveRows : [];
+  }, [leaveRows, selectedLeaveBranch]);
 
   const filteredPurchaseRows = useMemo(() => {
-    return selectedBranch ? purchaseRows : [];
-  }, [purchaseRows, selectedBranch]);
+    return selectedPurchaseBranch ? purchaseRows : [];
+  }, [purchaseRows, selectedPurchaseBranch]);
 
   const filteredSuggestionRows = useMemo(() => {
-    return selectedBranch ? suggestionRows : [];
-  }, [suggestionRows, selectedBranch]);
+    return selectedPurchaseBranch ? suggestionRows : [];
+  }, [suggestionRows, selectedPurchaseBranch]);
 
   useEffect(() => {
     try {
@@ -337,127 +348,91 @@ export default function ApprovalReviewPage() {
 
       setMounted(true);
 
-    // Load leave summary for all branches
-    const loadLeaveSummary = async () => {
+    // Load all branch summary counts from single endpoint
+    const loadAllSummary = async () => {
       setLeaveSummaryLoading(true);
+      setPurchaseSummaryLoading(true);
+      setPdoSummaryLoading(true);
       try {
-        const branches: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
-        const results = await Promise.allSettled(
-          branches.map(b =>
-            fetch(`/api/vacation-leave-requests?status=pending&limit=100&branch=${encodeURIComponent(b)}`, { cache: 'no-store' })
-              .then(r => r.json())
-              .then(d => ({ branch: b, count: Array.isArray(d.rows) ? d.rows.length : 0 }))
-              .catch(() => ({ branch: b, count: 0 }))
-          )
-        );
-        const summary: Record<BranchKey, number> = { korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 };
-        results.forEach(r => { if (r.status === 'fulfilled') summary[r.value.branch] = r.value.count; });
-        setLeaveSummary(summary);
+        const res = await fetch('/api/executive/summary', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success) {
+          setLeaveSummary(data.leave);
+          setPurchaseSummary(data.purchase);
+          setPdoSummary(data.pdo);
+        }
       } catch { /* silent */ } finally {
         setLeaveSummaryLoading(false);
-      }
-    };
-    loadLeaveSummary();
-
-    const loadPurchaseSummary = async () => {
-      setPurchaseSummaryLoading(true);
-      try {
-        const branches: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
-        const results = await Promise.allSettled(
-          branches.map(b =>
-            fetch(`/api/purchase-requests?limit=200&branch=${encodeURIComponent(b)}`, { cache: 'no-store' })
-              .then(r => r.json())
-              .then(d => {
-                const rows: PurchaseRequest[] = Array.isArray(d.rows) ? d.rows : [];
-                const count = rows.filter(pr => {
-                  const s = normalizeStatus(pr.status);
-                  return s === 'pending' || s === 'submitted' || s === 'draft';
-                }).length;
-                return { branch: b, count };
-              })
-              .catch(() => ({ branch: b, count: 0 }))
-          )
-        );
-        const summary: Record<BranchKey, number> = { korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 };
-        results.forEach(r => { if (r.status === 'fulfilled') summary[r.value.branch] = r.value.count; });
-        setPurchaseSummary(summary);
-      } catch { /* silent */ } finally {
         setPurchaseSummaryLoading(false);
+        setPdoSummaryLoading(false);
       }
     };
-    loadPurchaseSummary();
-      router.replace('/executive/approval-review-login');
-    }
+    loadAllSummary();
+  } catch { /* silent */ }
   }, [router]);
 
-  const loadRows = useCallback(async () => {
-    if (!selectedBranch) {
-      setLeaveRows([]);
-      setPurchaseRows([]);
-      setSuggestionRows([]);
-      setOpenedPurchaseId(null);
-      setLoading(false);
-      setError('');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
+  const loadLeaveRows = useCallback(async () => {
+    if (!selectedLeaveBranch) { setLeaveRows([]); setLoadingLeave(false); return; }
+    setLoadingLeave(true);
+    setLeaveError('');
     try {
-      const [leaveRes, purchaseRes, suggestionRes] = await Promise.all([
-        fetch(`/api/vacation-leave-requests?status=pending&limit=100&branch=${encodeURIComponent(selectedBranch)}`, { cache: 'no-store' }),
-        fetch(`/api/purchase-requests?limit=100&branch=${encodeURIComponent(selectedBranch)}`, { cache: 'no-store' }),
-        fetch(`/api/kenergy/user-feedback?category=Suggestion&branch=${encodeURIComponent(selectedBranch)}`, { cache: 'no-store' })
-      ]);
-
-      const [leaveData, purchaseData, suggestionData] = await Promise.all([
-        parseJsonSafe(leaveRes),
-        parseJsonSafe(purchaseRes),
-        parseJsonSafe(suggestionRes)
-      ]);
-
-      if (!leaveRes.ok || !leaveData.success) {
-        throw new Error(leaveData.error || t.fetchError);
-      }
-
-      if (!purchaseRes.ok || !purchaseData.success) {
-        throw new Error(purchaseData.error || t.fetchError);
-      }
-
-      if (!suggestionRes.ok || !suggestionData.success) {
-        throw new Error(suggestionData.error || t.fetchError);
-      }
-
-      setLeaveRows(Array.isArray(leaveData.rows) ? leaveData.rows : []);
-      const allPurchaseRows: PurchaseRequest[] = Array.isArray(purchaseData.rows) ? purchaseData.rows : [];
-      const purchaseRowsForApproval = allPurchaseRows.filter((pr) => {
-        const status = normalizeStatus(pr.status);
-        // Show only actionable requests. Approved/Rejected items must stay hidden from this list.
-        return status === 'pending' || status === 'submitted' || status === 'draft';
-      });
-      setPurchaseRows(purchaseRowsForApproval);
-      setSuggestionRows(Array.isArray(suggestionData.feedbacks) ? suggestionData.feedbacks : []);
+      const res = await fetch(`/api/vacation-leave-requests?status=pending&limit=100&branch=${encodeURIComponent(selectedLeaveBranch)}`, { cache: 'no-store' });
+      const data = await parseJsonSafe(res);
+      if (!res.ok || !data.success) throw new Error(data.error || t.fetchError);
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+      setLeaveRows(rows);
+      setLeaveSummary((prev) => ({ ...prev, [selectedLeaveBranch]: rows.length }));
     } catch (err: any) {
-      setError(err.message || t.fetchError);
+      setLeaveError(err.message || t.fetchError);
     } finally {
-      setLoading(false);
+      setLoadingLeave(false);
     }
-  }, [selectedBranch, t.fetchError]);
+  }, [selectedLeaveBranch, t.fetchError]);
 
+  const loadPurchaseRows = useCallback(async () => {
+    if (!selectedPurchaseBranch) { setPurchaseRows([]); setSuggestionRows([]); setLoadingPurchase(false); return; }
+    setLoadingPurchase(true);
+    setLoadingSuggestion(true);
+    setPurchaseError('');
+    try {
+      const purchaseRes = await fetch(`/api/purchase-requests?limit=100&branch=${encodeURIComponent(selectedPurchaseBranch)}`, { cache: 'no-store' });
+      const purchaseData = await parseJsonSafe(purchaseRes);
+      if (!purchaseRes.ok || !purchaseData.success) throw new Error(purchaseData.error || t.fetchError);
+      const allPurchaseRows: PurchaseRequest[] = Array.isArray(purchaseData.rows) ? purchaseData.rows : [];
+      setPurchaseRows(allPurchaseRows.filter((pr) => {
+        const status = normalizeStatus(pr.status);
+        return status === 'pending' || status === 'submitted' || status === 'draft';
+      }));
+    } catch (err: any) {
+      setPurchaseError(err.message || t.fetchError);
+    } finally {
+      setLoadingPurchase(false);
+    }
+    // Load suggestions independently so failure doesn't affect purchase
+    try {
+      const suggestionRes = await fetch(`/api/kenergy/user-feedback?category=Suggestion&branch=${encodeURIComponent(selectedPurchaseBranch)}`, { cache: 'no-store' });
+      const suggestionData = await parseJsonSafe(suggestionRes);
+      setSuggestionRows(suggestionData.success && Array.isArray(suggestionData.feedbacks) ? suggestionData.feedbacks : []);
+    } catch { setSuggestionRows([]); } finally {
+      setLoadingSuggestion(false);
+    }
+  }, [selectedPurchaseBranch, t.fetchError]);
+
+  useEffect(() => { loadLeaveRows(); }, [loadLeaveRows]);
+  useEffect(() => { loadPurchaseRows(); }, [loadPurchaseRows]);
+
+  useEffect(() => { setClickedLeaveBills([]); }, [selectedLeaveBranch]);
   useEffect(() => {
-    loadRows();
-  }, [loadRows]);
-
+    setClickedPurchaseBills([]);
+    setClickedSuggestionItems([]);
+    setOpenedSuggestionId(null);
+    setOpenedPurchaseId(null);
+  }, [selectedPurchaseBranch]);
   useEffect(() => {
     setShowApprovedPdo(false);
     setApprovedPdoRows([]);
     setApprovedPdoError('');
-    setClickedPurchaseBills([]);
-    setClickedLeaveBills([]);
-    setClickedSuggestionItems([]);
-    setOpenedSuggestionId(null);
-  }, [selectedBranch]);
+  }, [selectedPdoBranch]);
 
   const markPurchaseClicked = useCallback((row: PurchaseRequest, action: PurchaseClickAction) => {
     const next: ClickedPurchaseBill = {
@@ -506,7 +481,7 @@ export default function ApprovalReviewPage() {
   }, []);
 
   const loadApprovedPdoRows = useCallback(async (branchOverride?: BranchKey) => {
-    const targetBranch = branchOverride || selectedBranch;
+    const targetBranch = branchOverride || selectedPdoBranch;
     if (!targetBranch) return;
     setLoadingApprovedPdo(true);
     setApprovedPdoError('');
@@ -551,7 +526,7 @@ export default function ApprovalReviewPage() {
     } finally {
       setLoadingApprovedPdo(false);
     }
-  }, [selectedBranch, t.approvedPdoFetchError]);
+  }, [selectedPdoBranch, t.approvedPdoFetchError]);
 
   const toggleLanguage = () => {
     const nextLocale: ApprovalLocale = pageLocale === 'ko' ? 'en' : 'ko';
@@ -561,7 +536,7 @@ export default function ApprovalReviewPage() {
 
   const handleUpdateStatus = async (row: LeaveRequest, status: ApprovalStatus) => {
     setMessage('');
-    setError('');
+    setLeaveError('');
     setProcessingId(row.vlrID);
 
     try {
@@ -575,7 +550,7 @@ export default function ApprovalReviewPage() {
           id: row.vlrID,
           status,
           approved_by: user?.name || user?.username || 'approver',
-          branch: selectedBranch || undefined
+          branch: selectedLeaveBranch || undefined
         })
       });
 
@@ -585,9 +560,12 @@ export default function ApprovalReviewPage() {
       }
 
       setLeaveRows((prev) => prev.filter((item) => item.vlrID !== row.vlrID));
+      if (selectedLeaveBranch) {
+        setLeaveSummary((prev) => ({ ...prev, [selectedLeaveBranch]: Math.max(0, (prev[selectedLeaveBranch] ?? 1) - 1) }));
+      }
       setMessage(t.actionSuccess);
     } catch (err: any) {
-      setError(err.message || t.actionError);
+      setLeaveError(err.message || t.actionError);
     } finally {
       setProcessingId(null);
     }
@@ -595,7 +573,7 @@ export default function ApprovalReviewPage() {
 
   const handlePurchaseUpdateStatus = async (row: PurchaseRequest, status: 'approved' | 'rejected') => {
     setMessage('');
-    setError('');
+    setPurchaseError('');
     setProcessingPurchaseId(row.prID);
 
     try {
@@ -609,7 +587,7 @@ export default function ApprovalReviewPage() {
           prID: row.prID,
           status,
           approved_by: user?.name || user?.username || 'approver',
-          branch: selectedBranch || undefined
+          branch: selectedPurchaseBranch || undefined
         })
       });
 
@@ -622,9 +600,12 @@ export default function ApprovalReviewPage() {
         return prev.filter((item) => item.prID !== row.prID);
       });
       setOpenedPurchaseId((prev) => (prev === row.prID ? null : prev));
+      if (selectedPurchaseBranch) {
+        setPurchaseSummary((prev) => ({ ...prev, [selectedPurchaseBranch]: Math.max(0, (prev[selectedPurchaseBranch] ?? 1) - 1) }));
+      }
       setMessage(t.purchaseActionSuccess);
     } catch (err: any) {
-      setError(err.message || t.purchaseActionError);
+      setPurchaseError(err.message || t.purchaseActionError);
     } finally {
       setProcessingPurchaseId(null);
     }
@@ -683,16 +664,15 @@ export default function ApprovalReviewPage() {
           <p className="text-sm text-gray-500 mt-1">{t.subtitle}</p>
           <p className="text-xs text-indigo-600 mt-2">{t.pendingOnly}</p>
           <p className="text-xs text-gray-500 mt-1">{t.selectBranchHint}</p>
-          <p className="text-xs text-gray-500 mt-1">{t.selectedBranchLabel}: {selectedBranchLabel}</p>
 
           {/* Leave summary by branch */}
           {(() => {
-            const branchMeta: Record<string, { flag: string; gradient: string; active: string; badge: string; dot: string }> = {
-              korea:    { flag: '🇰🇷', gradient: 'from-blue-50 to-indigo-50',   active: 'from-indigo-500 to-blue-600',   badge: 'bg-indigo-100 text-indigo-700',  dot: 'bg-indigo-400' },
-              thailand: { flag: '🇹🇭', gradient: 'from-red-50 to-pink-50',      active: 'from-pink-500 to-red-500',      badge: 'bg-red-100 text-red-700',        dot: 'bg-red-400' },
-              vietnam:  { flag: '🇻🇳', gradient: 'from-red-50 to-yellow-50',    active: 'from-red-500 to-yellow-500',    badge: 'bg-yellow-100 text-yellow-700',  dot: 'bg-yellow-500' },
-              malaysia: { flag: '🇲🇾', gradient: 'from-blue-50 to-red-50',      active: 'from-blue-600 to-red-500',      badge: 'bg-blue-100 text-blue-700',      dot: 'bg-blue-400' },
-              brunei:   { flag: '🇧🇳', gradient: 'from-yellow-50 to-orange-50', active: 'from-yellow-500 to-orange-500', badge: 'bg-orange-100 text-orange-700',  dot: 'bg-orange-400' },
+            const branchMeta: Record<string, { flag: string; code: string; gradient: string; active: string; badge: string; dot: string }> = {
+              korea:    { flag: '🇰🇷', code: 'kr', gradient: 'from-blue-50 to-indigo-50',   active: 'from-indigo-500 to-blue-600',   badge: 'bg-indigo-100 text-indigo-700',  dot: 'bg-indigo-400' },
+              thailand: { flag: '🇹🇭', code: 'th', gradient: 'from-red-50 to-pink-50',      active: 'from-pink-500 to-red-500',      badge: 'bg-red-100 text-red-700',        dot: 'bg-red-400' },
+              vietnam:  { flag: '🇻🇳', code: 'vn', gradient: 'from-red-50 to-yellow-50',    active: 'from-red-500 to-yellow-500',    badge: 'bg-yellow-100 text-yellow-700',  dot: 'bg-yellow-500' },
+              malaysia: { flag: '🇲🇾', code: 'my', gradient: 'from-blue-50 to-red-50',      active: 'from-blue-600 to-red-500',      badge: 'bg-blue-100 text-blue-700',      dot: 'bg-blue-400' },
+              brunei:   { flag: '🇧🇳', code: 'bn', gradient: 'from-yellow-50 to-orange-50', active: 'from-yellow-500 to-orange-500', badge: 'bg-orange-100 text-orange-700',  dot: 'bg-orange-400' },
             };
             const totalLeave = Object.values(leaveSummary).reduce((s, v) => s + (v ?? 0), 0);
             return (
@@ -711,6 +691,35 @@ export default function ApprovalReviewPage() {
                         {totalLeave} {t.leaveSummaryPending}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const reload = async () => {
+                          setLeaveSummaryLoading(true);
+                          setPurchaseSummaryLoading(true);
+                          setPdoSummaryLoading(true);
+                          try {
+                            const res = await fetch('/api/executive/summary', { cache: 'no-store' });
+                            const data = await res.json();
+                            if (data.success) {
+                              setLeaveSummary(data.leave);
+                              setPurchaseSummary(data.purchase);
+                              setPdoSummary(data.pdo);
+                            }
+                          } catch { /* silent */ } finally {
+                            setLeaveSummaryLoading(false);
+                            setPurchaseSummaryLoading(false);
+                            setPdoSummaryLoading(false);
+                          }
+                        };
+                        reload();
+                      }}
+                      disabled={leaveSummaryLoading}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                    >
+                      {leaveSummaryLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      {t.refresh}
+                    </button>
                   </div>
                 </div>
                 {/* Cards */}
@@ -718,12 +727,12 @@ export default function ApprovalReviewPage() {
                   {branchOptions.map(branch => {
                     const count = leaveSummary[branch] ?? 0;
                     const meta = branchMeta[branch] ?? branchMeta.korea;
-                    const isSelected = selectedBranch === branch;
+                    const isSelected = selectedLeaveBranch === branch;
                     return (
                       <button
                         key={`summary-${branch}`}
                         type="button"
-                        onClick={() => setSelectedBranch(branch)}
+                        onClick={() => setSelectedLeaveBranch(branch)}
                         className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
                           isSelected
                             ? `bg-gradient-to-br ${meta.active} border-transparent text-white`
@@ -735,7 +744,7 @@ export default function ApprovalReviewPage() {
                           <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />
                         )}
                         {/* Flag */}
-                        <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
+                        <img src={`/flags/${meta.code}.svg`} alt={t.branches[branch]} className="w-10 h-7 object-cover rounded shadow-sm mb-1" />
                         {/* Count */}
                         <span className={`text-3xl font-extrabold leading-none ${isSelected ? 'text-white' : count > 0 ? 'text-gray-800' : 'text-gray-300'}`}>
                           {leaveSummaryLoading ? '—' : count}
@@ -766,12 +775,12 @@ export default function ApprovalReviewPage() {
 
           {/* Pending Purchase Orders by Branch */}
           {(() => {
-            const branchMeta: Record<string, { flag: string; gradient: string; active: string; badge: string; dot: string }> = {
-              korea:    { flag: '🇰🇷', gradient: 'from-emerald-50 to-teal-50',   active: 'from-teal-500 to-emerald-600',   badge: 'bg-teal-100 text-teal-700',      dot: 'bg-teal-400' },
-              thailand: { flag: '🇹🇭', gradient: 'from-green-50 to-emerald-50',  active: 'from-emerald-500 to-green-500',  badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
-              vietnam:  { flag: '🇻🇳', gradient: 'from-lime-50 to-green-50',     active: 'from-green-500 to-lime-500',     badge: 'bg-green-100 text-green-700',     dot: 'bg-green-500' },
-              malaysia: { flag: '🇲🇾', gradient: 'from-teal-50 to-cyan-50',      active: 'from-cyan-600 to-teal-500',      badge: 'bg-cyan-100 text-cyan-700',       dot: 'bg-cyan-400' },
-              brunei:   { flag: '🇧🇳', gradient: 'from-emerald-50 to-lime-50',   active: 'from-lime-500 to-emerald-500',   badge: 'bg-lime-100 text-lime-700',       dot: 'bg-lime-500' },
+            const branchMeta: Record<string, { flag: string; code: string; gradient: string; active: string; badge: string; dot: string }> = {
+              korea:    { flag: '🇰🇷', code: 'kr', gradient: 'from-emerald-50 to-teal-50',   active: 'from-teal-500 to-emerald-600',   badge: 'bg-teal-100 text-teal-700',      dot: 'bg-teal-400' },
+              thailand: { flag: '🇹🇭', code: 'th', gradient: 'from-green-50 to-emerald-50',  active: 'from-emerald-500 to-green-500',  badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
+              vietnam:  { flag: '🇻🇳', code: 'vn', gradient: 'from-lime-50 to-green-50',     active: 'from-green-500 to-lime-500',     badge: 'bg-green-100 text-green-700',     dot: 'bg-green-500' },
+              malaysia: { flag: '🇲🇾', code: 'my', gradient: 'from-teal-50 to-cyan-50',      active: 'from-cyan-600 to-teal-500',      badge: 'bg-cyan-100 text-cyan-700',       dot: 'bg-cyan-400' },
+              brunei:   { flag: '🇧🇳', code: 'bn', gradient: 'from-emerald-50 to-lime-50',   active: 'from-lime-500 to-emerald-500',   badge: 'bg-lime-100 text-lime-700',       dot: 'bg-lime-500' },
             };
             const totalPurchase = Object.values(purchaseSummary).reduce((s, v) => s + (v ?? 0), 0);
             return (
@@ -792,29 +801,21 @@ export default function ApprovalReviewPage() {
                       type="button"
                       onClick={() => {
                         const loadPurchaseSummaryRefresh = async () => {
+                          setLeaveSummaryLoading(true);
                           setPurchaseSummaryLoading(true);
+                          setPdoSummaryLoading(true);
                           try {
-                            const branches: BranchKey[] = ['korea', 'thailand', 'vietnam', 'malaysia', 'brunei'];
-                            const results = await Promise.allSettled(
-                              branches.map(b =>
-                                fetch(`/api/purchase-requests?limit=200&branch=${encodeURIComponent(b)}`, { cache: 'no-store' })
-                                  .then(r => r.json())
-                                  .then(d => {
-                                    const rows: PurchaseRequest[] = Array.isArray(d.rows) ? d.rows : [];
-                                    const count = rows.filter(pr => {
-                                      const s = normalizeStatus(pr.status);
-                                      return s === 'pending' || s === 'submitted' || s === 'draft';
-                                    }).length;
-                                    return { branch: b, count };
-                                  })
-                                  .catch(() => ({ branch: b, count: 0 }))
-                              )
-                            );
-                            const summary: Record<BranchKey, number> = { korea: 0, thailand: 0, vietnam: 0, malaysia: 0, brunei: 0 };
-                            results.forEach(r => { if (r.status === 'fulfilled') summary[r.value.branch] = r.value.count; });
-                            setPurchaseSummary(summary);
+                            const res = await fetch('/api/executive/summary', { cache: 'no-store' });
+                            const data = await res.json();
+                            if (data.success) {
+                              setLeaveSummary(data.leave);
+                              setPurchaseSummary(data.purchase);
+                              setPdoSummary(data.pdo);
+                            }
                           } catch { /* silent */ } finally {
+                            setLeaveSummaryLoading(false);
                             setPurchaseSummaryLoading(false);
+                            setPdoSummaryLoading(false);
                           }
                         };
                         loadPurchaseSummaryRefresh();
@@ -832,12 +833,12 @@ export default function ApprovalReviewPage() {
                   {branchOptions.map(branch => {
                     const meta = branchMeta[branch] ?? branchMeta.korea;
                     const count = purchaseSummary[branch] ?? 0;
-                    const isSelected = selectedBranch === branch;
+                    const isSelected = selectedPurchaseBranch === branch;
                     return (
                       <button
                         key={`purchase-summary-${branch}`}
                         type="button"
-                        onClick={() => setSelectedBranch(branch)}
+                        onClick={() => setSelectedPurchaseBranch(branch)}
                         className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
                           isSelected
                             ? `bg-gradient-to-br ${meta.active} border-transparent text-white`
@@ -847,7 +848,7 @@ export default function ApprovalReviewPage() {
                         {isSelected && (
                           <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />
                         )}
-                        <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
+                        <img src={`/flags/${meta.code}.svg`} alt={t.branches[branch]} className="w-10 h-7 object-cover rounded shadow-sm mb-1" />
                         <span className={`text-3xl font-extrabold leading-none ${isSelected ? 'text-white' : count > 0 ? 'text-gray-800' : 'text-gray-300'}`}>
                           {purchaseSummaryLoading ? '—' : count}
                         </span>
@@ -875,13 +876,14 @@ export default function ApprovalReviewPage() {
 
           {/* Approved PDO by Branch */}
           {(() => {
-            const branchMeta: Record<string, { flag: string; gradient: string; active: string }> = {
-              korea:    { flag: '🇰🇷', gradient: 'from-sky-50 to-cyan-50',    active: 'from-sky-500 to-cyan-500'    },
-              thailand: { flag: '🇹🇭', gradient: 'from-teal-50 to-green-50',  active: 'from-teal-500 to-green-500'  },
-              vietnam:  { flag: '🇻🇳', gradient: 'from-cyan-50 to-blue-50',   active: 'from-cyan-600 to-blue-500'   },
-              malaysia: { flag: '🇲🇾', gradient: 'from-sky-50 to-indigo-50',  active: 'from-sky-600 to-indigo-500'  },
-              brunei:   { flag: '🇧🇳', gradient: 'from-teal-50 to-cyan-50',   active: 'from-teal-600 to-cyan-500'   },
+            const branchMeta: Record<string, { flag: string; code: string; gradient: string; active: string; badge: string; dot: string }> = {
+              korea:    { flag: '🇰🇷', code: 'kr', gradient: 'from-sky-50 to-cyan-50',    active: 'from-sky-500 to-cyan-500',    badge: 'bg-sky-100 text-sky-700',      dot: 'bg-sky-400'    },
+              thailand: { flag: '🇹🇭', code: 'th', gradient: 'from-teal-50 to-green-50',  active: 'from-teal-500 to-green-500',  badge: 'bg-teal-100 text-teal-700',    dot: 'bg-teal-400'   },
+              vietnam:  { flag: '🇻🇳', code: 'vn', gradient: 'from-cyan-50 to-blue-50',   active: 'from-cyan-600 to-blue-500',   badge: 'bg-cyan-100 text-cyan-700',    dot: 'bg-cyan-500'   },
+              malaysia: { flag: '🇲🇾', code: 'my', gradient: 'from-sky-50 to-indigo-50',  active: 'from-sky-600 to-indigo-500',  badge: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-400' },
+              brunei:   { flag: '🇧🇳', code: 'bn', gradient: 'from-teal-50 to-cyan-50',   active: 'from-teal-600 to-cyan-500',   badge: 'bg-teal-100 text-teal-700',    dot: 'bg-teal-500'   },
             };
+            const totalPdo = Object.values(pdoSummary).reduce((s, v) => s + (v ?? 0), 0);
             return (
               <div className="mt-4 rounded-2xl border border-sky-200 bg-white shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-sky-500 to-cyan-500">
@@ -889,37 +891,85 @@ export default function ApprovalReviewPage() {
                     <span className="text-lg">✅</span>
                     <p className="text-sm font-bold text-white tracking-wide">{t.approvedPdoByBranchTitle}</p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={!selectedBranch || loadingApprovedPdo}
-                    onClick={() => { showApprovedPdo ? setShowApprovedPdo(false) : loadApprovedPdoRows(); }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
-                  >
-                    {loadingApprovedPdo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>{showApprovedPdo ? '▲' : '▼'}</span>}
-                    {loadingApprovedPdo ? t.processing : showApprovedPdo ? t.approvedPdoHideButton : t.approvedPdoButton}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {pdoSummaryLoading && <Loader2 className="w-4 h-4 animate-spin text-white/80" />}
+                    {!pdoSummaryLoading && totalPdo > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/25 text-white text-xs font-bold px-2.5 py-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse inline-block" />
+                        {totalPdo} {t.pdoSummaryPending}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const reload = async () => {
+                          setLeaveSummaryLoading(true);
+                          setPurchaseSummaryLoading(true);
+                          setPdoSummaryLoading(true);
+                          try {
+                            const res = await fetch('/api/executive/summary', { cache: 'no-store' });
+                            const data = await res.json();
+                            if (data.success) {
+                              setLeaveSummary(data.leave);
+                              setPurchaseSummary(data.purchase);
+                              setPdoSummary(data.pdo);
+                            }
+                          } catch { /* silent */ } finally {
+                            setLeaveSummaryLoading(false);
+                            setPurchaseSummaryLoading(false);
+                            setPdoSummaryLoading(false);
+                          }
+                        };
+                        reload();
+                      }}
+                      disabled={pdoSummaryLoading}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                    >
+                      {pdoSummaryLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      {t.refresh}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!selectedPdoBranch || loadingApprovedPdo}
+                      onClick={() => { showApprovedPdo ? setShowApprovedPdo(false) : loadApprovedPdoRows(); }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+                    >
+                      {loadingApprovedPdo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>{showApprovedPdo ? '▲' : '▼'}</span>}
+                      {loadingApprovedPdo ? t.processing : showApprovedPdo ? t.approvedPdoHideButton : t.approvedPdoButton}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3">
                   {branchOptions.map(branch => {
                     const meta = branchMeta[branch] ?? branchMeta.korea;
-                    const isSelected = selectedBranch === branch;
+                    const isSelected = selectedPdoBranch === branch;
+                    const count = pdoSummary[branch] ?? 0;
                     return (
                       <button
                         key={`approved-pdo-${branch}`}
                         type="button"
                         disabled={loadingApprovedPdo}
-                        onClick={() => { setSelectedBranch(branch); loadApprovedPdoRows(branch); }}
+                        onClick={() => { setSelectedPdoBranch(branch); loadApprovedPdoRows(branch); }}
                         className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60 ${
                           isSelected
-                            ? `bg-gradient-to-br ${meta.active} border-transparent`
-                            : `bg-gradient-to-br ${meta.gradient} border-gray-100`
+                            ? `bg-gradient-to-br ${meta.active} border-transparent text-white`
+                            : `bg-gradient-to-br ${meta.gradient} border-gray-100 text-gray-700`
                         }`}
                       >
                         {isSelected && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/70 animate-pulse" />}
-                        <span className="text-2xl mb-1 drop-shadow-sm">{meta.flag}</span>
-                        <span className={`text-xs font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                        <img src={`/flags/${meta.code}.svg`} alt={t.branches[branch]} className="w-10 h-7 object-cover rounded shadow-sm mb-1" />
+                        <span className={`text-3xl font-extrabold leading-none ${isSelected ? 'text-white' : count > 0 ? 'text-gray-800' : 'text-gray-300'}`}>
+                          {pdoSummaryLoading ? '—' : count}
+                        </span>
+                        <span className={`text-xs font-semibold mt-1 ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
                           {t.branches[branch]}
                         </span>
+                        {count > 0 && !isSelected && (
+                          <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} inline-block`} />
+                            {t.pdoSummaryPending}
+                          </span>
+                        )}
                         {isSelected && (
                           <span className="mt-1.5 inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
                             ✓ Selected
@@ -934,23 +984,12 @@ export default function ApprovalReviewPage() {
           })()}
 
           {message && <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{message}</div>}
-          {error && <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
         </div>
 
-        {loading ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 flex items-center justify-center gap-2 text-gray-600">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>{t.loading}</span>
-          </div>
-        ) : !selectedBranch ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 text-center text-gray-500">
-            {t.selectBranchFirst}
-          </div>
-        ) : (
           <div className="space-y-4">
             {showApprovedPdo && (
               <div className="bg-gradient-to-br from-sky-50 to-white rounded-2xl border border-sky-200 shadow-sm p-4 sm:p-5">
-                <h2 className="text-base sm:text-lg font-semibold text-sky-900 mb-3">{t.approvedPdoSectionTitle} - {selectedBranchLabel}</h2>
+                <h2 className="text-base sm:text-lg font-semibold text-sky-900 mb-3">{t.approvedPdoSectionTitle} - {pdoBranchLabel}</h2>
 
                 {approvedPdoError ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{approvedPdoError}</div>
@@ -987,7 +1026,7 @@ export default function ApprovalReviewPage() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const branchKeyForRow = selectedBranch || 'thailand'
+                                  const branchKeyForRow = selectedPdoBranch || 'thailand'
                                   window.open(
                                     `/KR-Thailand/Admin-Login/production-orders/print?pdoID=${encodeURIComponent(row.id)}&pdoNo=${encodeURIComponent(row.pdoNo)}&branchKey=${encodeURIComponent(branchKeyForRow)}`,
                                     '_blank'
@@ -1007,10 +1046,17 @@ export default function ApprovalReviewPage() {
               </div>
             )}
 
-            <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-200 shadow-sm p-4 sm:p-5">
-              <h2 className="text-base sm:text-lg font-semibold text-blue-900 mb-3">{t.purchaseSectionTitle} - {selectedBranchLabel}</h2>
+            {selectedPurchaseBranch && <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-200 shadow-sm p-4 sm:p-5">
+              <h2 className="text-base sm:text-lg font-semibold text-blue-900 mb-3">{t.purchaseSectionTitle} - {purchaseBranchLabel}</h2>
 
-              {filteredPurchaseRows.length === 0 ? (
+              {loadingPurchase ? (
+                <div className="flex items-center justify-center gap-2 text-gray-600 py-4">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>{t.loading}</span>
+                </div>
+              ) : purchaseError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{purchaseError}</div>
+              ) : filteredPurchaseRows.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 text-sm text-blue-700">{t.noPurchaseData}</div>
               ) : (
                 <div className="space-y-3">
@@ -1102,12 +1148,19 @@ export default function ApprovalReviewPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
-            <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl border border-emerald-200 shadow-sm p-4 sm:p-5">
-              <h2 className="text-base sm:text-lg font-semibold text-emerald-900 mb-3">{t.leaveSectionTitle} - {selectedBranchLabel}</h2>
+            {selectedLeaveBranch && <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl border border-emerald-200 shadow-sm p-4 sm:p-5">
+              <h2 className="text-base sm:text-lg font-semibold text-emerald-900 mb-3">{t.leaveSectionTitle} - {leaveBranchLabel}</h2>
 
-              {filteredLeaveRows.length === 0 ? (
+              {loadingLeave ? (
+                <div className="flex items-center justify-center gap-2 text-gray-600 py-4">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>{t.loading}</span>
+                </div>
+              ) : leaveError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{leaveError}</div>
+              ) : filteredLeaveRows.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-700">{t.noLeaveData}</div>
               ) : (
                 <div className="space-y-3 sm:space-y-4">
@@ -1197,12 +1250,17 @@ export default function ApprovalReviewPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
-            <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-violet-200 shadow-sm p-4 sm:p-5">
-              <h2 className="text-base sm:text-lg font-semibold text-violet-900 mb-3">{t.suggestionSectionTitle} - {selectedBranchLabel}</h2>
+            {selectedPurchaseBranch && <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-violet-200 shadow-sm p-4 sm:p-5">
+              <h2 className="text-base sm:text-lg font-semibold text-violet-900 mb-3">{t.suggestionSectionTitle} - {purchaseBranchLabel}</h2>
 
-              {filteredSuggestionRows.length === 0 ? (
+              {loadingSuggestion ? (
+                <div className="flex items-center justify-center gap-2 text-gray-600 py-4">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>{t.loading}</span>
+                </div>
+              ) : filteredSuggestionRows.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-violet-300 bg-violet-50 p-4 text-sm text-violet-700">{t.noSuggestionData}</div>
               ) : (
                 <div className="space-y-3">
@@ -1258,9 +1316,8 @@ export default function ApprovalReviewPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
           </div>
-        )}
       </div>
     </div>
   );

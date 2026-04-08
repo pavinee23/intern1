@@ -43,7 +43,12 @@ async function ensureVacationLeaveTable() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `)
 
-  await pool.query(`ALTER TABLE vacation_leave_requests ADD COLUMN IF NOT EXISTS branch varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`)
+  // Wrap each ALTER in try-catch: MySQL 5.7 does not support ADD COLUMN IF NOT EXISTS
+  try { await pool.query(`ALTER TABLE vacation_leave_requests ADD COLUMN branch varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`) } catch (_) {}
+  try { await pool.query(`ALTER TABLE vacation_leave_requests ADD COLUMN userId INT NULL DEFAULT NULL`) } catch (_) {}
+  try {
+    await pool.query(`ALTER TABLE vacation_leave_requests ADD CONSTRAINT fk_vlr_user FOREIGN KEY (userId) REFERENCES user_list(userId) ON DELETE SET NULL ON UPDATE CASCADE`)
+  } catch (_) { /* constraint already exists */ }
 }
 
 export async function GET(request: NextRequest) {
@@ -55,6 +60,8 @@ export async function GET(request: NextRequest) {
     const vlrNo = searchParams.get('vlrNo')
     const status = searchParams.get('status')
     const employeeId = searchParams.get('employeeId')
+    const createdBy = searchParams.get('createdBy')
+    const userIdParam = searchParams.get('userId')
     const branch = (searchParams.get('branch') || '').toLowerCase()
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -88,6 +95,16 @@ export async function GET(request: NextRequest) {
     if (employeeId) {
       query += ' AND employeeId = ?'
       params.push(employeeId)
+    }
+
+    if (createdBy) {
+      query += ' AND created_by = ?'
+      params.push(createdBy)
+    }
+
+    if (userIdParam) {
+      query += ' AND userId = ?'
+      params.push(parseInt(userIdParam))
     }
 
     if (branch && BRANCH_KEYWORDS[branch]) {
@@ -126,6 +143,7 @@ export async function POST(request: NextRequest) {
       requestDate,
       employeeName,
       employeeId,
+      userId,
       department,
       leaveType,
       startDate,
@@ -150,17 +168,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate employeeId uniqueness: it must not belong to a different user
+    const [existingRows]: any = await pool.query(
+      'SELECT created_by FROM vacation_leave_requests WHERE employeeId = ? LIMIT 1',
+      [employeeId]
+    )
+    if (existingRows && existingRows.length > 0) {
+      const existingOwner = existingRows[0].created_by
+      if (existingOwner && createdBy && existingOwner !== createdBy) {
+        return NextResponse.json(
+          { success: false, error: `Employee ID "${employeeId}" is already registered to another user` },
+          { status: 409 }
+        )
+      }
+    }
+
     const vlrNo = await generateDocumentNumber('VLR', 'vacation_leave_requests', 'vlrNo')
 
     const [result]: any = await pool.query(
       `INSERT INTO vacation_leave_requests
-      (vlrNo, requestDate, employeeName, employeeId, department, leaveType, startDate, endDate, totalDays, reason, contactPhone, backupPerson, approver, branch, status, notes, created_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())`,
+      (vlrNo, requestDate, employeeName, employeeId, userId, department, leaveType, startDate, endDate, totalDays, reason, contactPhone, backupPerson, approver, branch, status, notes, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())`,
       [
         vlrNo,
         requestDate || new Date().toISOString().split('T')[0],
         employeeName,
         employeeId,
+        userId ? parseInt(userId) : null,
         department,
         leaveType || 'annual_leave',
         startDate,

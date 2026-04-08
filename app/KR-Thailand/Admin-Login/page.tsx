@@ -118,7 +118,8 @@ export default function AdminLoginPage() {
         name: data.name,
         email: data.email,
         site: data.site,
-        typeID: userTypeID
+        typeID: userTypeID,
+        employeeId: data.employeeId || ''
       }))
       localStorage.setItem('k_system_admin_token', data.token || '')
 

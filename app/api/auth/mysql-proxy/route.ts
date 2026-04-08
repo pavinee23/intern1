@@ -1,5 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import mysql from 'mysql2/promise'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export const runtime = 'nodejs'
 export const maxDuration = 10
@@ -55,7 +57,30 @@ export async function POST(req: NextRequest) {
 
       const u = users[0]
 
-      if (u.password !== password) {
+      // Fetch employeeId separately (column may not exist if migration not run)
+      let employeeId = ''
+      try {
+        const [eidRows] = await connection.execute(
+          'SELECT employeeId FROM user_list WHERE userId = ? LIMIT 1',
+          [u.userId]
+        )
+        employeeId = (eidRows as any[])?.[0]?.employeeId || ''
+      } catch (_) { /* employeeId column not yet created */ }
+
+      // Check password: bcrypt → MD5 → plaintext fallback
+      let passwordMatches = false
+      try {
+        passwordMatches = await bcrypt.compare(password, u.password)
+      } catch {
+        const md5Hash = crypto.createHash('md5').update(password).digest('hex')
+        if (md5Hash === u.password) {
+          passwordMatches = true
+        } else {
+          passwordMatches = password === u.password
+        }
+      }
+
+      if (!passwordMatches) {
         return NextResponse.json({ error: 'Invalid Username, Password, or Site' }, { status: 401 })
       }
 
@@ -88,7 +113,8 @@ export async function POST(req: NextRequest) {
         email:        u.email        || '',
         site:         u.site         || '',
         typeID:       u.typeID,
-        departmentID: u.departmentID || ''
+        departmentID: u.departmentID || '',
+        employeeId:   employeeId
       })
 
     } finally {
