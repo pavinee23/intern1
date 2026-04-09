@@ -1,0 +1,18 @@
+[Unit]
+Description=KSystem T310 MQTT Listener
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pavinee
+WorkingDirectory=/home/pavinee/K/mqtt-services
+EnvironmentFile=-/home/pavinee/K/.env
+ExecStart=/usr/bin/python3 /home/pavinee/K/mqtt-services/t310_mqtt_listener.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/pavinee/K/mqtt-services/t310_listener.log
+StandardError=append:/home/pavinee/K/mqtt-services/t310_listener.log
+
+[Install]
+WantedBy=multi-user.target
