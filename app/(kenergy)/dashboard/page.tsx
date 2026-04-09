@@ -77,6 +77,26 @@ const getDeviceTimestamp = (device: Pick<RecentDevice, 'lastUpdate'>) => {
   return Number.isFinite(timestamp) ? timestamp : 0
 }
 
+const companyNameFallbackMap: Record<string, string> = {
+  'บริษัท ซีเจ มอร์ จำกัด': 'CJ MORE Co., Ltd.',
+  'บริษัท คาลเท็กซ์ (ไทยแลนด์) จำกัด': 'Caltex (Thailand) Co., Ltd.'
+}
+
+const getLocalizedCustomerName = (
+  device: Pick<RecentDevice, 'customerName' | 'customerNameEn' | 'deviceName'>,
+  locale: string
+) => {
+  const customerName = (device.customerName || '').trim()
+  const customerNameEn = (device.customerNameEn || '').trim()
+
+  if (locale === 'th') {
+    return customerName || device.deviceName || '-'
+  }
+
+  const fallbackEn = customerName ? companyNameFallbackMap[customerName] : undefined
+  return customerNameEn || fallbackEn || device.deviceName || customerName || '-'
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { t, locale } = useLocale()
@@ -1081,7 +1101,7 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <p className="font-bold text-white text-sm leading-tight">
-                          {(locale === 'th' ? device.customerName : device.customerNameEn || device.customerName) || device.deviceName}
+                          {getLocalizedCustomerName(device, locale)}
                         </p>
                         {device.location && (
                           <div className="flex items-center gap-1 mt-1">
@@ -1427,7 +1447,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-white text-sm leading-tight">
-                            {(locale === 'th' ? device.customerName : device.customerNameEn || device.customerName) || device.deviceName}
+                            {getLocalizedCustomerName(device, locale)}
                           </p>
                           {device.location && (
                             <div className="flex items-center gap-1 mt-1">
