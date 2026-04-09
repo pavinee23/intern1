@@ -1038,7 +1038,12 @@ export default function DashboardPage() {
                 const hasBeforeCurrent = device.beforeCurrentABC?.some(v => v !== null)
                 const hasAfterCurrent  = device.currentABC?.some(v => v !== null)
                 const bal = getBalanceState(device.imbalancePercent)
-                const recentPhases = [
+                const beforePhases = [
+                  { label: 'L1', value: device.beforeCurrentABC?.[0], thd: device.beforeThd ?? null, color: 'bg-orange-50 text-orange-700 border-orange-200' },
+                  { label: 'L2', value: device.beforeCurrentABC?.[1], thd: device.beforeThd ?? null, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                  { label: 'L3', value: device.beforeCurrentABC?.[2], thd: device.beforeThd ?? null, color: 'bg-violet-50 text-violet-700 border-violet-200' }
+                ]
+                const afterPhases = [
                   { label: 'L1', value: device.currentABC?.[0], thd: device.thdABC?.[0], color: 'bg-orange-50 text-orange-700 border-orange-200' },
                   { label: 'L2', value: device.currentABC?.[1], thd: device.thdABC?.[1], color: 'bg-blue-50 text-blue-700 border-blue-200' },
                   { label: 'L3', value: device.currentABC?.[2], thd: device.thdABC?.[2], color: 'bg-violet-50 text-violet-700 border-violet-200' }
@@ -1140,6 +1145,76 @@ export default function DashboardPage() {
                             <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide block mb-0.5">{dashboardCopy.addressLabel}</span>
                             <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
                           </div>
+
+                          {/* Before Metrics Panel */}
+                          <div className="mt-2 border-t border-gray-100 pt-2 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600 mb-1">{dashboardCopy.avgCurrent}</p>
+                                <p className="text-sm font-extrabold text-amber-900 leading-none">{fmtA(device.avgBeforeCurrent)}</p>
+                              </div>
+                              <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">{dashboardCopy.loadBalance}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${bal.className}`}>
+                                    {bal.label}
+                                  </span>
+                                  <span className="text-xs font-bold text-gray-700">
+                                    {device.imbalancePercent === null ? '--' : `${device.imbalancePercent.toFixed(1)}%`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">{uiCopy.voltageLineToLine}</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {[
+                                  { label: 'L1-L2', value: device.voltageLL?.[0], color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+                                  { label: 'L2-L3', value: device.voltageLL?.[1], color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+                                  { label: 'L3-L1', value: device.voltageLL?.[2], color: 'bg-teal-50 text-teal-700 border-teal-200' }
+                                ].map((volt) => (
+                                  <div key={volt.label} className={`rounded-xl border px-2.5 py-2 text-center ${volt.color}`}>
+                                    <p className="text-[10px] font-bold mb-0.5">{volt.label}</p>
+                                    <p className="text-sm font-extrabold">{volt.value == null ? '0.0' : Number(volt.value).toFixed(1)} V</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">{dashboardCopy.phaseCurrent} & {uiCopy.thd}</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {beforePhases.map((phase) => (
+                                  <div key={phase.label} className={`rounded-xl border overflow-hidden ${phase.color}`}>
+                                    <div className="px-2.5 py-1 border-b border-current/10">
+                                      <p className="text-xs font-extrabold">{phase.label}</p>
+                                    </div>
+                                    <div className="px-2.5 py-2 space-y-1">
+                                      <div>
+                                        <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.current}</p>
+                                        <p className="text-sm font-extrabold leading-tight">{fmtA(phase.value)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.thd}</p>
+                                        <p className="text-sm font-extrabold leading-tight">{phase.thd == null ? '--' : `${Number(phase.thd).toFixed(1)}%`}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5 flex items-center justify-between">
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">{dashboardCopy.avgThd}</p>
+                              <p className="text-sm font-extrabold text-purple-900">{device.beforeThd == null ? '--' : `${Number(device.beforeThd).toFixed(1)}%`}</p>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-0.5 border-t border-gray-100 text-[10px] text-gray-400">
+                              <span className="font-medium uppercase tracking-wide">{dashboardCopy.updatedAt}</span>
+                              <span className="font-semibold text-gray-600">{device.lastUpdate ? new Date(device.lastUpdate).toLocaleTimeString() : '-'}</span>
+                            </div>
+                          </div>
                         </div>
                         </div>
                       </div>
@@ -1188,78 +1263,78 @@ export default function DashboardPage() {
                               <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide block mb-0.5">{dashboardCopy.addressLabel}</span>
                               <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* ── Waiting Metrics Block (for incoming meter data) ── */}
-                    <div className="px-3 pb-3 pt-2 border-t border-gray-100 space-y-2.5">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600 mb-1">{dashboardCopy.avgCurrent}</p>
-                          <p className="text-lg font-extrabold text-amber-900 leading-none">{fmtA(device.avgCurrent)}</p>
-                        </div>
-                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">{dashboardCopy.loadBalance}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${bal.className}`}>
-                              {bal.label}
-                            </span>
-                            <span className="text-xs font-bold text-gray-700">
-                              {device.imbalancePercent === null ? '--' : `${device.imbalancePercent.toFixed(1)}%`}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">{uiCopy.voltageLineToLine}</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { label: 'L1-L2', value: device.voltageLL?.[0], color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-                            { label: 'L2-L3', value: device.voltageLL?.[1], color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-                            { label: 'L3-L1', value: device.voltageLL?.[2], color: 'bg-teal-50 text-teal-700 border-teal-200' }
-                          ].map((volt) => (
-                            <div key={volt.label} className={`rounded-xl border px-2.5 py-2 text-center ${volt.color}`}>
-                              <p className="text-[10px] font-bold mb-0.5">{volt.label}</p>
-                              <p className="text-sm font-extrabold">{volt.value == null ? '0.0' : Number(volt.value).toFixed(1)} V</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">{dashboardCopy.phaseCurrent} & {uiCopy.thd}</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {recentPhases.map((phase) => (
-                            <div key={phase.label} className={`rounded-xl border overflow-hidden ${phase.color}`}>
-                              <div className="px-2.5 py-1 border-b border-current/10">
-                                <p className="text-xs font-extrabold">{phase.label}</p>
-                              </div>
-                              <div className="px-2.5 py-2 space-y-1">
-                                <div>
-                                  <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.current}</p>
-                                  <p className="text-sm font-extrabold leading-tight">{fmtA(phase.value)}</p>
+                            {/* After Metrics Panel */}
+                            <div className="mt-2 border-t border-gray-100 pt-2 space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600 mb-1">{dashboardCopy.avgCurrent}</p>
+                                  <p className="text-sm font-extrabold text-amber-900 leading-none">{fmtA(device.avgCurrent)}</p>
                                 </div>
-                                <div>
-                                  <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.thd}</p>
-                                  <p className="text-sm font-extrabold leading-tight">{phase.thd == null ? '--' : `${Number(phase.thd).toFixed(1)}%`}</p>
+                                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">{dashboardCopy.loadBalance}</p>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${bal.className}`}>
+                                      {bal.label}
+                                    </span>
+                                    <span className="text-xs font-bold text-gray-700">
+                                      {device.imbalancePercent === null ? '--' : `${device.imbalancePercent.toFixed(1)}%`}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+
+                              <div>
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">{uiCopy.voltageLineToLine}</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {[
+                                    { label: 'L1-L2', value: device.voltageLL?.[0], color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+                                    { label: 'L2-L3', value: device.voltageLL?.[1], color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+                                    { label: 'L3-L1', value: device.voltageLL?.[2], color: 'bg-teal-50 text-teal-700 border-teal-200' }
+                                  ].map((volt) => (
+                                    <div key={volt.label} className={`rounded-xl border px-2.5 py-2 text-center ${volt.color}`}>
+                                      <p className="text-[10px] font-bold mb-0.5">{volt.label}</p>
+                                      <p className="text-sm font-extrabold">{volt.value == null ? '0.0' : Number(volt.value).toFixed(1)} V</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">{dashboardCopy.phaseCurrent} & {uiCopy.thd}</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {afterPhases.map((phase) => (
+                                    <div key={phase.label} className={`rounded-xl border overflow-hidden ${phase.color}`}>
+                                      <div className="px-2.5 py-1 border-b border-current/10">
+                                        <p className="text-xs font-extrabold">{phase.label}</p>
+                                      </div>
+                                      <div className="px-2.5 py-2 space-y-1">
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.current}</p>
+                                          <p className="text-sm font-extrabold leading-tight">{fmtA(phase.value)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.thd}</p>
+                                          <p className="text-sm font-extrabold leading-tight">{phase.thd == null ? '--' : `${Number(phase.thd).toFixed(1)}%`}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5 flex items-center justify-between">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">{dashboardCopy.avgThd}</p>
+                                <p className="text-sm font-extrabold text-purple-900">{device.avgThd == null ? '--' : `${Number(device.avgThd).toFixed(1)}%`}</p>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-0.5 border-t border-gray-100 text-[10px] text-gray-400">
+                                <span className="font-medium uppercase tracking-wide">{dashboardCopy.updatedAt}</span>
+                                <span className="font-semibold text-gray-600">{device.lastUpdate ? new Date(device.lastUpdate).toLocaleTimeString() : '-'}</span>
+                              </div>
                             </div>
-                          ))}
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5 flex items-center justify-between">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">{dashboardCopy.avgThd}</p>
-                        <p className="text-lg font-extrabold text-purple-900">{device.avgThd == null ? '--' : `${Number(device.avgThd).toFixed(1)}%`}</p>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-0.5 border-t border-gray-100 text-[10px] text-gray-400">
-                        <span className="font-medium uppercase tracking-wide">{dashboardCopy.updatedAt}</span>
-                        <span className="font-semibold text-gray-600">{device.lastUpdate ? new Date(device.lastUpdate).toLocaleTimeString() : '-'}</span>
                       </div>
                     </div>
 
