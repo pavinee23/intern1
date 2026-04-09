@@ -1101,112 +1101,41 @@ export default function DashboardPage() {
                         </div>
                         <div className="p-3 space-y-1.5 flex-1">
 
-                        {/* No data — show static device info */}
-                        {device.voltageLL.every(v => v == null) && !hasBeforeCurrent && device.beforeActivePower == null ? (
-                          <div className="space-y-0.5">
-                            <div className="flex flex-col items-center justify-center py-3 text-center">
-                              <span className="text-2xl mb-1.5">🔌</span>
-                              <span className="text-[10px] text-gray-400 font-semibold">{dashboardCopy.waitingMeter}</span>
+                        {/* Device info — always shown */}
+                        <div className="space-y-0.5">
+                          <div className="flex flex-col items-center justify-center py-3 text-center">
+                            <span className="text-2xl mb-1.5">🔌</span>
+                            <span className="text-[10px] text-gray-400 font-semibold">{dashboardCopy.waitingMeter}</span>
+                          </div>
+                          <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                            <div className="flex justify-between items-center px-2.5 py-1.5">
+                              <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.modelLabel}</span>
+                              <span className="text-[10px] font-bold text-gray-700">{device.deviceName || '–'}</span>
                             </div>
-                            <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
-                              <div className="flex justify-between items-center px-2.5 py-1.5">
-                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.modelLabel}</span>
-                                <span className="text-[10px] font-bold text-gray-700">{device.deviceName || '–'}</span>
-                              </div>
-                              <div className="flex justify-between items-center px-2.5 py-1.5">
-                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.meterNoLabel}</span>
-                                <span className={`text-[10px] font-bold ${device.beforeMeterNo ? 'text-blue-600' : 'text-gray-400'}`}>
-                                  {device.beforeMeterNo ? `# ${device.beforeMeterNo}` : '–'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-start px-2.5 py-1.5 gap-2">
-                                <span className="text-[10px] text-gray-400 font-medium shrink-0">S/N</span>
-                                <span className="text-[10px] font-bold text-gray-700 text-right break-all">{device.seriesNo || '–'}</span>
-                              </div>
-                              <div className="flex justify-between items-center px-2.5 py-1.5">
-                                <span className="text-[10px] text-gray-400 font-medium">K-Save ID</span>
-                                <span className="text-[10px] font-bold text-emerald-600">{device.ksaveID || '–'}</span>
-                              </div>
-                              <div className="flex justify-between items-center px-2.5 py-1.5">
-                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.telLabel}</span>
-                                <span className="text-[10px] font-bold text-gray-700">{device.customerPhone || '–'}</span>
-                              </div>
+                            <div className="flex justify-between items-center px-2.5 py-1.5">
+                              <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.meterNoLabel}</span>
+                              <span className={`text-[10px] font-bold ${device.beforeMeterNo ? 'text-blue-600' : 'text-gray-400'}`}>
+                                {device.beforeMeterNo ? `# ${device.beforeMeterNo}` : '–'}
+                              </span>
                             </div>
-                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2">
-                              <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide block mb-0.5">{dashboardCopy.addressLabel}</span>
-                              <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
+                            <div className="flex justify-between items-start px-2.5 py-1.5 gap-2">
+                              <span className="text-[10px] text-gray-400 font-medium shrink-0">S/N</span>
+                              <span className="text-[10px] font-bold text-gray-700 text-right break-all">{device.seriesNo || '–'}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-2.5 py-1.5">
+                              <span className="text-[10px] text-gray-400 font-medium">K-Save ID</span>
+                              <span className="text-[10px] font-bold text-emerald-600">{device.ksaveID || '–'}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-2.5 py-1.5">
+                              <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.telLabel}</span>
+                              <span className="text-[10px] font-bold text-gray-700">{device.customerPhone || '–'}</span>
                             </div>
                           </div>
-                        ) : (
-                          <>
-                          <div className="rounded-lg bg-orange-50 border border-orange-100 divide-y divide-orange-100 overflow-hidden">
-                            <div className="px-2.5 py-1.5">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-orange-400 mb-1">{uiCopy.voltageLineToLine}</p>
-                              <Row label="L1" value={fmtV(device.voltageLL[0])} valueClass="text-orange-700" />
-                              <Row label="L2" value={fmtV(device.voltageLL[1])} valueClass="text-orange-700" />
-                              <Row label="L3" value={fmtV(device.voltageLL[2])} valueClass="text-orange-700" />
-                            </div>
+                          <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2">
+                            <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide block mb-0.5">{dashboardCopy.addressLabel}</span>
+                            <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
                           </div>
-
-                          {/* Before Current */}
-                          {hasBeforeCurrent && (
-                            <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-2">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-red-400 mb-1">{uiCopy.current}</p>
-                              <Row label="L1" value={fmtA(device.beforeCurrentABC?.[0])} valueClass="text-red-600" />
-                              <Row label="L2" value={fmtA(device.beforeCurrentABC?.[1])} valueClass="text-red-600" />
-                              <Row label="L3" value={fmtA(device.beforeCurrentABC?.[2])} valueClass="text-red-600" />
-                              {device.avgBeforeCurrent != null && (
-                                <Row label="Avg" value={fmtA(device.avgBeforeCurrent)} valueClass="text-red-700" />
-                              )}
-                            </div>
-                          )}
-
-                          {/* Before Power */}
-                          {(device.beforeActivePower != null || device.beforeReactivePower != null || device.beforeApparentPower != null) && (
-                            <div className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-2">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Power</p>
-                              {device.beforeActivePower != null && (
-                                <Row label="P (kW)" value={fmtKw(device.beforeActivePower)} valueClass="text-orange-600" />
-                              )}
-                              {device.beforeReactivePower != null && (
-                                <Row label="Q (kVAR)" value={`${Number(device.beforeReactivePower).toFixed(2)} kVAR`} valueClass="text-orange-500" />
-                              )}
-                              {device.beforeApparentPower != null && (
-                                <Row label="S (kVA)" value={`${Number(device.beforeApparentPower).toFixed(2)} kVA`} valueClass="text-orange-500" />
-                              )}
-                            </div>
-                          )}
-
-                          {/* Before Quality */}
-                          {(device.beforePowerFactor != null || device.beforeFrequency != null) && (
-                            <div className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-2">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Quality</p>
-                              {device.beforePowerFactor != null && (
-                                <Row label="PF" value={fmtPF(device.beforePowerFactor)} valueClass="text-orange-600" />
-                              )}
-                              {device.beforeFrequency != null && (
-                                <Row label="Freq" value={fmtHz(device.beforeFrequency)} valueClass="text-orange-500" />
-                              )}
-                            </div>
-                          )}
-
-                          {/* Before THD */}
-                          {device.beforeThd != null && (
-                            <div className="rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-2">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-rose-400 mb-1">THD</p>
-                              <Row label="THD" value={fmtPct(device.beforeThd)} valueClass="text-red-500" />
-                            </div>
-                          )}
-
-                          {/* Before kWh */}
-                          {device.beforeKwh != null && (
-                            <div className="rounded-lg bg-orange-50 border border-orange-100 px-2.5 py-2">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-orange-400 mb-1">Energy</p>
-                              <Row label="kWh" value={fmtKwh(device.beforeKwh)} valueClass="text-orange-500" />
-                            </div>
-                          )}
-                          </>
-                        )}
+                        </div>
                         </div>
                       </div>
 
@@ -1220,14 +1149,13 @@ export default function DashboardPage() {
                         </div>
                         <div className="p-3 space-y-1.5 flex-1">
 
-                        {/* No data fallback — show device info */}
-                        {!hasAfterCurrent && device.activePower == null && device.powerFactor == null && device.avgThd == null && device.energyKwh == null ? (
-                          <div className="space-y-0.5">
-                            <div className="flex flex-col items-center justify-center py-3 text-center">
-                              <span className="text-2xl mb-1.5">📊</span>
-                              <span className="text-[10px] text-gray-400 font-semibold">{dashboardCopy.waitingMeter}</span>
-                            </div>
-                            <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                        {/* Device info — always shown */}
+                        <div className="space-y-0.5">
+                          <div className="flex flex-col items-center justify-center py-3 text-center">
+                            <span className="text-2xl mb-1.5">📊</span>
+                            <span className="text-[10px] text-gray-400 font-semibold">{dashboardCopy.waitingMeter}</span>
+                          </div>
+                          <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
                               <div className="flex justify-between items-center px-2.5 py-1.5">
                                 <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.meterNoLabel}</span>
                                 <span className={`text-[10px] font-bold ${device.metricsMeterNo ? 'text-emerald-600' : 'text-gray-400'}`}>
@@ -1256,68 +1184,6 @@ export default function DashboardPage() {
                               <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
                             </div>
                           </div>
-                        ) : (
-                          <>
-                        {hasAfterCurrent && (
-                          <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500 mb-1">{uiCopy.current}</p>
-                            <Row label="L1" value={fmtA(device.currentABC[0])} valueClass="text-emerald-700" />
-                            <Row label="L2" value={fmtA(device.currentABC[1])} valueClass="text-emerald-700" />
-                            <Row label="L3" value={fmtA(device.currentABC[2])} valueClass="text-emerald-700" />
-                            {device.avgCurrent != null && (
-                              <Row label="Avg" value={fmtA(device.avgCurrent)} valueClass="text-emerald-800" />
-                            )}
-                          </div>
-                        )}
-
-                        {/* Active / Reactive / Apparent Power */}
-                        {(device.activePower != null || device.reactivePower != null || device.apparentPower != null) && (
-                          <div className="rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-wide text-blue-400 mb-1">Power</p>
-                            {device.activePower != null && (
-                              <Row label="P (kW)" value={fmtKw(device.activePower)} valueClass="text-blue-600" />
-                            )}
-                            {device.reactivePower != null && (
-                              <Row label="Q (kVAR)" value={`${Number(device.reactivePower).toFixed(2)} kVAR`} valueClass="text-blue-500" />
-                            )}
-                            {device.apparentPower != null && (
-                              <Row label="S (kVA)" value={`${Number(device.apparentPower).toFixed(2)} kVA`} valueClass="text-blue-500" />
-                            )}
-                          </div>
-                        )}
-
-                        {/* Power Factor & Frequency */}
-                        {(device.powerFactor != null || device.frequency != null) && (
-                          <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-wide text-indigo-400 mb-1">Quality</p>
-                            {device.powerFactor != null && (
-                              <Row label="PF" value={fmtPF(device.powerFactor)} valueClass="text-indigo-600" />
-                            )}
-                            {device.frequency != null && (
-                              <Row label="Freq" value={fmtHz(device.frequency)} valueClass="text-indigo-500" />
-                            )}
-                          </div>
-                        )}
-
-                        {/* After THD */}
-                        {device.avgThd != null && (
-                          <div className="rounded-lg bg-purple-50 border border-purple-100 px-2.5 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-wide text-purple-400 mb-1">THD</p>
-                            {device.thdABC?.map((v, i) => v != null && (
-                              <Row key={i} label={`L${i+1}`} value={fmtPct(v)} valueClass="text-purple-600" />
-                            ))}
-                            <Row label="Avg" value={fmtPct(device.avgThd)} valueClass="text-purple-700" />
-                          </div>
-                        )}
-
-                        {/* Energy */}
-                        {device.energyKwh != null && (
-                          <div className="rounded-lg bg-teal-50 border border-teal-100 px-2.5 py-2">
-                            <p className="text-[9px] font-bold uppercase tracking-wide text-teal-500 mb-1">Energy</p>
-                            <Row label="kWh" value={fmtKwh(device.energyKwh)} valueClass="text-teal-600" />
-                          </div>
-                        )}
-                        </>)}
                         </div>
                       </div>
                     </div>
