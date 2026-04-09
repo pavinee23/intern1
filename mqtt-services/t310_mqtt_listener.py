@@ -18,8 +18,10 @@ import mysql.connector
 import json
 import logging
 import os
+import threading
 import time
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ─────────────────────────────────────────────
 # การตั้งค่า — แก้ชุดนี้ให้ตรงกับ environment
@@ -68,6 +70,10 @@ MQTT_PASSWORD = os.getenv("T310_MQTT_PASSWORD", "")
 # Topic ที่ T310 ส่งมา — ใช้ wildcard '+' เพื่อรับทุก device
 MQTT_TOPIC    = os.getenv("T310_MQTT_TOPIC", "ksystem/meter/+/data")
 
+HEALTH_ENABLED = os.getenv("T310_HEALTH_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+HEALTH_PORT = _env_int("T310_HEALTH_PORT", 8099)
+HEALTH_STALE_SECONDS = _env_int("T310_HEALTH_STALE_SECONDS", 300)
+
 DB_HOST       = os.getenv("T310_DB_HOST", os.getenv("MYSQL_HOST", "localhost"))
 DB_USER       = os.getenv("T310_DB_USER", os.getenv("MYSQL_USER", "ksystem"))
 DB_PASSWORD   = os.getenv("T310_DB_PASSWORD", os.getenv("MYSQL_PASSWORD", "Zera2026Admin"))
@@ -115,6 +121,84 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+runtime_lock = threading.Lock()
+runtime_state = {
+    "started_at": datetime.now(),
+    "mqtt_connected": False,
+    "last_mqtt_connect_time": None,
+    "last_message_time": None,
+    "last_message_topic": None,
+    "last_device_id": None,
+    "last_db_write_time": None,
+    "last_error": None,
+    "total_messages": 0,
+    "total_db_writes": 0,
+}
+
+
+def _dt_to_str(dt_value):
+    if dt_value is None:
+        return None
+    return dt_value.isoformat(sep=" ", timespec="seconds")
+
+
+def _health_payload():
+    now = datetime.now()
+    with runtime_lock:
+        last_db_write_time = runtime_state["last_db_write_time"]
+        last_message_time = runtime_state["last_message_time"]
+        mqtt_connected = runtime_state["mqtt_connected"]
+        db_fresh = (
+            last_db_write_time is not None and
+            (now - last_db_write_time).total_seconds() <= HEALTH_STALE_SECONDS
+        )
+
+        ok = mqtt_connected and (db_fresh or last_message_time is not None)
+
+        return {
+            "ok": ok,
+            "service": "t310_mqtt_listener",
+            "mqtt_connected": mqtt_connected,
+            "health_stale_seconds": HEALTH_STALE_SECONDS,
+            "started_at": _dt_to_str(runtime_state["started_at"]),
+            "last_mqtt_connect_time": _dt_to_str(runtime_state["last_mqtt_connect_time"]),
+            "last_message_time": _dt_to_str(last_message_time),
+            "last_message_topic": runtime_state["last_message_topic"],
+            "last_device_id": runtime_state["last_device_id"],
+            "last_db_write_time": _dt_to_str(last_db_write_time),
+            "last_error": runtime_state["last_error"],
+            "total_messages": runtime_state["total_messages"],
+            "total_db_writes": runtime_state["total_db_writes"],
+            "timestamp": _dt_to_str(now),
+        }
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path not in ("/", "/health", "/healthz", "/ready"):
+            self.send_response(404)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": False, "error": "not_found"}).encode("utf-8"))
+            return
+
+        payload = _health_payload()
+        status = 200 if payload["ok"] else 503
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+
+    def log_message(self, format, *args):
+        # ปิด access log ของ health endpoint เพื่อลด noise
+        return
+
+
+def start_health_server():
+    server = ThreadingHTTPServer(("0.0.0.0", HEALTH_PORT), HealthHandler)
+    logger.info(f"🩺 Health endpoint: http://0.0.0.0:{HEALTH_PORT}/health")
+    server.serve_forever()
+
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -160,6 +244,10 @@ def on_connect(client, userdata, flags, rc):
         logger.info("✅ เชื่อมต่อ MQTT Broker สำเร็จ")
         client.subscribe(MQTT_TOPIC)
         logger.info(f"📡 Subscribe topic: {MQTT_TOPIC}")
+        with runtime_lock:
+            runtime_state["mqtt_connected"] = True
+            runtime_state["last_mqtt_connect_time"] = datetime.now()
+            runtime_state["last_error"] = None
     else:
         codes = {
             1: "protocol version refused",
@@ -169,16 +257,28 @@ def on_connect(client, userdata, flags, rc):
             5: "not authorised",
         }
         logger.error(f"❌ เชื่อมต่อล้มเหลว: {codes.get(rc, f'rc={rc}')}")
+        with runtime_lock:
+            runtime_state["mqtt_connected"] = False
+            runtime_state["last_error"] = f"mqtt_connect_failed_rc_{rc}"
 
 
 def on_disconnect(client, userdata, rc):
     if rc != 0:
         logger.warning("⚠️  MQTT หลุด — รอเชื่อมต่อใหม่...")
+    with runtime_lock:
+        runtime_state["mqtt_connected"] = False
+        if rc != 0:
+            runtime_state["last_error"] = f"mqtt_disconnected_rc_{rc}"
 
 
 def on_message(client, userdata, msg):
     topic   = msg.topic
     payload = msg.payload.decode("utf-8", errors="replace")
+
+    with runtime_lock:
+        runtime_state["total_messages"] += 1
+        runtime_state["last_message_time"] = datetime.now()
+        runtime_state["last_message_topic"] = topic
 
     logger.debug(f"📨 [{topic}] {payload}")
 
@@ -195,6 +295,9 @@ def on_message(client, userdata, msg):
         device_id = extract_device_id_from_topic(topic)
     else:
         device_id = str(int(device_id)) if isinstance(device_id, float) else str(device_id)
+
+    with runtime_lock:
+        runtime_state["last_device_id"] = device_id
 
     # ── ดึงค่าไฟ ────────────────────────────────────
     voltage_l1 = extract_field(data, "voltage_l1")
@@ -278,9 +381,15 @@ def on_message(client, userdata, msg):
         ))
         db.commit()
         logger.info(f"✅ บันทึกสำเร็จ device={device_id} | time={record_time}")
+        with runtime_lock:
+            runtime_state["last_db_write_time"] = datetime.now()
+            runtime_state["total_db_writes"] += 1
+            runtime_state["last_error"] = None
 
     except mysql.connector.Error as e:
         logger.error(f"❌ DB Error: {e}")
+        with runtime_lock:
+            runtime_state["last_error"] = f"db_error: {e}"
         try:
             db.rollback()
         except Exception:
@@ -290,10 +399,16 @@ def on_message(client, userdata, msg):
             userdata["db"] = get_db_connection()
             userdata["cursor"] = userdata["db"].cursor()
             logger.info("🔄 เชื่อมต่อ DB ใหม่สำเร็จ")
+            with runtime_lock:
+                runtime_state["last_error"] = None
         except Exception as re:
             logger.error(f"❌ Reconnect DB ล้มเหลว: {re}")
+            with runtime_lock:
+                runtime_state["last_error"] = f"db_reconnect_failed: {re}"
     except Exception as e:
         logger.error(f"❌ ข้อผิดพลาด: {e}")
+        with runtime_lock:
+            runtime_state["last_error"] = f"runtime_error: {e}"
 
 
 # ─────────────────────────────────────────────
@@ -301,6 +416,10 @@ def on_message(client, userdata, msg):
 # ─────────────────────────────────────────────
 def main():
     logger.info("🚀 เริ่ม T310 MQTT Listener")
+
+    if HEALTH_ENABLED:
+        health_thread = threading.Thread(target=start_health_server, daemon=True)
+        health_thread.start()
 
     # DB connection
     db = get_db_connection()
