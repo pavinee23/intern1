@@ -43,6 +43,7 @@ interface CustomerResult {
   phone?: string | null;
   email?: string | null;
   company?: string | null;
+  companyEn?: string | null;
   house_number?: string | null;
   moo?: string | null;
   tambon?: string | null;
@@ -50,6 +51,30 @@ interface CustomerResult {
   province?: string | null;
   postcode?: string | null;
 }
+
+const customerCompanyEnFallbackMap: Record<string, string> = {
+  'บริษัท ไทยเกษตร อินดัสเทรียล จำกัด': 'Thai Kaset Industrial Co., Ltd.',
+  'บริษัท คาลเท็กซ์ (ไทยแลนด์) จำกัด': 'Caltex (Thailand) Co., Ltd.',
+  'บริษัท ซัสโก้ จำกัด': 'SUSCO Co., Ltd.',
+  'บริษัท ซีเจ มอร์ จำกัด': 'CJ MORE Co., Ltd.',
+  'บริษัท ท็อปซูเปอร์มาร์เก็ต จำกัด': 'Tops Supermarket Co., Ltd.',
+  'บริษัท บีซีพีจี จำกัด (มหาชน)': 'BCPG Public Company Limited',
+  'บริษัท พีทีจี เอ็นเนอร์ยี่ จำกัด': 'PTG Energy Co., Ltd.',
+  'บริษัท เจแอนด์อี ไลท์ติ้ง จำกัด': 'J&E Lighting Co., Ltd.',
+  'บริษัท เชลล์ (ประเทศไทย) จำกัด': 'Shell (Thailand) Co., Ltd.',
+  'บริษัท โลตัส โก เฟรช จำกัด': 'Lotus Go Fresh Co., Ltd.',
+  'ห้างหุ้นส่วนจำกัด ลอว์สัน 108': 'Lawson 108 Limited Partnership'
+};
+
+const getCustomerCompanyEn = (customer: CustomerResult) => {
+  const explicitEn = (customer.companyEn || '').trim();
+  if (explicitEn) return explicitEn;
+
+  const companyTh = (customer.company || '').trim();
+  if (!companyTh) return '';
+
+  return customerCompanyEnFallbackMap[companyTh] || '';
+};
 
 interface ProductResponse {
   products?: Array<{ name?: string | null }>;
@@ -1281,10 +1306,13 @@ export default function DevicesSettingPage() {
                               const fullAddr = [c.house_number, c.moo, c.tambon, c.amphoe, c.province, c.postcode]
                                 .filter(Boolean)
                                 .join(' ');
+                              const companyTh = c.company || '';
+                              const companyEn = getCustomerCompanyEn(c);
                               setAddForm(f => ({
                                 ...f,
                                 customer_id: c.cusID,
-                                customerName: c.fullname || '',
+                                customerName: companyTh || c.fullname || '',
+                                customerNameEn: companyEn || f.customerNameEn || '',
                                 customerPhone: c.phone || '',
                                 customerAddress: fullAddr || f.customerAddress
                               }));
@@ -1293,11 +1321,14 @@ export default function DevicesSettingPage() {
                             }}
                             className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm"
                           >
-                            <div className="font-semibold text-gray-800">{c.fullname || '-'}</div>
+                            <div className="font-semibold text-gray-800">{c.company || c.fullname || '-'}</div>
+                            {getCustomerCompanyEn(c) && (
+                              <div className="text-xs font-medium text-emerald-700">{getCustomerCompanyEn(c)}</div>
+                            )}
                             <div className="text-xs text-gray-500 flex flex-wrap gap-2">
                               {c.phone && <span>{c.phone}</span>}
                               {c.email && <span>{c.email}</span>}
-                              {c.company && <span>{c.company}</span>}
+                              {c.fullname && <span>{c.fullname}</span>}
                             </div>
                           </button>
                         ))}
