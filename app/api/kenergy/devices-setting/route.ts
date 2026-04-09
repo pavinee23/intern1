@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     const site = searchParams.get('site') || 'thailand'
     const deviceColumns = await getDevicesColumnSet()
     const hasCustomerName = deviceColumns.has('customerName')
+    const hasCustomerNameEn = deviceColumns.has('customerNameEn')
     const hasCustomerPhone = deviceColumns.has('customerPhone')
     const hasCustomerAddress = deviceColumns.has('customerAddress')
     const hasCustomerId = deviceColumns.has('customer_id')
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
     const customerSelectFields = [
       hasCustomerId ? 'd.customer_id,' : '',
       hasCustomerName ? 'd.customerName,' : '',
+      hasCustomerNameEn ? 'd.customerNameEn,' : '',
       hasCustomerPhone ? 'd.customerPhone,' : '',
       hasCustomerAddress ? 'd.customerAddress,' : ''
     ]
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
     const customerGroupByFields = [
       hasCustomerId ? 'd.customer_id,' : '',
       hasCustomerName ? 'd.customerName,' : '',
+      hasCustomerNameEn ? 'd.customerNameEn,' : '',
       hasCustomerPhone ? 'd.customerPhone,' : '',
       hasCustomerAddress ? 'd.customerAddress,' : ''
     ]
@@ -132,7 +135,7 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerPhone, customerAddress, customerId } = body
+    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerNameEn, customerPhone, customerAddress, customerId } = body
     const deviceColumns = await getDevicesColumnSet()
     const missingCustomerColumns: string[] = []
     const hasCustomerId = deviceColumns.has('customer_id')
@@ -178,6 +181,12 @@ export async function PUT(req: NextRequest) {
         params.push(customerName)
       } else {
         missingCustomerColumns.push('customerName')
+      }
+    }
+    if (customerNameEn !== undefined) {
+      if (deviceColumns.has('customerNameEn')) {
+        updates.push('customerNameEn = ?')
+        params.push(customerNameEn)
       }
     }
     if (customerPhone !== undefined) {
@@ -269,6 +278,7 @@ export async function POST(req: NextRequest) {
       latitude,
       longitude,
       customerName,
+      customerNameEn,
       customerPhone,
       customerAddress,
       phone,
@@ -287,6 +297,7 @@ export async function POST(req: NextRequest) {
 
     const deviceColumns = await getDevicesColumnSet()
     const hasCustomerName = deviceColumns.has('customerName')
+    const hasCustomerNameEn = deviceColumns.has('customerNameEn')
     const hasCustomerPhone = deviceColumns.has('customerPhone')
     const hasCustomerAddress = deviceColumns.has('customerAddress')
     const hasSeriesNo = deviceColumns.has('series_no')
@@ -377,6 +388,10 @@ export async function POST(req: NextRequest) {
       values.push(customerName)
     } else if (customerName !== undefined && !hasCustomerName) {
       missingColumns.push('customerName')
+    }
+    if (hasCustomerNameEn && customerNameEn !== undefined) {
+      columns.push('customerNameEn')
+      values.push(customerNameEn)
     }
     if (hasCustomerPhone && customerPhone !== undefined) {
       columns.push('customerPhone')

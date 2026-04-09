@@ -25,6 +25,7 @@ interface Device {
   registerDate?: string;
   created_at?: string;
   customerName?: string;
+  customerNameEn?: string;
   customerPhone?: string;
   customerAddress?: string;
   location?: string;
@@ -78,6 +79,7 @@ export default function DevicesSettingPage() {
     latitude: '',
     longitude: '',
     customerName: '',
+    customerNameEn: '',
     customerPhone: '',
     customerAddress: '',
     customer_id: null,
@@ -206,6 +208,7 @@ export default function DevicesSettingPage() {
       ipAddress: device.ipAddress || '',
       phone: device.phone || '',
       customerName: device.customerName || '',
+      customerNameEn: device.customerNameEn || '',
       customerPhone: device.customerPhone || '',
       customerAddress: device.customerAddress || '',
       location: device.location || '',
@@ -428,8 +431,10 @@ export default function DevicesSettingPage() {
           fromTotal: 'รายการ จากทั้งหมด',
           devicesUnit: 'เครื่อง',
           customerInfo: 'ข้อมูลลูกค้า',
-          customerNameLabel: 'ชื่อลูกค้า / Customer Name',
-          customerNamePlaceholder: 'ชื่อ-นามสกุลลูกค้า',
+          customerNameLabel: 'ชื่อลูกค้า / Customer Name (ไทย)',
+          customerNamePlaceholder: 'ชื่อ-นามสกุลลูกค้า (ภาษาไทย)',
+          customerNameEnLabel: 'ชื่อลูกค้า (ภาษาอังกฤษ)',
+          customerNameEnPlaceholder: 'Customer Name (English)',
           phoneLabel: 'เบอร์โทร / Phone',
           phonePlaceholder: 'เช่น 02-123-4567 หรือ +66 81-234-5678',
           addressLabel: 'ที่อยู่ / Address',
@@ -491,8 +496,10 @@ export default function DevicesSettingPage() {
           fromTotal: '개 / 전체',
           devicesUnit: '대',
           customerInfo: '고객 정보',
-          customerNameLabel: '고객명 / Customer Name',
-          customerNamePlaceholder: '고객 이름 입력',
+          customerNameLabel: '고객명 (태국어)',
+          customerNamePlaceholder: '고객 이름 입력 (태국어)',
+          customerNameEnLabel: '고객명 (영어)',
+          customerNameEnPlaceholder: 'Customer Name (English)',
           phoneLabel: '전화번호 / Phone',
           phonePlaceholder: '예: 02-123-4567 또는 +82 10-1234-5678',
           addressLabel: '주소 / Address',
@@ -554,8 +561,10 @@ export default function DevicesSettingPage() {
           fromTotal: 'items of',
           devicesUnit: 'devices',
           customerInfo: 'Customer Info',
-          customerNameLabel: 'Customer Name',
-          customerNamePlaceholder: 'Customer full name',
+          customerNameLabel: 'Customer Name (Thai)',
+          customerNamePlaceholder: 'Customer name in Thai',
+          customerNameEnLabel: 'Customer Name (English)',
+          customerNameEnPlaceholder: 'Customer full name in English',
           phoneLabel: 'Phone',
           phonePlaceholder: 'e.g. +66 81-234-5678',
           addressLabel: 'Address',
@@ -1043,6 +1052,12 @@ export default function DevicesSettingPage() {
                     placeholder={ui.customerNamePlaceholder} />
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{ui.customerNameEnLabel}</label>
+                  <input value={editForm.customerNameEn ?? ''} onChange={e => setEditForm(f => ({...f, customerNameEn: e.target.value}))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder={ui.customerNameEnPlaceholder} />
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{ui.phoneLabel}</label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -1297,6 +1312,15 @@ export default function DevicesSettingPage() {
                     onChange={e => setAddForm(f => ({ ...f, customerPhone: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder={ui.phonePlaceholder}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{ui.customerNameEnLabel}</label>
+                  <input
+                    value={addForm.customerNameEn ?? ''}
+                    onChange={e => setAddForm(f => ({ ...f, customerNameEn: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder={ui.customerNameEnPlaceholder}
                   />
                 </div>
                 <div>
