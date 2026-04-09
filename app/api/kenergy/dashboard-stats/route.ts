@@ -127,20 +127,40 @@ export async function GET(request: NextRequest) {
         : `NULL AS ${columnName}`
     )
 
+    // Check optional columns in devices table
+    const optionalDeviceColumns = ['customerNameEn', 'customerPhone', 'customerAddress', 'series_no', 'metricsMeterNo', 'beforeMeterNo', 'location', 'ipAddress', 'ksaveID']
+    const devicePlaceholders = optionalDeviceColumns.map(() => '?').join(', ')
+    const availableDeviceColumnsRows = await queryKsave(
+      `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'devices'
+         AND COLUMN_NAME IN (${devicePlaceholders})`,
+      optionalDeviceColumns
+    )
+    const availableDeviceColumns = new Set(
+      (availableDeviceColumnsRows as ColumnNameRow[]).map((row) => row.COLUMN_NAME)
+    )
+    const selectOptionalDeviceColumn = (columnName: string) => (
+      availableDeviceColumns.has(columnName)
+        ? `d.${columnName}`
+        : `NULL AS ${columnName}`
+    )
+
     const recentDevices = await queryKsave(
       `SELECT
         d.deviceID,
         d.deviceName,
         d.customerName,
-        d.customerNameEn,
-        d.customerPhone,
-        d.customerAddress,
-        d.series_no,
-        d.metricsMeterNo,
-        d.beforeMeterNo,
-        d.location,
-        d.ipAddress,
-        d.ksaveID,
+        ${selectOptionalDeviceColumn('customerNameEn')},
+        ${selectOptionalDeviceColumn('customerPhone')},
+        ${selectOptionalDeviceColumn('customerAddress')},
+        ${selectOptionalDeviceColumn('series_no')},
+        ${selectOptionalDeviceColumn('metricsMeterNo')},
+        ${selectOptionalDeviceColumn('beforeMeterNo')},
+        ${selectOptionalDeviceColumn('location')},
+        ${selectOptionalDeviceColumn('ipAddress')},
+        ${selectOptionalDeviceColumn('ksaveID')},
         p.record_time,
         p.before_L1,
         p.before_L2,
