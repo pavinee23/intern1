@@ -3,6 +3,19 @@ import { pool } from '@/lib/mysql'
 
 export const runtime = 'nodejs'
 
+async function hasCusDetailCompanyEnColumn(conn: any): Promise<boolean> {
+  const [rows]: any = await conn.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'cus_detail'
+       AND COLUMN_NAME = 'company_en'
+     LIMIT 1`
+  )
+
+  return Array.isArray(rows) && rows.length > 0
+}
+
 // GET - ค้นหาลูกค้า
 export async function GET(req: NextRequest) {
   try {
@@ -12,10 +25,15 @@ export async function GET(req: NextRequest) {
 
     const conn = await pool.getConnection()
     try {
+      const hasCompanyEn = await hasCusDetailCompanyEnColumn(conn)
+      const companyEnSelect = hasCompanyEn ? 'cd.company_en AS companyEn,' : 'NULL AS companyEn,'
+      const companyEnSearchCondition = hasCompanyEn ? ' OR cd.company_en LIKE ?' : ''
+
       // ถ้ามี id ให้ดึงข้อมูลลูกค้าตาม id
       if (id) {
         const [rows]: any = await conn.query(
           `SELECT cd.cusID, cd.fullname, cd.email, cd.phone, cd.company,
+                  ${companyEnSelect}
                   cd.house_number, cd.moo, cd.tambon, cd.amphoe, cd.province, cd.postcode,
                   cd.tax_id, cd.message, cd.created_by, cd.created_by_user_id, cd.created_at,
                   ul.name as created_by_name, ul.userName as created_by_username
@@ -35,6 +53,7 @@ export async function GET(req: NextRequest) {
       if (q.length < 1) {
         const [rows]: any = await conn.query(
           `SELECT cd.cusID, cd.fullname, cd.email, cd.phone, cd.company,
+                  ${companyEnSelect}
                   cd.house_number, cd.moo, cd.tambon, cd.amphoe, cd.province, cd.postcode,
                   cd.tax_id, cd.message, cd.created_by, cd.created_by_user_id, cd.created_at,
                   ul.name as created_by_name, ul.userName as created_by_username
@@ -47,17 +66,21 @@ export async function GET(req: NextRequest) {
       }
 
       const searchTerm = `%${q}%`
+      const queryParams = hasCompanyEn
+        ? [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]
+        : [searchTerm, searchTerm, searchTerm, searchTerm]
       const [rows]: any = await conn.query(
         `SELECT cd.cusID, cd.fullname, cd.email, cd.phone, cd.company,
+                ${companyEnSelect}
                 cd.house_number, cd.moo, cd.tambon, cd.amphoe, cd.province, cd.postcode,
                 cd.tax_id, cd.message, cd.created_by, cd.created_by_user_id, cd.created_at,
                 ul.name as created_by_name, ul.userName as created_by_username
          FROM cus_detail cd
          LEFT JOIN user_list ul ON cd.created_by_user_id = ul.userId
-         WHERE cd.fullname LIKE ? OR cd.email LIKE ? OR cd.phone LIKE ? OR cd.company LIKE ?
+         WHERE cd.fullname LIKE ? OR cd.email LIKE ? OR cd.phone LIKE ? OR cd.company LIKE ?${companyEnSearchCondition}
          ORDER BY cd.fullname ASC
          LIMIT 20`,
-        [searchTerm, searchTerm, searchTerm, searchTerm]
+        queryParams
       )
 
       return NextResponse.json({ success: true, customers: rows })
