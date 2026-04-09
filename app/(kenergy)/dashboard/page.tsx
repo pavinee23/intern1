@@ -1470,7 +1470,6 @@ export default function DashboardPage() {
                     <div className="p-4 space-y-4">
 
                     {/* ── Before K-Save Baseline ── */}
-                    {device.beforeCurrentABC && device.beforeCurrentABC.some(v => v !== null) && (
                       <div className="rounded-xl bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 overflow-hidden">
                         <div className="flex items-center justify-between px-3 py-2 border-b border-red-100">
                           <div className="flex items-center gap-2">
@@ -1491,9 +1490,9 @@ export default function DashboardPage() {
                             <p className="text-sm font-extrabold text-red-900">{formatAmp(device.avgBeforeCurrent ?? null)}</p>
                           </div>
                           {[
-                            { label: 'L1', value: device.beforeCurrentABC[0] },
-                            { label: 'L2', value: device.beforeCurrentABC[1] },
-                            { label: 'L3', value: device.beforeCurrentABC[2] }
+                            { label: 'L1', value: device.beforeCurrentABC?.[0] ?? null },
+                            { label: 'L2', value: device.beforeCurrentABC?.[1] ?? null },
+                            { label: 'L3', value: device.beforeCurrentABC?.[2] ?? null }
                           ].map(phase => (
                             <div key={phase.label} className="rounded-lg bg-white border border-orange-200 px-2 py-2 text-center shadow-sm">
                               <p className="text-[9px] font-bold text-orange-500 mb-0.5">{phase.label}</p>
@@ -1502,7 +1501,6 @@ export default function DashboardPage() {
                           ))}
                         </div>
                       </div>
-                    )}
 
                     {/* ── KPI Row ── */}
                     <div className="grid grid-cols-2 gap-3">
@@ -1543,18 +1541,16 @@ export default function DashboardPage() {
                     </div>
 
                     {/* ── Current Trend Chart ── */}
-                    {device.beforeCurrentABC && device.beforeCurrentABC.some(v => v !== null) && (
-                      <CurrentTrendChart
-                        deviceId={device.deviceID}
-                        currentReduction={device.currentReduction}
-                        labels={{
-                          trendTitle: uiCopy.trendTitle,
-                          reduction: uiCopy.reduction,
-                          before: uiCopy.beforeKsave,
-                          after: uiCopy.afterKsave
-                        }}
-                      />
-                    )}
+                    <CurrentTrendChart
+                      deviceId={device.deviceID}
+                      currentReduction={device.currentReduction}
+                      labels={{
+                        trendTitle: uiCopy.trendTitle,
+                        reduction: uiCopy.reduction,
+                        before: uiCopy.beforeKsave,
+                        after: uiCopy.afterKsave
+                      }}
+                    />
 
                     {/* ── Phase Current & THD ── */}
                     <div>
