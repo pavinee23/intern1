@@ -4,8 +4,24 @@ import { queryKsave } from '@/lib/mysql-ksave'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+type RecordScope = 'installed' | 'pre_install'
+
+const SCOPE_TO_TABLE: Record<RecordScope, string> = {
+  installed: 'power_records',
+  pre_install: 'power_records_preinstall'
+}
+
+const normalizeRecordScope = (scope?: string | null): RecordScope | null => {
+  if (!scope) return null
+  const normalized = String(scope).trim().toLowerCase()
+  if (normalized === 'installed') return 'installed'
+  if (normalized === 'pre_install' || normalized === 'pre-install' || normalized === 'preinstall') return 'pre_install'
+  return null
+}
+
 interface PowerRecordPayload {
   device_id: number
+  record_scope?: RecordScope
   before_meter_no?: string
   metrics_meter_no?: string
   record_time?: string // ISO datetime, defaults to NOW()
@@ -36,6 +52,44 @@ interface PowerRecordPayload {
   metrics_PF?: number // Power Factor
   metrics_THD?: number // Total Harmonic Distortion (%)
   metrics_F?: number // Frequency (Hz)
+}
+
+async function tableExists(tableName: string): Promise<boolean> {
+  const rows = await queryKsave(
+    `SELECT COUNT(*) AS total
+     FROM INFORMATION_SCHEMA.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?`,
+    [tableName]
+  )
+  return Number(rows?.[0]?.total || 0) > 0
+}
+
+async function devicesHasRecordScopeColumn(): Promise<boolean> {
+  const rows = await queryKsave(
+    `SELECT COUNT(*) AS total
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'devices'
+       AND COLUMN_NAME = 'record_scope'`
+  )
+  return Number(rows?.[0]?.total || 0) > 0
+}
+
+async function resolveRecordScope(deviceId: number, payloadScope?: string | null): Promise<RecordScope> {
+  const normalizedPayloadScope = normalizeRecordScope(payloadScope)
+  if (normalizedPayloadScope) return normalizedPayloadScope
+
+  const hasScopeColumn = await devicesHasRecordScopeColumn()
+  if (!hasScopeColumn) return 'installed'
+
+  const rows = await queryKsave(
+    'SELECT record_scope FROM devices WHERE deviceID = ? LIMIT 1',
+    [deviceId]
+  )
+
+  const scopeFromDevice = normalizeRecordScope(rows?.[0]?.record_scope ?? null)
+  return scopeFromDevice ?? 'installed'
 }
 
 /**
@@ -96,9 +150,20 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
+    const recordScope = await resolveRecordScope(body.device_id, body.record_scope)
+    const targetTable = SCOPE_TO_TABLE[recordScope]
+
+    const targetTableExists = await tableExists(targetTable)
+    if (!targetTableExists) {
+      return NextResponse.json({
+        success: false,
+        error: `Target table '${targetTable}' not found. Please run migration to enable ${recordScope} storage.`
+      }, { status: 500 })
+    }
+
     // Generate next ID
     const maxIdResult = await queryKsave(
-      'SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM power_records'
+      `SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM ${targetTable}`
     )
     const nextId = maxIdResult[0]?.nextId || 1
 
@@ -147,7 +212,7 @@ export async function POST(req: NextRequest) {
 
     // Execute INSERT
     await queryKsave(
-      `INSERT INTO power_records (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      `INSERT INTO ${targetTable} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
       values
     )
 
@@ -156,6 +221,8 @@ export async function POST(req: NextRequest) {
       message: 'Power record saved successfully',
       record_id: nextId,
       device_id: body.device_id,
+      record_scope: recordScope,
+      target_table: targetTable,
       record_time: recordTime
     })
 
@@ -187,6 +254,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const deviceId = searchParams.get('device_id')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const requestedScope = normalizeRecordScope(searchParams.get('scope')) ?? 'installed'
+    const targetTable = SCOPE_TO_TABLE[requestedScope]
 
     if (!deviceId) {
       return NextResponse.json({
@@ -195,8 +264,16 @@ export async function GET(req: NextRequest) {
       }, { status: 400 })
     }
 
+    const targetTableExists = await tableExists(targetTable)
+    if (!targetTableExists) {
+      return NextResponse.json({
+        success: false,
+        error: `Target table '${targetTable}' not found. Please run migration to enable ${requestedScope} storage.`
+      }, { status: 500 })
+    }
+
     const records = await queryKsave(
-      `SELECT * FROM power_records
+      `SELECT * FROM ${targetTable}
        WHERE device_id = ?
        ORDER BY record_time DESC
        LIMIT ?`,
@@ -205,6 +282,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      record_scope: requestedScope,
+      target_table: targetTable,
       count: records.length,
       records
     })

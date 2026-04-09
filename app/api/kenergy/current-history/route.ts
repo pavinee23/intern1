@@ -4,6 +4,32 @@ import { queryKsave } from '@/lib/mysql-ksave'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+type RecordScope = 'installed' | 'pre_install'
+
+const SCOPE_TO_TABLE: Record<RecordScope, string> = {
+  installed: 'power_records',
+  pre_install: 'power_records_preinstall'
+}
+
+const normalizeRecordScope = (scope?: string | null): RecordScope | null => {
+  if (!scope) return null
+  const normalized = String(scope).trim().toLowerCase()
+  if (normalized === 'installed') return 'installed'
+  if (normalized === 'pre_install' || normalized === 'pre-install' || normalized === 'preinstall') return 'pre_install'
+  return null
+}
+
+async function tableExists(tableName: string): Promise<boolean> {
+  const rows = await queryKsave(
+    `SELECT COUNT(*) AS total
+       FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?`,
+    [tableName]
+  )
+  return Number(rows?.[0]?.total || 0) > 0
+}
+
 /**
  * Get historical current data for a device
  * Shows before and after current trends over time
@@ -13,12 +39,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const deviceId = searchParams.get('deviceId')
     const hours = parseInt(searchParams.get('hours') || '24')
+    const scope = normalizeRecordScope(searchParams.get('scope')) ?? 'installed'
+    const targetTable = SCOPE_TO_TABLE[scope]
 
     if (!deviceId) {
       return NextResponse.json({
         success: false,
         error: 'Device ID is required'
       }, { status: 400 })
+    }
+
+    const targetTableExists = await tableExists(targetTable)
+    if (!targetTableExists) {
+      return NextResponse.json({
+        success: false,
+        error: `Target table '${targetTable}' not found. Please run migration to enable ${scope} storage.`
+      }, { status: 500 })
     }
 
     // Get historical data
@@ -31,7 +67,7 @@ export async function GET(request: NextRequest) {
         metrics_L1,
         metrics_L2,
         metrics_L3
-       FROM power_records
+       FROM ${targetTable}
        WHERE device_id = ?
          AND record_time >= NOW() - INTERVAL ? HOUR
        ORDER BY record_time ASC`,
@@ -84,6 +120,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         deviceId,
+        scope,
         period: `${hours} hours`,
         dataPoints: chartData.length,
         chartData,

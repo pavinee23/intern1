@@ -22,6 +22,7 @@ interface DashboardStats {
 interface RecentDevice {
   deviceID: string
   deviceName: string
+  recordScope?: 'installed' | 'pre_install' | string
   customerName?: string
   customerNameEn?: string
   customerPhone?: string
@@ -1543,6 +1544,7 @@ export default function DashboardPage() {
                     {/* ── Current Trend Chart ── */}
                     <CurrentTrendChart
                       deviceId={device.deviceID}
+                      recordScope={device.recordScope}
                       currentReduction={device.currentReduction}
                       labels={{
                         trendTitle: uiCopy.trendTitle,
@@ -1621,10 +1623,12 @@ type PhaseStats = {
 
 function CurrentTrendChart({
   deviceId,
+  recordScope,
   currentReduction,
   labels
 }: {
   deviceId: string | number
+  recordScope?: string
   currentReduction?: number | null
   labels: {
     trendTitle: string
@@ -1642,7 +1646,8 @@ function CurrentTrendChart({
 
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`/api/kenergy/current-history?deviceId=${encodeURIComponent(String(deviceId))}&hours=0.5`)
+        const scopeParam = recordScope ? `&scope=${encodeURIComponent(String(recordScope))}` : ''
+        const res = await fetch(`/api/kenergy/current-history?deviceId=${encodeURIComponent(String(deviceId))}&hours=0.5${scopeParam}`)
         if (!res.ok) return
         const json = await res.json()
         if (cancelled) return
@@ -1676,7 +1681,7 @@ function CurrentTrendChart({
       cancelled = true
       clearInterval(interval)
     }
-  }, [deviceId])
+  }, [deviceId, recordScope])
 
   const deviceLabel = String(deviceId).trim()
 

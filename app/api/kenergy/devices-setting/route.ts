@@ -4,6 +4,16 @@ import { queryKsave } from '@/lib/mysql-ksave'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+type RecordScope = 'installed' | 'pre_install'
+
+function normalizeRecordScope(scope: unknown): RecordScope | null {
+  if (scope === null || scope === undefined) return null
+  const normalized = String(scope).trim().toLowerCase()
+  if (normalized === 'installed') return 'installed'
+  if (normalized === 'pre_install' || normalized === 'pre-install' || normalized === 'preinstall') return 'pre_install'
+  return null
+}
+
 async function getDevicesColumnSet(): Promise<Set<string>> {
   const rows = await queryKsave(
     `SELECT COLUMN_NAME
@@ -45,13 +55,15 @@ export async function GET(req: NextRequest) {
     const hasCustomerPhone = deviceColumns.has('customerPhone')
     const hasCustomerAddress = deviceColumns.has('customerAddress')
     const hasCustomerId = deviceColumns.has('customer_id')
+    const hasRecordScope = deviceColumns.has('record_scope')
 
     const customerSelectFields = [
       hasCustomerId ? 'd.customer_id,' : '',
       hasCustomerName ? 'd.customerName,' : '',
       hasCustomerNameEn ? 'd.customerNameEn,' : '',
       hasCustomerPhone ? 'd.customerPhone,' : '',
-      hasCustomerAddress ? 'd.customerAddress,' : ''
+      hasCustomerAddress ? 'd.customerAddress,' : '',
+      hasRecordScope ? 'd.record_scope,' : ''
     ]
       .filter(Boolean)
       .join('\n        ')
@@ -61,7 +73,8 @@ export async function GET(req: NextRequest) {
       hasCustomerName ? 'd.customerName,' : '',
       hasCustomerNameEn ? 'd.customerNameEn,' : '',
       hasCustomerPhone ? 'd.customerPhone,' : '',
-      hasCustomerAddress ? 'd.customerAddress,' : ''
+      hasCustomerAddress ? 'd.customerAddress,' : '',
+      hasRecordScope ? 'd.record_scope,' : ''
     ]
       .filter(Boolean)
       .join('\n               ')
@@ -135,10 +148,11 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerNameEn, customerPhone, customerAddress, customerId } = body
+    const { deviceId, deviceName, location, owner, ipAddress, latitude, longitude, customerName, customerNameEn, customerPhone, customerAddress, customerId, recordScope } = body
     const deviceColumns = await getDevicesColumnSet()
     const missingCustomerColumns: string[] = []
     const hasCustomerId = deviceColumns.has('customer_id')
+    const hasRecordScope = deviceColumns.has('record_scope')
 
     if (!deviceId) {
       return NextResponse.json({
@@ -213,12 +227,27 @@ export async function PUT(req: NextRequest) {
         missingCustomerColumns.push('customer_id')
       }
     }
+    if (recordScope !== undefined) {
+      const normalizedScope = normalizeRecordScope(recordScope)
+      if (!normalizedScope) {
+        return NextResponse.json({
+          success: false,
+          error: 'recordScope must be installed or pre_install'
+        }, { status: 400 })
+      }
+      if (hasRecordScope) {
+        updates.push('record_scope = ?')
+        params.push(normalizedScope)
+      } else {
+        missingCustomerColumns.push('record_scope')
+      }
+    }
 
     if (missingCustomerColumns.length > 0) {
       return NextResponse.json({
         success: false,
         error: `Missing column(s) in devices table: ${missingCustomerColumns.join(', ')}`,
-        hint: 'Run database_schemas/alter_devices_add_customer_info.sql on K-Save database'
+        hint: 'Run database_schemas/create_power_records_preinstall_split.sql and database_schemas/alter_devices_add_customer_info.sql on K-Save database'
       }, { status: 400 })
     }
 
@@ -286,6 +315,7 @@ export async function POST(req: NextRequest) {
       seriesNo,
       status,
       customerId
+      ,recordScope
     } = body
 
     if (!deviceName || !String(deviceName).trim()) {
@@ -305,6 +335,7 @@ export async function POST(req: NextRequest) {
     const hasLongitude = deviceColumns.has('longitude')
     const hasCreateBy = deviceColumns.has('create_by')
     const hasCustomerId = deviceColumns.has('customer_id')
+    const hasRecordScope = deviceColumns.has('record_scope')
     const missingColumns: string[] = []
     const autoIncrementDeviceId = await isDeviceIdAutoIncrement()
 
@@ -412,11 +443,27 @@ export async function POST(req: NextRequest) {
       missingColumns.push('customer_id')
     }
 
+    if (recordScope !== undefined) {
+      const normalizedScope = normalizeRecordScope(recordScope)
+      if (!normalizedScope) {
+        return NextResponse.json({
+          success: false,
+          error: 'recordScope must be installed or pre_install'
+        }, { status: 400 })
+      }
+      if (hasRecordScope) {
+        columns.push('record_scope')
+        values.push(normalizedScope)
+      } else {
+        missingColumns.push('record_scope')
+      }
+    }
+
     if (missingColumns.length > 0) {
       return NextResponse.json({
         success: false,
         error: `Missing column(s) in devices table: ${missingColumns.join(', ')}`,
-        hint: 'Run database_schemas/alter_devices_add_customer_info.sql and alter_devices_add_customer_fk_and_power_records_fk.sql on K-Save database'
+        hint: 'Run database_schemas/create_power_records_preinstall_split.sql, alter_devices_add_customer_info.sql and alter_devices_add_customer_fk_and_power_records_fk.sql on K-Save database'
       }, { status: 400 })
     }
 
@@ -433,7 +480,8 @@ export async function POST(req: NextRequest) {
     const customerSelectFields = [
       hasCustomerName ? 'customerName,' : '',
       hasCustomerPhone ? 'customerPhone,' : '',
-      hasCustomerAddress ? 'customerAddress,' : ''
+      hasCustomerAddress ? 'customerAddress,' : '',
+      hasRecordScope ? 'record_scope,' : ''
     ]
       .filter(Boolean)
       .join('\n        ')

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 type RawRecentDevice = {
   deviceID: string
   deviceName: string
+  record_scope: string | null
   customerName: string | null
   customerNameEn: string | null
   customerPhone: string | null
@@ -49,6 +50,17 @@ type ColumnNameRow = {
   COLUMN_NAME: string
 }
 
+async function tableExists(tableName: string) {
+  const rows = await queryKsave(
+    `SELECT COUNT(*) as count
+     FROM INFORMATION_SCHEMA.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?`,
+    [tableName]
+  )
+  return Number(rows?.[0]?.count || 0) > 0
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get site parameter from query string
@@ -62,16 +74,7 @@ export async function GET(request: NextRequest) {
     )
     const totalDevices = totalDevicesResult[0]?.count || 0
 
-    // 2. Get online devices count (devices with recent power records within last 20 minutes) for selected site
-    const onlineDevicesResult = await queryKsave(
-      `SELECT COUNT(DISTINCT d.deviceID) as count
-       FROM devices d
-       LEFT JOIN power_records p ON d.deviceID = p.device_id
-       WHERE d.site = ? AND p.record_time >= NOW() - INTERVAL 20 MINUTE`,
-      [site]
-    )
-    const onlineDevices = onlineDevicesResult[0]?.count || 0
-    const offlineDevices = totalDevices - onlineDevices
+    // 2. Online/offline counts are computed from latest-per-device rows below
 
     // 3. Get total energy saved this month (kWh) for selected site
     const energySavedResult = await queryKsave(
@@ -85,10 +88,19 @@ export async function GET(request: NextRequest) {
     )
     const energySaved = Math.round(energySavedResult[0]?.total_energy || 0)
 
+    const hasPreInstallTable = await tableExists('power_records_preinstall')
+
     // 4. Get latest record for all devices in the selected site
     // Some environments may still run an older power_records schema.
     // Build a safe SELECT list that falls back to NULL for missing columns.
-    const optionalPowerColumns = [
+    const selectablePowerColumns = [
+      'record_time',
+      'before_L1',
+      'before_L2',
+      'before_L3',
+      'metrics_L1',
+      'metrics_L2',
+      'metrics_L3',
       'before_current_L1',
       'before_current_L2',
       'before_current_L3',
@@ -109,26 +121,20 @@ export async function GET(request: NextRequest) {
       'energy_reduction',
       'co2_reduction'
     ]
-    const placeholders = optionalPowerColumns.map(() => '?').join(', ')
+    const placeholders = selectablePowerColumns.map(() => '?').join(', ')
     const availableColumnsRows = await queryKsave(
       `SELECT COLUMN_NAME
        FROM INFORMATION_SCHEMA.COLUMNS
        WHERE TABLE_SCHEMA = DATABASE()
          AND TABLE_NAME = 'power_records'
          AND COLUMN_NAME IN (${placeholders})`,
-      optionalPowerColumns
+      selectablePowerColumns
     )
     const availableColumns = new Set(
       (availableColumnsRows as ColumnNameRow[]).map((row) => row.COLUMN_NAME)
     )
-    const selectOptionalColumn = (columnName: string) => (
-      availableColumns.has(columnName)
-        ? `p.${columnName}`
-        : `NULL AS ${columnName}`
-    )
-
     // Check optional columns in devices table
-    const optionalDeviceColumns = ['customerNameEn', 'customerPhone', 'customerAddress', 'series_no', 'metricsMeterNo', 'beforeMeterNo', 'location', 'ipAddress', 'ksaveID']
+    const optionalDeviceColumns = ['customerNameEn', 'customerPhone', 'customerAddress', 'series_no', 'metricsMeterNo', 'beforeMeterNo', 'location', 'ipAddress', 'ksaveID', 'record_scope']
     const devicePlaceholders = optionalDeviceColumns.map(() => '?').join(', ')
     const availableDeviceColumnsRows = await queryKsave(
       `SELECT COLUMN_NAME
@@ -147,10 +153,23 @@ export async function GET(request: NextRequest) {
         : `NULL AS ${columnName}`
     )
 
+    const hasRecordScope = availableDeviceColumns.has('record_scope')
+    const scopeExpr = hasRecordScope ? "COALESCE(d.record_scope, 'installed')" : "'installed'"
+    const selectedColumn = (columnName: string) => {
+      if (!availableColumns.has(columnName)) {
+        return `NULL AS ${columnName}`
+      }
+      if (hasPreInstallTable) {
+        return `CASE WHEN ${scopeExpr} = 'pre_install' THEN p_pre.${columnName} ELSE p_inst.${columnName} END AS ${columnName}`
+      }
+      return `p_inst.${columnName} AS ${columnName}`
+    }
+
     const recentDevices = await queryKsave(
       `SELECT
         d.deviceID,
         d.deviceName,
+        ${scopeExpr} AS record_scope,
         d.customerName,
         ${selectOptionalDeviceColumn('customerNameEn')},
         ${selectOptionalDeviceColumn('customerPhone')},
@@ -161,42 +180,49 @@ export async function GET(request: NextRequest) {
         ${selectOptionalDeviceColumn('location')},
         ${selectOptionalDeviceColumn('ipAddress')},
         ${selectOptionalDeviceColumn('ksaveID')},
-        p.record_time,
-        p.before_L1,
-        p.before_L2,
-        p.before_L3,
-        ${selectOptionalColumn('before_current_L1')},
-        ${selectOptionalColumn('before_current_L2')},
-        ${selectOptionalColumn('before_current_L3')},
-        p.metrics_L1,
-        p.metrics_L2,
-        p.metrics_L3,
-        ${selectOptionalColumn('metrics_P')},
-        ${selectOptionalColumn('metrics_Q')},
-        ${selectOptionalColumn('metrics_S')},
-        ${selectOptionalColumn('metrics_PF')},
-        ${selectOptionalColumn('metrics_F')},
-        ${selectOptionalColumn('metrics_kWh')},
-        ${selectOptionalColumn('before_kWh')},
-        ${selectOptionalColumn('before_P')},
-        ${selectOptionalColumn('before_Q')},
-        ${selectOptionalColumn('before_S')},
-        ${selectOptionalColumn('before_PF')},
-        ${selectOptionalColumn('before_F')},
-        ${selectOptionalColumn('before_THD')},
-        ${selectOptionalColumn('metrics_THD')},
-        ${selectOptionalColumn('energy_reduction')},
-        ${selectOptionalColumn('co2_reduction')}
+        ${selectedColumn('record_time')},
+        ${selectedColumn('before_L1')},
+        ${selectedColumn('before_L2')},
+        ${selectedColumn('before_L3')},
+        ${selectedColumn('before_current_L1')},
+        ${selectedColumn('before_current_L2')},
+        ${selectedColumn('before_current_L3')},
+        ${selectedColumn('metrics_L1')},
+        ${selectedColumn('metrics_L2')},
+        ${selectedColumn('metrics_L3')},
+        ${selectedColumn('metrics_P')},
+        ${selectedColumn('metrics_Q')},
+        ${selectedColumn('metrics_S')},
+        ${selectedColumn('metrics_PF')},
+        ${selectedColumn('metrics_F')},
+        ${selectedColumn('metrics_kWh')},
+        ${selectedColumn('before_kWh')},
+        ${selectedColumn('before_P')},
+        ${selectedColumn('before_Q')},
+        ${selectedColumn('before_S')},
+        ${selectedColumn('before_PF')},
+        ${selectedColumn('before_F')},
+        ${selectedColumn('before_THD')},
+        ${selectedColumn('metrics_THD')},
+        ${selectedColumn('energy_reduction')},
+        ${selectedColumn('co2_reduction')}
        FROM devices d
-       LEFT JOIN power_records p ON p.id = (
+       LEFT JOIN power_records p_inst ON p_inst.id = (
          SELECT pr.id
          FROM power_records pr
          WHERE pr.device_id = d.deviceID
          ORDER BY pr.record_time DESC, pr.id DESC
          LIMIT 1
        )
+       ${hasPreInstallTable ? `LEFT JOIN power_records_preinstall p_pre ON p_pre.id = (
+         SELECT pp.id
+         FROM power_records_preinstall pp
+         WHERE pp.device_id = d.deviceID
+         ORDER BY pp.record_time DESC, pp.id DESC
+         LIMIT 1
+       )` : `LEFT JOIN power_records p_pre ON 1 = 0`}
        WHERE d.site = ?
-       ORDER BY p.record_time DESC, d.deviceID ASC`,
+       ORDER BY record_time DESC, d.deviceID ASC`,
       [site]
     )
 
@@ -247,6 +273,7 @@ export async function GET(request: NextRequest) {
       return {
         deviceID: device.deviceID,
         deviceName: device.deviceName,
+        recordScope: (device.record_scope || 'installed'),
         customerName: device.customerName,
         customerNameEn: device.customerNameEn,
         customerPhone: device.customerPhone,
@@ -289,6 +316,9 @@ export async function GET(request: NextRequest) {
         co2Reduction:   toNullableNumber(device.co2_reduction)
       }
     })
+
+    const onlineDevices = devicesWithStatus.filter((device) => device.isOnline).length
+    const offlineDevices = totalDevices - onlineDevices
 
     return NextResponse.json({
       success: true,

@@ -4,6 +4,32 @@ import { queryKsave } from '@/lib/mysql-ksave'
 // Use Node.js runtime for MySQL connection (edge runtime doesn't support mysql2)
 export const dynamic = 'force-dynamic'
 
+type RecordScope = 'installed' | 'pre_install'
+
+const SCOPE_TO_TABLE: Record<RecordScope, string> = {
+  installed: 'power_records',
+  pre_install: 'power_records_preinstall'
+}
+
+const normalizeRecordScope = (scope?: string | null): RecordScope | null => {
+  if (!scope) return null
+  const normalized = String(scope).trim().toLowerCase()
+  if (normalized === 'installed') return 'installed'
+  if (normalized === 'pre_install' || normalized === 'pre-install' || normalized === 'preinstall') return 'pre_install'
+  return null
+}
+
+async function tableExists(tableName: string): Promise<boolean> {
+  const rows = await queryKsave(
+    `SELECT COUNT(*) AS total
+       FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?`,
+    [tableName]
+  )
+  return Number(rows?.[0]?.total || 0) > 0
+}
+
 /**
  * GET /api/power-records
  *
@@ -18,10 +44,20 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
     const limit = Number(url.searchParams.get('limit') || 100)
+    const scope = normalizeRecordScope(url.searchParams.get('scope')) ?? 'installed'
+    const targetTable = SCOPE_TO_TABLE[scope]
     const deviceId = url.searchParams.get('deviceId')
     const ksaveId = url.searchParams.get('ksaveId')
     const startTime = url.searchParams.get('startTime')
     const endTime = url.searchParams.get('endTime')
+
+    const targetTableExists = await tableExists(targetTable)
+    if (!targetTableExists) {
+      return NextResponse.json({
+        ok: false,
+        error: `Target table '${targetTable}' not found. Please run migration to enable ${scope} storage.`
+      }, { status: 500 })
+    }
 
     // Build SQL query - Query from devices and LEFT JOIN latest power_records
     // This ensures all devices are shown even if they don't have power records yet
@@ -45,10 +81,10 @@ export async function GET(req: Request) {
         p.created_at, p.updated_at, p.created_by
       FROM devices d
       LEFT JOIN (
-        SELECT p1.* FROM power_records p1
+        SELECT p1.* FROM ${targetTable} p1
         INNER JOIN (
           SELECT device_id, MAX(record_time) as max_time
-          FROM power_records
+          FROM ${targetTable}
           GROUP BY device_id
         ) p2 ON p1.device_id = p2.device_id AND p1.record_time = p2.max_time
       ) p ON d.deviceID = p.device_id
@@ -135,6 +171,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      scope,
+      target_table: targetTable,
       count: transformed.length,
       rows: transformed
     })
