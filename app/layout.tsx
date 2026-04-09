@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import './globals.css'
 import './styles/globals.css'
 import { LocaleProvider } from '@/lib/LocaleContext'
-import { LocaleProvider as ContextLocaleProvider } from '@/context/LocaleContext'
 import { SiteProvider } from '@/lib/SiteContext'
 
 export const metadata: Metadata = {
@@ -53,9 +52,7 @@ export default function RootLayout({
       <body>
         <SiteProvider>
           <LocaleProvider>
-            <ContextLocaleProvider>
-              {children}
-            </ContextLocaleProvider>
+            {children}
           </LocaleProvider>
         </SiteProvider>
       </body>
