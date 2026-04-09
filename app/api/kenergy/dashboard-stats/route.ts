@@ -8,6 +8,12 @@ type RawRecentDevice = {
   deviceID: string
   deviceName: string
   customerName: string | null
+  customerNameEn: string | null
+  customerPhone: string | null
+  customerAddress: string | null
+  series_no: string | null
+  metricsMeterNo: string | null
+  beforeMeterNo: string | null
   location: string | null
   ipAddress: string | null
   ksaveID: string | null
@@ -21,8 +27,22 @@ type RawRecentDevice = {
   metrics_L1: number | string | null
   metrics_L2: number | string | null
   metrics_L3: number | string | null
+  metrics_P: number | string | null
+  metrics_Q: number | string | null
+  metrics_S: number | string | null
+  metrics_PF: number | string | null
+  metrics_F: number | string | null
+  metrics_kWh: number | string | null
+  before_kWh: number | string | null
+  before_P: number | string | null
+  before_Q: number | string | null
+  before_S: number | string | null
+  before_PF: number | string | null
+  before_F: number | string | null
   before_THD: number | string | null
   metrics_THD: number | string | null
+  energy_reduction: number | string | null
+  co2_reduction: number | string | null
 }
 
 type ColumnNameRow = {
@@ -73,7 +93,21 @@ export async function GET(request: NextRequest) {
       'before_current_L2',
       'before_current_L3',
       'before_THD',
-      'metrics_THD'
+      'metrics_THD',
+      'metrics_P',
+      'metrics_Q',
+      'metrics_S',
+      'metrics_PF',
+      'metrics_F',
+      'metrics_kWh',
+      'before_kWh',
+      'before_P',
+      'before_Q',
+      'before_S',
+      'before_PF',
+      'before_F',
+      'energy_reduction',
+      'co2_reduction'
     ]
     const placeholders = optionalPowerColumns.map(() => '?').join(', ')
     const availableColumnsRows = await queryKsave(
@@ -98,6 +132,12 @@ export async function GET(request: NextRequest) {
         d.deviceID,
         d.deviceName,
         d.customerName,
+        d.customerNameEn,
+        d.customerPhone,
+        d.customerAddress,
+        d.series_no,
+        d.metricsMeterNo,
+        d.beforeMeterNo,
         d.location,
         d.ipAddress,
         d.ksaveID,
@@ -111,8 +151,22 @@ export async function GET(request: NextRequest) {
         p.metrics_L1,
         p.metrics_L2,
         p.metrics_L3,
+        ${selectOptionalColumn('metrics_P')},
+        ${selectOptionalColumn('metrics_Q')},
+        ${selectOptionalColumn('metrics_S')},
+        ${selectOptionalColumn('metrics_PF')},
+        ${selectOptionalColumn('metrics_F')},
+        ${selectOptionalColumn('metrics_kWh')},
+        ${selectOptionalColumn('before_kWh')},
+        ${selectOptionalColumn('before_P')},
+        ${selectOptionalColumn('before_Q')},
+        ${selectOptionalColumn('before_S')},
+        ${selectOptionalColumn('before_PF')},
+        ${selectOptionalColumn('before_F')},
         ${selectOptionalColumn('before_THD')},
-        ${selectOptionalColumn('metrics_THD')}
+        ${selectOptionalColumn('metrics_THD')},
+        ${selectOptionalColumn('energy_reduction')},
+        ${selectOptionalColumn('co2_reduction')}
        FROM devices d
        LEFT JOIN power_records p ON p.id = (
          SELECT pr.id
@@ -174,15 +228,21 @@ export async function GET(request: NextRequest) {
         deviceID: device.deviceID,
         deviceName: device.deviceName,
         customerName: device.customerName,
+        customerNameEn: device.customerNameEn,
+        customerPhone: device.customerPhone,
+        customerAddress: device.customerAddress,
+        seriesNo: device.series_no,
+        metricsMeterNo: device.metricsMeterNo,
+        beforeMeterNo: device.beforeMeterNo,
         location: device.location,
         ipAddress: device.ipAddress,
         ksaveID: device.ksaveID,
         isOnline,
         lastUpdate: device.record_time,
         voltageLL: [
-          toNullableNumber(device.before_L1) || 0,
-          toNullableNumber(device.before_L2) || 0,
-          toNullableNumber(device.before_L3) || 0
+          toNullableNumber(device.before_L1),
+          toNullableNumber(device.before_L2),
+          toNullableNumber(device.before_L3)
         ],
         currentABC,
         beforeCurrentABC,
@@ -191,7 +251,22 @@ export async function GET(request: NextRequest) {
         currentReduction,
         imbalancePercent,
         avgThd,
-        thdABC
+        thdABC,
+        activePower:    toNullableNumber(device.metrics_P),
+        reactivePower:  toNullableNumber(device.metrics_Q),
+        apparentPower:  toNullableNumber(device.metrics_S),
+        powerFactor:    toNullableNumber(device.metrics_PF),
+        frequency:      toNullableNumber(device.metrics_F),
+        energyKwh:      toNullableNumber(device.metrics_kWh),
+        beforeKwh:      toNullableNumber(device.before_kWh),
+        beforeActivePower:    toNullableNumber(device.before_P),
+        beforeReactivePower:  toNullableNumber(device.before_Q),
+        beforeApparentPower:  toNullableNumber(device.before_S),
+        beforePowerFactor:    toNullableNumber(device.before_PF),
+        beforeFrequency:      toNullableNumber(device.before_F),
+        beforeThd:            toNullableNumber(device.before_THD),
+        energyReduction: toNullableNumber(device.energy_reduction),
+        co2Reduction:   toNullableNumber(device.co2_reduction)
       }
     })
 

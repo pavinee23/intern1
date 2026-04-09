@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/LocaleContext'
 import { useSite } from '@/lib/SiteContext'
-import DeviceCard from '@/components/DeviceCard'
 import {
   Activity, Zap, Wifi, WifiOff, RefreshCw, ArrowRight,
   Server, CheckCircle2, XCircle, Leaf,
   BarChart2, Monitor, Settings, ChevronRight, Search,
+  Edit2, MapPin,
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
@@ -23,10 +23,18 @@ interface RecentDevice {
   deviceID: string
   deviceName: string
   customerName?: string
+  customerNameEn?: string
+  customerPhone?: string
+  customerAddress?: string
+  seriesNo?: string
+  ksaveID?: string
+  metricsMeterNo?: string
+  beforeMeterNo?: string
+  ipAddress?: string
   location: string
   isOnline: boolean
   lastUpdate: string
-  voltageLL: number[]
+  voltageLL: Array<number | null>
   currentABC: Array<number | null>
   beforeCurrentABC?: Array<number | null>
   avgCurrent: number | null
@@ -35,6 +43,22 @@ interface RecentDevice {
   imbalancePercent: number | null
   thdABC?: Array<number | null>
   avgThd?: number | null
+  // Power & Energy
+  activePower?: number | null
+  reactivePower?: number | null
+  apparentPower?: number | null
+  powerFactor?: number | null
+  frequency?: number | null
+  energyKwh?: number | null
+  beforeKwh?: number | null
+  beforeActivePower?: number | null
+  beforeReactivePower?: number | null
+  beforeApparentPower?: number | null
+  beforePowerFactor?: number | null
+  beforeFrequency?: number | null
+  beforeThd?: number | null
+  energyReduction?: number | null
+  co2Reduction?: number | null
 }
 
 interface DashboardData {
@@ -64,6 +88,11 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showAllDevices, setShowAllDevices] = useState(false)
   const [showAllCurrentAnalysis, setShowAllCurrentAnalysis] = useState(false)
+
+  // Reset location filter when country changes
+  useEffect(() => {
+    setSearchTerm('')
+  }, [selectedSite])
 
   useEffect(() => {
     const localeMap: Record<string, string> = {
@@ -99,7 +128,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData()
-    const interval = setInterval(fetchDashboardData, 60000)
+    const interval = setInterval(fetchDashboardData, 30000)
     return () => clearInterval(interval)
   }, [fetchDashboardData])
 
@@ -116,17 +145,19 @@ export default function DashboardPage() {
   }
 
   if (error && !data) {
+    const errMsg = ({ th: 'โหลดแดชบอร์ดไม่สำเร็จ', ko: '대시보드를 불러오지 못했습니다' } as Record<string, string>)[locale] ?? 'Failed to load dashboard'
+    const retryMsg = ({ th: 'ลองใหม่', ko: '다시 시도' } as Record<string, string>)[locale] ?? 'Retry'
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center bg-white rounded-3xl shadow-sm border border-red-100 p-10 max-w-sm">
           <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-red-400" />
           </div>
-          <p className="text-gray-800 font-semibold mb-1">{uiCopy.failedToLoadDashboard}</p>
+          <p className="text-gray-800 font-semibold mb-1">{errMsg}</p>
           <p className="text-gray-400 text-sm mb-5">{error}</p>
           <button onClick={fetchDashboardData}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors text-sm">
-            <RefreshCw className="w-4 h-4" /> {uiCopy.retry}
+            <RefreshCw className="w-4 h-4" /> {retryMsg}
           </button>
         </div>
       </div>
@@ -151,10 +182,11 @@ export default function DashboardPage() {
   const searchQuery = searchTerm.trim().toLowerCase()
   const dashboardCopy = {
     th: {
-      searchLabel: 'ค้นหาเครื่อง',
-      searchPlaceholder: 'ค้นหาจากชื่อเครื่อง รหัสเครื่อง หรือสถานที่ติดตั้ง',
-      searchResults: 'ผลการค้นหา',
+      searchLabel: 'กรองตามสถานที่ติดตั้ง',
+      searchPlaceholder: 'ทั้งหมด',
+      searchResults: 'ผลการกรอง',
       clearSearch: 'ล้าง',
+      allLocations: 'ทั้งหมด',
       noSearchResults: 'ไม่พบเครื่องที่ตรงกับคำค้น',
       viewAll: 'ดูทั้งหมด',
       viewLess: 'ดูน้อยลง',
@@ -170,13 +202,22 @@ export default function DashboardPage() {
       noCurrentData: 'ยังไม่มีข้อมูลกระแสไฟล่าสุดของอุปกรณ์',
       balanceGood: 'สมดุลดี',
       balanceWarn: 'ควรติดตาม',
-      balanceRisk: 'ต่างกันสูง'
+      balanceRisk: 'ต่างกันสูง',
+      beforeCurrentLabel: 'Before K-Save (ก่อนติดตั้ง 7-14 วัน)',
+      beforeAvgCurrent: 'ค่าเฉลี่ยก่อนติดตั้ง',
+      waitingMeter: 'รอรับข้อมูลจากมิเตอร์',
+      modelLabel: 'รุ่น',
+      meterNoLabel: 'เลขมิเตอร์',
+      telLabel: 'โทร.',
+      addressLabel: 'ที่อยู่',
+      currentReduced: 'กระแสลดลง'
     },
     en: {
-      searchLabel: 'Search Devices',
-      searchPlaceholder: 'Search by device name, ID, or location',
-      searchResults: 'Search Results',
+      searchLabel: 'Filter by Location',
+      searchPlaceholder: 'All Locations',
+      searchResults: 'Filtered Results',
       clearSearch: 'Clear',
+      allLocations: 'All Locations',
       noSearchResults: 'No devices match your search',
       viewAll: 'View All',
       viewLess: 'View Less',
@@ -192,13 +233,22 @@ export default function DashboardPage() {
       noCurrentData: 'No recent current data available',
       balanceGood: 'Balanced',
       balanceWarn: 'Monitor',
-      balanceRisk: 'High Gap'
+      balanceRisk: 'High Gap',
+      beforeCurrentLabel: 'Before K-Save (7-14 days pre-install)',
+      beforeAvgCurrent: 'Avg Before Install',
+      waitingMeter: 'Waiting for meter data',
+      modelLabel: 'Model',
+      meterNoLabel: 'Meter No.',
+      telLabel: 'Tel.',
+      addressLabel: 'Address',
+      currentReduced: 'Current Reduced'
     },
     ko: {
-      searchLabel: '장치 검색',
-      searchPlaceholder: '장치명, ID 또는 설치 위치로 검색',
-      searchResults: '검색 결과',
+      searchLabel: '설치 위치로 필터',
+      searchPlaceholder: '전체',
+      searchResults: '필터 결과',
       clearSearch: '지우기',
+      allLocations: '전체',
       noSearchResults: '검색 조건과 일치하는 장치가 없습니다',
       viewAll: '전체 보기',
       viewLess: '간단히 보기',
@@ -214,13 +264,22 @@ export default function DashboardPage() {
       noCurrentData: '최근 전류 데이터가 없습니다',
       balanceGood: '양호',
       balanceWarn: '확인 필요',
-      balanceRisk: '편차 큼'
+      balanceRisk: '편차 큼',
+      beforeCurrentLabel: 'K-Save 설치 전 (7-14일)',
+      beforeAvgCurrent: '설치 전 평균 전류',
+      waitingMeter: '미터 데이터 대기 중',
+      modelLabel: '모델',
+      meterNoLabel: '계량기 번호',
+      telLabel: '전화',
+      addressLabel: '주소',
+      currentReduced: '전류 감소'
     },
     cn: {
-      searchLabel: '搜索设备',
-      searchPlaceholder: '按设备名称、ID或安装位置搜索',
-      searchResults: '搜索结果',
+      searchLabel: '按安装位置筛选',
+      searchPlaceholder: '全部位置',
+      searchResults: '筛选结果',
       clearSearch: '清除',
+      allLocations: '全部位置',
       noSearchResults: '没有匹配搜索条件的设备',
       viewAll: '查看全部',
       viewLess: '收起',
@@ -236,13 +295,22 @@ export default function DashboardPage() {
       noCurrentData: '暂无最新电流数据',
       balanceGood: '平衡良好',
       balanceWarn: '建议关注',
-      balanceRisk: '差异较高'
+      balanceRisk: '差异较高',
+      beforeCurrentLabel: 'Before K-Save（安装前7-14天）',
+      beforeAvgCurrent: '安装前平均电流',
+      waitingMeter: '等待表计数据',
+      modelLabel: '型号',
+      meterNoLabel: '电表编号',
+      telLabel: '电话',
+      addressLabel: '地址',
+      currentReduced: '电流减少'
     },
     vn: {
-      searchLabel: 'Tim kiem thiet bi',
-      searchPlaceholder: 'Tim theo ten may, ID hoac vi tri lap dat',
-      searchResults: 'Ket qua tim kiem',
+      searchLabel: 'Loc theo vi tri lap dat',
+      searchPlaceholder: 'Tat ca vi tri',
+      searchResults: 'Ket qua loc',
       clearSearch: 'Xoa',
+      allLocations: 'Tat ca vi tri',
       noSearchResults: 'Khong tim thay thiet bi phu hop',
       viewAll: 'Xem tat ca',
       viewLess: 'Thu gon',
@@ -258,13 +326,22 @@ export default function DashboardPage() {
       noCurrentData: 'Chua co du lieu dong dien moi nhat',
       balanceGood: 'Can bang tot',
       balanceWarn: 'Nen theo doi',
-      balanceRisk: 'Lech cao'
+      balanceRisk: 'Lech cao',
+      beforeCurrentLabel: 'Before K-Save (7-14 ngày trước lắp)',
+      beforeAvgCurrent: 'TB trước lắp đặt',
+      waitingMeter: 'Cho du lieu dong ho',
+      modelLabel: 'Model',
+      meterNoLabel: 'So dong ho',
+      telLabel: 'Dien thoai',
+      addressLabel: 'Dia chi',
+      currentReduced: 'Dong dien giam'
     },
     ms: {
-      searchLabel: 'Cari Peranti',
-      searchPlaceholder: 'Cari mengikut nama peranti, ID, atau lokasi pemasangan',
-      searchResults: 'Hasil Carian',
+      searchLabel: 'Tapis mengikut Lokasi',
+      searchPlaceholder: 'Semua Lokasi',
+      searchResults: 'Hasil Tapisan',
       clearSearch: 'Kosongkan',
+      allLocations: 'Semua Lokasi',
       noSearchResults: 'Tiada peranti yang sepadan dengan carian anda',
       viewAll: 'Lihat Semua',
       viewLess: 'Lihat Kurang',
@@ -280,13 +357,22 @@ export default function DashboardPage() {
       noCurrentData: 'Tiada data arus terkini tersedia',
       balanceGood: 'Seimbang',
       balanceWarn: 'Perlu Dipantau',
-      balanceRisk: 'Ketidakseimbangan Tinggi'
+      balanceRisk: 'Ketidakseimbangan Tinggi',
+      beforeCurrentLabel: 'Before K-Save (7-14 hari sebelum pasang)',
+      beforeAvgCurrent: 'Purata Sebelum Pasang',
+      waitingMeter: 'Menunggu data meter',
+      modelLabel: 'Model',
+      meterNoLabel: 'No. Meter',
+      telLabel: 'Tel.',
+      addressLabel: 'Alamat',
+      currentReduced: 'Arus Berkurang'
     }
   }[locale] ?? {
-    searchLabel: 'Search Devices',
-    searchPlaceholder: 'Search by device name, ID, or location',
-    searchResults: 'Search Results',
+    searchLabel: 'Filter by Location',
+    searchPlaceholder: 'All Locations',
+    searchResults: 'Filtered Results',
     clearSearch: 'Clear',
+    allLocations: 'All Locations',
     noSearchResults: 'No devices match your search',
     viewAll: 'View All',
     viewLess: 'View Less',
@@ -302,10 +388,102 @@ export default function DashboardPage() {
     noCurrentData: 'No recent current data available',
     balanceGood: 'Balanced',
     balanceWarn: 'Monitor',
-    balanceRisk: 'High Gap'
+    balanceRisk: 'High Gap',
+    beforeCurrentLabel: 'Before K-Save (7-14 days pre-install)',
+    beforeAvgCurrent: 'Avg Before Install',
+    waitingMeter: 'Waiting for meter data',
+    modelLabel: 'Model',
+    meterNoLabel: 'Meter No.',
+    telLabel: 'Tel.',
+    addressLabel: 'Address',
+    currentReduced: 'Current Reduced'
   }
 
   const uiCopy = {
+    th: {
+      dashboardTitle: 'แดชบอร์ด',
+      totalTag: 'ทั้งหมด',
+      totalDevices: 'อุปกรณ์ทั้งหมด',
+      onlineDevices: 'ออนไลน์',
+      offlineDevices: 'ออฟไลน์',
+      energySavedLabel: 'พลังงานที่ประหยัด',
+      failedToLoadDashboard: 'โหลดแดชบอร์ดไม่สำเร็จ',
+      retry: 'ลองใหม่',
+      systemBadge: 'K Energy Save System',
+      kpiDevices: 'อุปกรณ์',
+      kpiOnline: 'ออนไลน์',
+      kpiKwhSaved: 'kWh ที่ประหยัด',
+      refresh: 'รีเฟรช',
+      live: 'สด',
+      onlineSuffix: 'ออนไลน์',
+      alert: 'แจ้งเตือน',
+      needsAttention: 'ต้องตรวจสอบ',
+      systemHealth: 'สถานะระบบ',
+      autoRefresh60s: 'รีเฟรชอัตโนมัติทุก 60 วินาที',
+      onlineRate: 'อัตราออนไลน์',
+      online: 'ออนไลน์',
+      offline: 'ออฟไลน์',
+      co2Reduced: 'CO₂ ลดลง',
+      kwhSaved: 'kWh ที่ประหยัด',
+      quickActions: 'การดำเนินการด่วน',
+      liveMonitor: 'มอนิเตอร์สด',
+      realTimeData: 'ข้อมูลเรียลไทม์',
+      analytics: 'วิเคราะห์',
+      chartsReports: 'กราฟ & รายงาน',
+      devices: 'อุปกรณ์',
+      allDevices: 'อุปกรณ์ทั้งหมด',
+      settings: 'ตั้งค่า',
+      systemConfig: 'ตั้งค่าระบบ',
+      voltageLineToLine: 'แรงดัน (สาย-สาย)',
+      current: 'กระแส',
+      thd: 'THD',
+      trendTitle: 'แนวโน้มกระแส (30 นาทีล่าสุด)',
+      reduction: 'ลดลง',
+      beforeKsave: 'ก่อน K-Save',
+      afterKsave: 'หลัง K-Save'
+    },
+    ko: {
+      dashboardTitle: '대시보드',
+      totalTag: '전체',
+      totalDevices: '전체 장치',
+      onlineDevices: '온라인 장치',
+      offlineDevices: '오프라인 장치',
+      energySavedLabel: '절약 전력량',
+      failedToLoadDashboard: '대시보드를 불러오지 못했습니다',
+      retry: '다시 시도',
+      systemBadge: 'K Energy Save 시스템',
+      kpiDevices: '장치',
+      kpiOnline: '온라인',
+      kpiKwhSaved: '절약 kWh',
+      refresh: '새로 고침',
+      live: '실시간',
+      onlineSuffix: '온라인',
+      alert: '경보',
+      needsAttention: '확인 필요',
+      systemHealth: '시스템 상태',
+      autoRefresh60s: '60초마다 자동 새로 고침',
+      onlineRate: '온라인 비율',
+      online: '온라인',
+      offline: '오프라인',
+      co2Reduced: 'CO₂ 감소',
+      kwhSaved: 'kWh 절약',
+      quickActions: '빠른 작업',
+      liveMonitor: '실시간 모니터',
+      realTimeData: '실시간 데이터',
+      analytics: '분석',
+      chartsReports: '차트 & 보고서',
+      devices: '장치',
+      allDevices: '모든 장치',
+      settings: '설정',
+      systemConfig: '시스템 설정',
+      voltageLineToLine: '전압 (선간)',
+      current: '전류',
+      thd: 'THD',
+      trendTitle: '전류 추세 (최근 30분)',
+      reduction: '감소',
+      beforeKsave: 'K-Save 이전',
+      afterKsave: 'K-Save 이후'
+    },
     en: {
       dashboardTitle: 'Dashboard',
       totalTag: 'Total',
@@ -517,17 +695,17 @@ export default function DashboardPage() {
     afterKsave: 'After K-Save'
   }
 
+  const uniqueLocations = Array.from(
+    new Set(uniqueRecentDevices.map(d => d.location).filter(Boolean))
+  ).sort() as string[]
+
   const matchesSearch = (device: RecentDevice) => {
     if (!searchQuery) return true
-    return [device.deviceName, device.customerName, device.deviceID, device.location]
-      .filter(Boolean)
-      .some(value => String(value).toLowerCase().includes(searchQuery))
+    return (device.location ?? '').toLowerCase() === searchQuery
   }
 
   const filteredRecentDevices = uniqueRecentDevices.filter(matchesSearch)
-  const filteredCurrentAnalysisDevices = filteredRecentDevices.filter(device =>
-    Array.isArray(device.currentABC) && device.currentABC.some(value => value !== null)
-  )
+  const filteredCurrentAnalysisDevices = filteredRecentDevices
   const visibleRecentDevices = showAllDevices ? filteredRecentDevices : filteredRecentDevices.slice(0, 6)
   const visibleCurrentAnalysisDevices = showAllCurrentAnalysis
     ? filteredCurrentAnalysisDevices
@@ -769,18 +947,33 @@ export default function DashboardPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              {dashboardCopy.searchLabel}
-            </label>
+            {(() => {
+              const siteLabel: Record<string, { flag: string; region: Record<string, string> }> = {
+                thailand: { flag: '🇹🇭', region: { th: 'กรองตามจังหวัด', en: 'Filter by Province', ko: '태국 주별 필터', cn: '按省份筛选 (泰国)', vn: 'Lọc theo tỉnh (Thái Lan)', ms: 'Tapis mengikut Wilayah (Thai)' } },
+                korea:    { flag: '🇰🇷', region: { th: 'กรองตามเมือง (เกาหลี)', en: 'Filter by City (Korea)', ko: '시/도별 필터', cn: '按城市筛选 (韩国)', vn: 'Lọc theo thành phố (Hàn Quốc)', ms: 'Tapis mengikut Bandar (Korea)' } },
+                vietnam:  { flag: '🇻🇳', region: { th: 'กรองตามจังหวัด (เวียดนาม)', en: 'Filter by Province (Vietnam)', ko: '베트남 주별 필터', cn: '按省份筛选 (越南)', vn: 'Lọc theo tỉnh (Việt Nam)', ms: 'Tapis mengikut Wilayah (Vietnam)' } },
+                malaysia: { flag: '🇲🇾', region: { th: 'กรองตามรัฐ (มาเลเซีย)', en: 'Filter by State (Malaysia)', ko: '말레이시아 주별 필터', cn: '按州筛选 (马来西亚)', vn: 'Lọc theo Bang (Malaysia)', ms: 'Tapis mengikut Negeri (Malaysia)' } },
+              }
+              const cfg = siteLabel[selectedSite] ?? siteLabel.thailand
+              const regionLabel = cfg.region[locale] ?? cfg.region.en
+              return (
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <span className="mr-1.5">{cfg.flag}</span>{regionLabel}
+                </label>
+              )
+            })()}
             <div className="relative">
-              <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
+              <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={dashboardCopy.searchPlaceholder}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-50"
-              />
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 py-3 text-sm text-gray-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-50 appearance-none cursor-pointer"
+              >
+                <option value="">{dashboardCopy.searchPlaceholder}</option>
+                {uniqueLocations.map(loc => (
+                  <option key={loc} value={loc.toLowerCase()}>{loc}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="flex items-end gap-3">
@@ -833,20 +1026,335 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {visibleRecentDevices.map((device) => (
-                <DeviceCard key={device.deviceID}
-                  deviceName={device.customerName || device.deviceName}
-                  isOnline={device.isOnline}
-                  voltageReadings={{
-                    ll1: device.voltageLL[0] != null ? Number(device.voltageLL[0]) : null,
-                    ll2: device.voltageLL[1] != null ? Number(device.voltageLL[1]) : null,
-                    ll3: device.voltageLL[2] != null ? Number(device.voltageLL[2]) : null,
-                  }}
-                  lastConnected={device.lastUpdate ? new Date(device.lastUpdate).toLocaleString() : '-'}
-                  onEdit={() => router.push(`/devices-setting?device=${device.deviceID}`)}
-                />
-              ))}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {visibleRecentDevices.map((device) => {
+                const fmtV   = (v: number | null | undefined) => v != null ? `${Number(v).toFixed(1)} V` : '--'
+                const fmtA   = (v: number | null | undefined) => v != null ? `${Number(v).toFixed(1)} A` : '--'
+                const fmtPct = (v: number | null | undefined) => v != null ? `${Number(v).toFixed(1)}%` : '--'
+                const fmtKw  = (v: number | null | undefined) => v != null ? `${Number(v).toFixed(2)} kW` : '--'
+                const fmtKwh = (v: number | null | undefined) => v != null ? `${Number(v).toFixed(2)} kWh` : '--'
+                const fmtPF  = (v: number | null | undefined) => v != null ? Number(v).toFixed(3) : '--'
+                const fmtHz  = (v: number | null | undefined) => v != null ? `${Number(v).toFixed(2)} Hz` : '--'
+                const hasBeforeCurrent = device.beforeCurrentABC?.some(v => v !== null)
+                const hasAfterCurrent  = device.currentABC?.some(v => v !== null)
+                const bal = getBalanceState(device.imbalancePercent)
+
+                // Row helper for compact display
+                const Row = ({ label, value, valueClass = 'text-gray-700' }: { label: string; value: string; valueClass?: string }) => (
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[10px] text-gray-400">{label}</span>
+                    <span className={`text-[11px] font-semibold ${valueClass}`}>{value}</span>
+                  </div>
+                )
+
+                return (
+                  <div key={device.deviceID}
+                    className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-lg transition-all duration-200">
+
+                    {/* ── Card Header ── */}
+                    <div className={`px-4 py-3.5 flex items-start justify-between gap-2 ${
+                      device.isOnline
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600'
+                        : 'bg-gradient-to-r from-slate-500 to-gray-600'
+                    }`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            device.isOnline
+                              ? 'bg-white/20 text-white border border-white/30'
+                              : 'bg-white/15 text-white/80 border border-white/20'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              device.isOnline ? 'bg-green-300 animate-pulse' : 'bg-gray-300'
+                            }`} />
+                            {device.isOnline ? uiCopy.online : uiCopy.offline}
+                          </span>
+                        </div>
+                        <p className="font-bold text-white text-sm leading-tight">
+                          {(locale === 'th' ? device.customerName : device.customerNameEn || device.customerName) || device.deviceName}
+                        </p>
+                        {device.location && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-white/60 flex-shrink-0" />
+                            <span className="text-[11px] text-white/70">{device.location}</span>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => router.push(`/devices-setting?device=${device.deviceID}`)}
+                        className="p-1.5 rounded-lg bg-white/15 hover:bg-white/30 transition-colors flex-shrink-0 mt-0.5"
+                        title="Edit device">
+                        <Edit2 className="w-3.5 h-3.5 text-white" />
+                      </button>
+                    </div>
+
+                    {/* ── Two Meters Side by Side ── */}
+                    <div className="grid grid-cols-2 divide-x divide-gray-100">
+
+                      {/* Meter 1 — Before K-Save */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border-b border-red-100">
+                          <div className="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-red-600">
+                            {uiCopy.beforeKsave}
+                          </span>
+                        </div>
+                        <div className="p-3 space-y-1.5 flex-1">
+
+                        {/* No data — show static device info */}
+                        {device.voltageLL.every(v => v == null) && !hasBeforeCurrent && device.beforeActivePower == null ? (
+                          <div className="space-y-0.5">
+                            <div className="flex flex-col items-center justify-center py-3 text-center">
+                              <span className="text-2xl mb-1.5">🔌</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">{dashboardCopy.waitingMeter}</span>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.modelLabel}</span>
+                                <span className="text-[10px] font-bold text-gray-700">{device.deviceName || '–'}</span>
+                              </div>
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.meterNoLabel}</span>
+                                <span className={`text-[10px] font-bold ${device.beforeMeterNo ? 'text-blue-600' : 'text-gray-400'}`}>
+                                  {device.beforeMeterNo ? `# ${device.beforeMeterNo}` : '–'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-start px-2.5 py-1.5 gap-2">
+                                <span className="text-[10px] text-gray-400 font-medium shrink-0">S/N</span>
+                                <span className="text-[10px] font-bold text-gray-700 text-right break-all">{device.seriesNo || '–'}</span>
+                              </div>
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">K-Save ID</span>
+                                <span className="text-[10px] font-bold text-emerald-600">{device.ksaveID || '–'}</span>
+                              </div>
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.telLabel}</span>
+                                <span className="text-[10px] font-bold text-gray-700">{device.customerPhone || '–'}</span>
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2">
+                              <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide block mb-0.5">{dashboardCopy.addressLabel}</span>
+                              <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                          <div className="rounded-lg bg-orange-50 border border-orange-100 divide-y divide-orange-100 overflow-hidden">
+                            <div className="px-2.5 py-1.5">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-orange-400 mb-1">{uiCopy.voltageLineToLine}</p>
+                              <Row label="L1" value={fmtV(device.voltageLL[0])} valueClass="text-orange-700" />
+                              <Row label="L2" value={fmtV(device.voltageLL[1])} valueClass="text-orange-700" />
+                              <Row label="L3" value={fmtV(device.voltageLL[2])} valueClass="text-orange-700" />
+                            </div>
+                          </div>
+
+                          {/* Before Current */}
+                          {hasBeforeCurrent && (
+                            <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-2">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-red-400 mb-1">{uiCopy.current}</p>
+                              <Row label="L1" value={fmtA(device.beforeCurrentABC?.[0])} valueClass="text-red-600" />
+                              <Row label="L2" value={fmtA(device.beforeCurrentABC?.[1])} valueClass="text-red-600" />
+                              <Row label="L3" value={fmtA(device.beforeCurrentABC?.[2])} valueClass="text-red-600" />
+                              {device.avgBeforeCurrent != null && (
+                                <Row label="Avg" value={fmtA(device.avgBeforeCurrent)} valueClass="text-red-700" />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Before Power */}
+                          {(device.beforeActivePower != null || device.beforeReactivePower != null || device.beforeApparentPower != null) && (
+                            <div className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-2">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Power</p>
+                              {device.beforeActivePower != null && (
+                                <Row label="P (kW)" value={fmtKw(device.beforeActivePower)} valueClass="text-orange-600" />
+                              )}
+                              {device.beforeReactivePower != null && (
+                                <Row label="Q (kVAR)" value={`${Number(device.beforeReactivePower).toFixed(2)} kVAR`} valueClass="text-orange-500" />
+                              )}
+                              {device.beforeApparentPower != null && (
+                                <Row label="S (kVA)" value={`${Number(device.beforeApparentPower).toFixed(2)} kVA`} valueClass="text-orange-500" />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Before Quality */}
+                          {(device.beforePowerFactor != null || device.beforeFrequency != null) && (
+                            <div className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-2">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Quality</p>
+                              {device.beforePowerFactor != null && (
+                                <Row label="PF" value={fmtPF(device.beforePowerFactor)} valueClass="text-orange-600" />
+                              )}
+                              {device.beforeFrequency != null && (
+                                <Row label="Freq" value={fmtHz(device.beforeFrequency)} valueClass="text-orange-500" />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Before THD */}
+                          {device.beforeThd != null && (
+                            <div className="rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-2">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-rose-400 mb-1">THD</p>
+                              <Row label="THD" value={fmtPct(device.beforeThd)} valueClass="text-red-500" />
+                            </div>
+                          )}
+
+                          {/* Before kWh */}
+                          {device.beforeKwh != null && (
+                            <div className="rounded-lg bg-orange-50 border border-orange-100 px-2.5 py-2">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-orange-400 mb-1">Energy</p>
+                              <Row label="kWh" value={fmtKwh(device.beforeKwh)} valueClass="text-orange-500" />
+                            </div>
+                          )}
+                          </>
+                        )}
+                        </div>
+                      </div>
+
+                      {/* Meter 2 — After K-Save */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border-b border-emerald-100">
+                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600">
+                            {uiCopy.afterKsave}
+                          </span>
+                        </div>
+                        <div className="p-3 space-y-1.5 flex-1">
+
+                        {/* No data fallback — show device info */}
+                        {!hasAfterCurrent && device.activePower == null && device.powerFactor == null && device.avgThd == null && device.energyKwh == null ? (
+                          <div className="space-y-0.5">
+                            <div className="flex flex-col items-center justify-center py-3 text-center">
+                              <span className="text-2xl mb-1.5">📊</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">{dashboardCopy.waitingMeter}</span>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.meterNoLabel}</span>
+                                <span className={`text-[10px] font-bold ${device.metricsMeterNo ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                  {device.metricsMeterNo ? `# ${device.metricsMeterNo}` : '–'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">K-Save ID</span>
+                                <span className="text-[10px] font-bold text-emerald-600">{device.ksaveID || '–'}</span>
+                              </div>
+                              <div className="flex justify-between items-start px-2.5 py-1.5 gap-2">
+                                <span className="text-[10px] text-gray-400 font-medium shrink-0">S/N</span>
+                                <span className="text-[10px] font-bold text-gray-700 text-right break-all">{device.seriesNo || '–'}</span>
+                              </div>
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">IP</span>
+                                <span className="text-[10px] font-bold text-gray-600">{device.ipAddress || '–'}</span>
+                              </div>
+                              <div className="flex justify-between items-center px-2.5 py-1.5">
+                                <span className="text-[10px] text-gray-400 font-medium">{dashboardCopy.telLabel}</span>
+                                <span className="text-[10px] font-bold text-gray-700">{device.customerPhone || '–'}</span>
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2">
+                              <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide block mb-0.5">{dashboardCopy.addressLabel}</span>
+                              <p className="text-[10px] text-gray-600 leading-snug">{device.customerAddress || '–'}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                        {hasAfterCurrent && (
+                          <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500 mb-1">{uiCopy.current}</p>
+                            <Row label="L1" value={fmtA(device.currentABC[0])} valueClass="text-emerald-700" />
+                            <Row label="L2" value={fmtA(device.currentABC[1])} valueClass="text-emerald-700" />
+                            <Row label="L3" value={fmtA(device.currentABC[2])} valueClass="text-emerald-700" />
+                            {device.avgCurrent != null && (
+                              <Row label="Avg" value={fmtA(device.avgCurrent)} valueClass="text-emerald-800" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Active / Reactive / Apparent Power */}
+                        {(device.activePower != null || device.reactivePower != null || device.apparentPower != null) && (
+                          <div className="rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-wide text-blue-400 mb-1">Power</p>
+                            {device.activePower != null && (
+                              <Row label="P (kW)" value={fmtKw(device.activePower)} valueClass="text-blue-600" />
+                            )}
+                            {device.reactivePower != null && (
+                              <Row label="Q (kVAR)" value={`${Number(device.reactivePower).toFixed(2)} kVAR`} valueClass="text-blue-500" />
+                            )}
+                            {device.apparentPower != null && (
+                              <Row label="S (kVA)" value={`${Number(device.apparentPower).toFixed(2)} kVA`} valueClass="text-blue-500" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Power Factor & Frequency */}
+                        {(device.powerFactor != null || device.frequency != null) && (
+                          <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-wide text-indigo-400 mb-1">Quality</p>
+                            {device.powerFactor != null && (
+                              <Row label="PF" value={fmtPF(device.powerFactor)} valueClass="text-indigo-600" />
+                            )}
+                            {device.frequency != null && (
+                              <Row label="Freq" value={fmtHz(device.frequency)} valueClass="text-indigo-500" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* After THD */}
+                        {device.avgThd != null && (
+                          <div className="rounded-lg bg-purple-50 border border-purple-100 px-2.5 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-wide text-purple-400 mb-1">THD</p>
+                            {device.thdABC?.map((v, i) => v != null && (
+                              <Row key={i} label={`L${i+1}`} value={fmtPct(v)} valueClass="text-purple-600" />
+                            ))}
+                            <Row label="Avg" value={fmtPct(device.avgThd)} valueClass="text-purple-700" />
+                          </div>
+                        )}
+
+                        {/* Energy */}
+                        {device.energyKwh != null && (
+                          <div className="rounded-lg bg-teal-50 border border-teal-100 px-2.5 py-2">
+                            <p className="text-[9px] font-bold uppercase tracking-wide text-teal-500 mb-1">Energy</p>
+                            <Row label="kWh" value={fmtKwh(device.energyKwh)} valueClass="text-teal-600" />
+                          </div>
+                        )}
+                        </>)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Summary Footer ── */}
+                    <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {device.currentReduction != null && (
+                          <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-green-200">
+                            ↓ {fmtPct(device.currentReduction)} {uiCopy.reduction}
+                          </span>
+                        )}
+                        {device.energyReduction != null && (
+                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-amber-200">
+                            ⚡ {fmtKwh(device.energyReduction)} saved
+                          </span>
+                        )}
+                        {device.co2Reduction != null && (
+                          <span className="inline-flex items-center gap-1 bg-lime-100 text-lime-700 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-lime-200">
+                            🌿 {Number(device.co2Reduction).toFixed(2)} kg CO₂
+                          </span>
+                        )}
+                        <span className={`inline-flex items-center text-[10px] font-semibold px-2.5 py-1 rounded-full border ${bal.className}`}>
+                          {bal.label}
+                          {device.imbalancePercent != null && (
+                            <span className="ml-1 opacity-70">{fmtPct(device.imbalancePercent)}</span>
+                          )}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {device.lastUpdate ? new Date(device.lastUpdate).toLocaleTimeString() : '-'}
+                      </span>
+                    </div>
+
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -896,39 +1404,92 @@ export default function DashboardPage() {
                 ]
 
                 return (
-                  <div key={device.deviceID} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/70 p-4">
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div>
-                        <p className="text-base font-semibold text-gray-800">{device.customerName || device.deviceName}</p>
-                        <p className="text-sm text-gray-500">{device.location || '-'}</p>
+                  <div key={device.deviceID} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-lg transition-all duration-200">
+
+                    {/* ── Card Header ── */}
+                    <div className={`px-4 py-3.5 ${device.isOnline ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-slate-500 to-gray-600'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-white text-sm leading-tight">
+                            {(locale === 'th' ? device.customerName : device.customerNameEn || device.customerName) || device.deviceName}
+                          </p>
+                          {device.location && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <MapPin className="w-3 h-3 text-white/60 flex-shrink-0" />
+                              <span className="text-[11px] text-white/70">{device.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold flex-shrink-0 ${
+                          device.isOnline
+                            ? 'bg-white/20 text-white border-white/30'
+                            : 'bg-white/15 text-white/80 border-white/20'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${device.isOnline ? 'bg-green-300 animate-pulse' : 'bg-gray-300'}`} />
+                          {device.isOnline ? uiCopy.online : uiCopy.offline}
+                        </span>
                       </div>
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${device.isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${device.isOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                        {device.isOnline ? uiCopy.online : uiCopy.offline}
-                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-                        <p className="text-xs font-medium text-amber-700 mb-1">{dashboardCopy.avgCurrent}</p>
-                        <p className="text-2xl font-bold text-amber-900">{formatAmp(device.avgCurrent)}</p>
+                    <div className="p-4 space-y-4">
+
+                    {/* ── Before K-Save Baseline ── */}
+                    {device.beforeCurrentABC && device.beforeCurrentABC.some(v => v !== null) && (
+                      <div className="rounded-xl bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-red-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-red-400" />
+                            <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-600">
+                              {dashboardCopy.beforeCurrentLabel}
+                            </p>
+                          </div>
+                          {device.currentReduction != null && (
+                            <span className="inline-flex items-center rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+                              ▼ {device.currentReduction.toFixed(1)}% {dashboardCopy.currentReduced}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 p-3">
+                          <div className="rounded-lg bg-white border border-red-200 px-2 py-2 text-center shadow-sm">
+                            <p className="text-[9px] font-bold uppercase tracking-wide text-red-400 mb-0.5">{dashboardCopy.beforeAvgCurrent}</p>
+                            <p className="text-sm font-extrabold text-red-900">{formatAmp(device.avgBeforeCurrent ?? null)}</p>
+                          </div>
+                          {[
+                            { label: 'L1', value: device.beforeCurrentABC[0] },
+                            { label: 'L2', value: device.beforeCurrentABC[1] },
+                            { label: 'L3', value: device.beforeCurrentABC[2] }
+                          ].map(phase => (
+                            <div key={phase.label} className="rounded-lg bg-white border border-orange-200 px-2 py-2 text-center shadow-sm">
+                              <p className="text-[9px] font-bold text-orange-500 mb-0.5">{phase.label}</p>
+                              <p className="text-sm font-extrabold text-orange-900">{formatAmp(phase.value)}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
-                        <p className="text-xs font-medium text-gray-500 mb-1">{dashboardCopy.loadBalance}</p>
+                    )}
+
+                    {/* ── KPI Row ── */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600 mb-1">{dashboardCopy.avgCurrent}</p>
+                        <p className="text-2xl font-extrabold text-amber-900 leading-none">{formatAmp(device.avgCurrent)}</p>
+                      </div>
+                      <div className={`rounded-xl border px-4 py-3 ${balanceState.className.replace('text-', 'border-').split(' ')[0]} bg-white border-gray-200`}>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">{dashboardCopy.loadBalance}</p>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${balanceState.className}`}>
+                          <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${balanceState.className}`}>
                             {balanceState.label}
                           </span>
-                          <span className="text-sm font-semibold text-gray-700">
+                          <span className="text-sm font-bold text-gray-700">
                             {device.imbalancePercent === null ? '--' : `${device.imbalancePercent.toFixed(1)}%`}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Voltage Line-to-Line */}
-                    <div className="mb-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                    {/* ── Voltage ── */}
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
                         {uiCopy.voltageLineToLine}
                       </p>
                       <div className="grid grid-cols-3 gap-2">
@@ -937,15 +1498,15 @@ export default function DashboardPage() {
                           { label: 'L2-L3', value: device.voltageLL[1], color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
                           { label: 'L3-L1', value: device.voltageLL[2], color: 'bg-teal-50 text-teal-700 border-teal-200' }
                         ].map((volt) => (
-                          <div key={volt.label} className={`rounded-xl border px-3 py-2 ${volt.color}`}>
-                            <p className="text-xs font-semibold mb-1">{volt.label}</p>
-                            <p className="text-base font-bold">{volt.value?.toFixed(1) || '0.0'} V</p>
+                          <div key={volt.label} className={`rounded-xl border px-3 py-2.5 text-center ${volt.color}`}>
+                            <p className="text-[10px] font-bold mb-1">{volt.label}</p>
+                            <p className="text-sm font-extrabold">{volt.value?.toFixed(1) || '0.0'} V</p>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Current Trend: Before vs After */}
+                    {/* ── Current Trend Chart ── */}
                     {device.beforeCurrentABC && device.beforeCurrentABC.some(v => v !== null) && (
                       <CurrentTrendChart
                         deviceId={device.deviceID}
@@ -959,22 +1520,25 @@ export default function DashboardPage() {
                       />
                     )}
 
-                    <div className="mb-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                    {/* ── Phase Current & THD ── */}
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
                         {dashboardCopy.phaseCurrent} & {uiCopy.thd}
                       </p>
                       <div className="grid grid-cols-3 gap-2">
                         {phases.map((phase) => (
-                          <div key={phase.label} className={`rounded-xl border px-3 py-2.5 ${phase.color}`}>
-                            <p className="text-xs font-semibold mb-1.5">{phase.label}</p>
-                            <div className="space-y-1">
+                          <div key={phase.label} className={`rounded-xl border overflow-hidden ${phase.color}`}>
+                            <div className="px-3 py-1.5 border-b border-current/10">
+                              <p className="text-xs font-extrabold">{phase.label}</p>
+                            </div>
+                            <div className="px-3 py-2 space-y-1.5">
                               <div>
-                                <p className="text-[10px] text-gray-500 uppercase">{uiCopy.current}</p>
-                                <p className="text-base font-bold">{formatAmp(phase.value)}</p>
+                                <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.current}</p>
+                                <p className="text-sm font-extrabold leading-tight">{formatAmp(phase.value)}</p>
                               </div>
                               <div>
-                                <p className="text-[10px] text-gray-500 uppercase">{uiCopy.thd}</p>
-                                <p className="text-base font-bold">
+                                <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{uiCopy.thd}</p>
+                                <p className="text-sm font-extrabold leading-tight">
                                   {phase.thd === null || phase.thd === undefined ? '--' : `${phase.thd.toFixed(1)}%`}
                                 </p>
                               </div>
@@ -984,19 +1548,20 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Average THD */}
-                    <div className="mb-3">
-                      <div className="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3">
-                        <p className="text-xs font-medium text-purple-700 mb-1">{dashboardCopy.avgThd}</p>
-                        <p className="text-2xl font-bold text-purple-900">
-                          {device.avgThd === null || device.avgThd === undefined ? '--' : `${device.avgThd.toFixed(1)}%`}
-                        </p>
-                      </div>
+                    {/* ── Avg THD ── */}
+                    <div className="rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">{dashboardCopy.avgThd}</p>
+                      <p className="text-xl font-extrabold text-purple-900">
+                        {device.avgThd === null || device.avgThd === undefined ? '--' : `${device.avgThd.toFixed(1)}%`}
+                      </p>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                      <span>{dashboardCopy.updatedAt}</span>
-                      <span className="font-medium text-gray-600">{formatTime(device.lastUpdate)}</span>
+                    {/* ── Footer ── */}
+                    <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-[10px] text-gray-400">
+                      <span className="font-medium uppercase tracking-wide">{dashboardCopy.updatedAt}</span>
+                      <span className="font-semibold text-gray-600">{formatTime(device.lastUpdate)}</span>
+                    </div>
+
                     </div>
                   </div>
                 )
@@ -1011,6 +1576,17 @@ export default function DashboardPage() {
 }
 
 // Current Trend Chart Component
+type TrendPoint = {
+  time: string
+  beforeAvg: number | null
+  afterAvg: number | null
+}
+
+type PhaseStats = {
+  before: [number | null, number | null, number | null]
+  after: [number | null, number | null, number | null]
+}
+
 function CurrentTrendChart({
   deviceId,
   currentReduction,
@@ -1025,33 +1601,62 @@ function CurrentTrendChart({
     after: string
   }
 }) {
-  // Generate smooth sine-wave like data (20 points for smooth curves)
-  const generateSmoothData = () => {
-    const data = []
-    const now = new Date()
-    const baseBeforeAvg = 60.5
-    const baseAfterAvg = 48.0
+  const [chartData, setChartData] = useState<TrendPoint[]>([])
+  const [latestPhases, setLatestPhases] = useState<PhaseStats | null>(null)
+  const [chartLoading, setChartLoading] = useState(true)
 
-    for (let i = 0; i < 20; i++) {
-      const time = new Date(now.getTime() - (20 - i) * 90000) // Every 1.5 minutes
-      const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  useEffect(() => {
+    let cancelled = false
 
-      // Create smooth wave patterns
-      const wave = Math.sin((i / 20) * Math.PI * 2) * 1.5
-      const beforeAvg = baseBeforeAvg + wave + (Math.random() * 0.5 - 0.25)
-      const afterAvg = baseAfterAvg + wave * 0.7 + (Math.random() * 0.4 - 0.2)
-
-      data.push({
-        time: timeStr,
-        beforeAvg: Number(beforeAvg.toFixed(1)),
-        afterAvg: Number(afterAvg.toFixed(1))
-      })
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch(`/api/kenergy/current-history?deviceId=${encodeURIComponent(String(deviceId))}&hours=0.5`)
+        if (!res.ok) return
+        const json = await res.json()
+        if (cancelled) return
+        if (json.success && json.data) {
+          setChartData(json.data.chartData || [])
+          if (json.data.stats) {
+            setLatestPhases({
+              before: [
+                json.data.stats.currentBefore?.L1 ?? null,
+                json.data.stats.currentBefore?.L2 ?? null,
+                json.data.stats.currentBefore?.L3 ?? null
+              ],
+              after: [
+                json.data.stats.currentAfter?.L1 ?? null,
+                json.data.stats.currentAfter?.L2 ?? null,
+                json.data.stats.currentAfter?.L3 ?? null
+              ]
+            })
+          }
+        }
+      } catch {
+        // silent – chart will show "no data" state
+      } finally {
+        if (!cancelled) setChartLoading(false)
+      }
     }
-    return data
-  }
 
-  const chartData = generateSmoothData()
+    fetchHistory()
+    const interval = setInterval(fetchHistory, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [deviceId])
+
   const deviceLabel = String(deviceId).trim()
+
+  if (chartLoading) {
+    return (
+      <div className="mb-3">
+        <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-xl border-2 border-gray-200 p-4 h-48 flex items-center justify-center">
+          <div className="animate-spin w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mb-3">
@@ -1074,83 +1679,81 @@ function CurrentTrendChart({
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
-            <XAxis
-              dataKey="time"
-              tick={{ fontSize: 9 }}
-              stroke="#9ca3af"
-              interval="preserveEnd"
-              tickMargin={5}
-            />
-            <YAxis
-              tick={{ fontSize: 9 }}
-              stroke="#9ca3af"
-              domain={[46, 63]}
-              tickMargin={5}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '11px',
-                padding: '8px'
-              }}
-              formatter={(value: number | string) => [`${value} A`, '']}
-            />
-            <Legend
-              wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
-              iconType="line"
-            />
-            <Line
-              type="natural"
-              dataKey="beforeAvg"
-              stroke="#ef4444"
-              strokeWidth={3}
-              name={labels.before}
-              dot={false}
-              animationDuration={800}
-            />
-            <Line
-              type="natural"
-              dataKey="afterAvg"
-              stroke="#22c55e"
-              strokeWidth={3}
-              name={labels.after}
-              dot={false}
-              animationDuration={800}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {chartData.length === 0 ? (
+          <div className="h-[180px] flex items-center justify-center text-gray-400 text-xs">
+            No data in last 30 min
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 9 }}
+                stroke="#9ca3af"
+                interval="preserveEnd"
+                tickMargin={5}
+              />
+              <YAxis
+                tick={{ fontSize: 9 }}
+                stroke="#9ca3af"
+                domain={['auto', 'auto']}
+                tickMargin={5}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  padding: '8px'
+                }}
+                formatter={(value: number | string) => [`${value} A`, '']}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
+                iconType="line"
+              />
+              <Line
+                type="natural"
+                dataKey="beforeAvg"
+                stroke="#ef4444"
+                strokeWidth={3}
+                name={labels.before}
+                dot={false}
+                animationDuration={800}
+              />
+              <Line
+                type="natural"
+                dataKey="afterAvg"
+                stroke="#22c55e"
+                strokeWidth={3}
+                name={labels.after}
+                dot={false}
+                animationDuration={800}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
 
-        <div className="grid grid-cols-3 gap-2 mt-2 text-center">
-          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
-            <p className="text-[9px] text-gray-500 uppercase">L1</p>
-            <div className="flex justify-between text-[10px] font-semibold mt-0.5">
-              <span className="text-red-600">61.7 A</span>
-              <span className="text-gray-400">→</span>
-              <span className="text-green-600">48.5 A</span>
-            </div>
+        {latestPhases && (
+          <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+            {(['L1', 'L2', 'L3'] as const).map((phase, idx) => (
+              <div key={phase} className="bg-white rounded-lg p-1.5 border border-gray-200">
+                <p className="text-[9px] text-gray-500 uppercase">{phase}</p>
+                <div className="flex justify-between text-[10px] font-semibold mt-0.5">
+                  <span className="text-red-600">
+                    {latestPhases.before[idx] !== null ? `${latestPhases.before[idx]!.toFixed(1)} A` : '--'}
+                  </span>
+                  <span className="text-gray-400">→</span>
+                  <span className="text-green-600">
+                    {latestPhases.after[idx] !== null ? `${latestPhases.after[idx]!.toFixed(1)} A` : '--'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
-            <p className="text-[9px] text-gray-500 uppercase">L2</p>
-            <div className="flex justify-between text-[10px] font-semibold mt-0.5">
-              <span className="text-red-600">59.0 A</span>
-              <span className="text-gray-400">→</span>
-              <span className="text-green-600">47.9 A</span>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
-            <p className="text-[9px] text-gray-500 uppercase">L3</p>
-            <div className="flex justify-between text-[10px] font-semibold mt-0.5">
-              <span className="text-red-600">59.7 A</span>
-              <span className="text-gray-400">→</span>
-              <span className="text-green-600">48.2 A</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )
