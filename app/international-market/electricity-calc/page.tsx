@@ -192,12 +192,16 @@ export default function ElectricityCalcPage() {
       apparent = totalW / (Number(pf) || 1)
       real = totalW
     } else {
-      apparent = Number(voltage) * Number(current)
+        if (phase === 'three') {
+        apparent = Math.sqrt(3) * Number(voltage) * Number(current)
+      } else {
+        apparent = Number(voltage) * Number(current)
+      }
       real = apparent * Number(pf)
     }
     const reactive = Math.sqrt(Math.max(0, apparent * apparent - real * real))
     setResults({ real, apparent, reactive })
-  }, [voltage, current, pf, appliances])
+  }, [voltage, current, pf, appliances , phase])
 
   // Compute monthly electricity cost summary data from editable monthlyKwh state
   const monthlyElectricitySummary = useMemo(() => {
@@ -772,21 +776,21 @@ export default function ElectricityCalcPage() {
                     <tr>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', background: '#fffde7' }}>{L('Current (A)', 'กระแสไฟฟ้า (A)')}</td>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', textAlign: 'right' }}>
-                        <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent" value={contractedCapacity || ''} onChange={e => setContractedCapacity(Number(e.target.value || 0))} style={{ width: 100, textAlign: 'right' }} /> <span style={{ color: '#d00', fontWeight: 600 }}>KVA</span>
+                        <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent" value={contractedCapacity || ''} onChange={e => setContractedCapacity(Number(e.target.value || 0))} style={{ width: 100, textAlign: 'right' }} /> <span style={{ color: '#d00', fontWeight: 600 }}>A</span>
                       </td>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px' }}></td>
                     </tr>
                     <tr>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', background: '#fffde7' }}>{L('Peak power', 'กำลังสูงสุด')}</td>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', textAlign: 'right' }}>
-                        <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent" value={peakPower || ''} onChange={e => setPeakPower(Number(e.target.value || 0))} style={{ width: 100, textAlign: 'right' }} /> <span style={{ color: '#d00', fontWeight: 600 }}>KW</span>
+                        <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent" value={peakPower || ''} onChange={e => setPeakPower(Number(e.target.value || 0))} style={{ width: 100, textAlign: 'right' }} /> <span style={{ color: '#d00', fontWeight: 600 }}>kW</span>
                       </td>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', color: '#0066cc' }}>{L('Maximum peak (Peak usage)', 'ค่าพีคสูงสุด (การใช้งานสูงสุด)')}</td>
                     </tr>
                     <tr>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', background: '#fffde7' }}>{L('Average monthly usage', 'ค่าเฉลี่ยการใช้รายเดือน')}</td>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px', textAlign: 'right' }}>
-                        <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent" value={avgMonthlyUsage || ''} onChange={e => setAvgMonthlyUsage(Number(e.target.value || 0))} style={{ width: 120, textAlign: 'right' }} /> <span style={{ color: '#d00', fontWeight: 600 }}>KVA</span>
+                        <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent" value={avgMonthlyUsage || ''} onChange={e => setAvgMonthlyUsage(Number(e.target.value || 0))} style={{ width: 120, textAlign: 'right' }} /> <span style={{ color: '#d00', fontWeight: 600 }}>kVA</span>
                       </td>
                       <td style={{ border: '1px solid #ddd', padding: '8px 12px' }}></td>
                     </tr>

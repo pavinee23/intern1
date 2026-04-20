@@ -748,7 +748,7 @@ export default function InternationalMarketDashboardPage() {
                               style={{ width: `${percentage}%` }}
                               title={`${branch.country}: ${value}`}
                             >
-                              {percentage > 15 && value}
+                              {percentage > 14 && value}
                             </div>
                           );
                         })}
