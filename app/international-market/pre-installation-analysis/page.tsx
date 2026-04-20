@@ -442,23 +442,23 @@ const CurrentAnalysisChart = ({ translations }: { translations: any }) => {
               <tbody>
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="p-3 text-gray-800">Peak Current Range</td>
-                  <td className="p-3 text-gray-800">≈ 260 - 330 A per phase</td>
+                  <td className="p-3 text-gray-800">≈ 150 - 195 A per phase</td>
                 </tr>
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="p-3 text-gray-800">Nighttime Base Current</td>
-                  <td className="p-3 text-gray-800">≈ 20 - 30 A</td>
+                  <td className="p-3 text-gray-800">≈ 20 - 35 A</td>
                 </tr>
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="p-3 text-gray-800">Dominant Phase</td>
-                  <td className="p-3 text-gray-800">Phase 1</td>
+                  <td className="p-3 text-gray-800">Phase 3</td>
                 </tr>
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="p-3 text-gray-800">Current Imbalance Ratio</td>
-                  <td className="p-3 text-gray-800">≈ 15 - 25 %</td>
+                  <td className="p-3 text-gray-800">≈ 5 - 10 %</td>
                 </tr>
                 <tr className="hover:bg-gray-50">
                   <td className="p-3 text-gray-800">Imbalance Occurrence</td>
-                  <td className="p-3 text-gray-800">Main feeder Phase 1 vs Phase 2/3 during 10:00-17:00</td>
+                  <td className="p-3 text-gray-800">Main feeder Phase 3 vs Phase 1/2 during 10:00-17:00</td>
                 </tr>
               </tbody>
             </table>
