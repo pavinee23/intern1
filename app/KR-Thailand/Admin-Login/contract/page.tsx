@@ -5,23 +5,42 @@ import { useRouter } from 'next/navigation'
 import AdminLayout from '../components/AdminLayout'
 import CreatedBy from '../components/CreatedBy'
 import styles from '../admin-theme.module.css'
+import { pdf } from '@react-pdf/renderer';
+import EmploymentAgreementPDF from './employment/EmploymentPDF';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+
+import ContractPDF from './ContractPDF';
+import dynamic from 'next/dynamic';
+import { blob } from 'stream/consumers'
+
+const DynamicContractPDF = dynamic(() => import('./ContractPDF'), { ssr: false });
+const EmploymentPDF = dynamic(() => import('./employment/EmploymentPDF'), { ssr: false });
 
 type PaymentInstallment = {
   installmentNo: number
   dueDate: string
   amount: number
   status: 'pending' | 'paid'
+  
 }
 
 export default function ContractPage() {
   const router = useRouter()
+  
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const [locale, setLocale] = useState<'en'|'th'>(() => {
+  const [locale, setLocale] = useState<'en' | 'th'>(() => {
     try {
       const l = localStorage.getItem('locale') || localStorage.getItem('k_system_lang')
       return l === 'th' ? 'th' : 'en'
     } catch { return 'th' }
   })
+
+  
+  
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -57,14 +76,63 @@ export default function ContractPage() {
     setContractNo(`CT-${yy}${mm}${dd}-${rand}`)
   }
 
+  
+
   // Form state
+  const [address1, setAddress1] = useState(''); 
+  const [address2, setAddress2] = useState(''); 
+  const [area, setArea] = useState('');
+  const [commission, setCommission] = useState(0);
+  const [probation, setProbation] = useState(0);
+  const [contractType, setContractType] = useState<string>('');
   const [contractNo, setContractNo] = useState('')
   const [contractDate, setContractDate] = useState(() => new Date().toISOString().split('T')[0])
   const [customers, setCustomers] = useState<any[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
-  const [customerAddress, setCustomerAddress] = useState('')
+  const [customerAddress1, setCustomerAddress1] = useState(''); 
+  const [customerAddress2, setCustomerAddress2] = useState('');
+
+  // ==========================================
+// ตัวแปร State สำหรับ "สัญญาจ้างงาน (Employment)"
+// ==========================================
+   const [employeeName, setEmployeeName] = useState(''); // ชื่อลูกจ้าง
+   const [position, setPosition] = useState('');         // ตำแหน่งงาน
+   const [salary, setSalary] = useState('');             // เงินเดือน
+   const [hiringDate, setHiringDate] = useState('');     // วันที่เริ่มงาน
+   const [responsibilityDetail, setResponsibilityDetail] = useState(''); // ขอบเขตงาน
+
+  // Contract Type (ประเภทสัญญา)
+  const [contractTypes, setContractTypes] = useState<{
+    id: string
+    nameEn: string
+    nameTh: string
+  }[]>([
+
+    {
+      id: 'rent',
+      nameEn: 'Rent Contract',
+      nameTh: 'สัญญาเช่า'
+    },
+
+    {
+      id: 'company',
+      nameEn: 'Sales and Installation Agreement (Company/Limited Partnership)',
+      nameTh: 'สัญญาซื้อขายและติดตั้ง (บริษัท/ห้างหุ้นส่วน)'
+    },
+    {
+      id: 'dealer',
+      nameEn: 'Appointment Agreement for Sales Representative',
+      nameTh: 'สัญญาแต่งตั้งตัวแทนจำหน่าย'
+    },
+    {
+      id: 'employment',
+      nameEn: 'Employment Contract',
+      nameTh: 'สัญญาจ้างงาน'
+    }
+  ])
+
   // Sales order import
   const [salesOrders, setSalesOrders] = useState<any[]>([])
   const [loadingSalesOrders, setLoadingSalesOrders] = useState(false)
@@ -77,6 +145,7 @@ export default function ContractPage() {
   const [usedPreInstIds, setUsedPreInstIds] = useState<Set<number>>(new Set())
 
   // Contract content
+  const [taxId, setTaxId] = useState<string>('');
   const [contractContent, setContractContent] = useState('')
   const [contractDuration, setContractDuration] = useState<number>(12)
   const [durationUnit, setDurationUnit] = useState<'days' | 'months' | 'years'>('months')
@@ -100,6 +169,15 @@ export default function ContractPage() {
 
   // Track imported pre-installation ID
   const [importedPreInstID, setImportedPreInstID] = useState<number | null>(null)
+
+  // Contract Type (ประเภทสัญญา)
+
+  const [selectedContractType, setSelectedContractType] = useState('')
+
+   // 🤝 Dealer Agreement States (เพิ่มต่อจาก useState เดิมได้เลย)
+  const [responsibleArea, setResponsibleArea] = useState('');
+  const [commissionRate, setCommissionRate] = useState<number>(0);
+  const [probationPeriod, setProbationPeriod] = useState<number>(0);
 
   // Load initial data
   useEffect(() => {
@@ -167,7 +245,6 @@ export default function ContractPage() {
       console.error('Failed to load customers:', err)
     }
   }
-
   const loadSalesOrders = async () => {
     setLoadingSalesOrders(true)
     try {
@@ -209,7 +286,7 @@ export default function ContractPage() {
 
     setCustomerName(order.customer_name || order.customer || '')
     setCustomerPhone(order.customer_phone || order.phone || '')
-    setCustomerAddress(order.customer_address || order.address || order.site_address || '')
+    setCustomerAddress1(order.customer_address || order.address || order.site_address || '')
     setTotalAmount(Number(order.total_amount || order.amount || 0))
     if (order.preInstID || order.pre_inst_id) setImportedPreInstID(Number(order.preInstID || order.pre_inst_id))
     // Prefill contract content if the order carries pre-installation data
@@ -219,7 +296,6 @@ export default function ContractPage() {
 
     window.dispatchEvent(new CustomEvent('k-system-toast', { detail: { message: L('Sales order imported', 'นำเข้าใบสั่งขายแล้ว'), type: 'success' } }))
   }
-
   // Load pre-installations (excluding those already used in contracts)
   const loadPreInstallations = async () => {
     setPreInstLoading(true)
@@ -261,7 +337,7 @@ export default function ContractPage() {
       setImportedPreInstID(Number(pi.preInstID || pi.id || null))
       setCustomerName(pi.customer_name || pi.customerName || '')
       setCustomerPhone(pi.phone || pi.tel || '')
-      setCustomerAddress(pi.site_address || pi.siteAddress || pi.site_name || '')
+      setCustomerAddress2(pi.site_address || pi.siteAddress || pi.site_name || '')
       // Prefill contract content based on pre-installation
       setContractContent(generateLegalContent(pi))
     } catch (e) {
@@ -397,167 +473,230 @@ Buyer: ______________________    Date: __________
     }
   }
 
-  const handleCustomerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const cusId = e.target.value
-    if (!cusId) {
-      setSelectedCustomer(null)
-      setCustomerName('')
-      setCustomerPhone('')
-      setCustomerAddress('')
-      return
-    }
-    const cus = customers.find(c => String(c.cusID || c.id) === cusId)
-    if (cus) {
-      setSelectedCustomer(cus)
-      setCustomerName(cus.fullname || cus.name || '')
-      setCustomerPhone(cus.phone || cus.tel || '')
-      setCustomerAddress(cus.address || '')
-    }
-  }
+  // 1. เตรียมข้อมูลสำหรับสัญญาจ้างงาน
+  const dataForEmployment = {
+    date: contractDate || "ไม่ได้ระบุ",
+    companyName: "บริษัท เค เอนเนอร์ยี่ เซฟ จำกัด",
+    employerName: "นายแพทริค จาง",
+    employeeName: employeeName || "ไม่ได้ระบุ",
+    position: position || "ไม่ได้ระบุ",
+    salary: salary || "ไม่ได้ระบุ",
+    hiringDate: hiringDate || "ไม่ได้ระบุ",
+    responsibilityDetail: responsibilityDetail || "ไม่ได้ระบุ"
+  };
 
+  // 2. เตรียมข้อมูลสำหรับสัญญาซื้อขาย
+  const dataForSales = {
+    customerName: customerName || "ไม่ได้ระบุ",
+    contractNo: contractNo || "ไม่ได้ระบุ",
+    contractDate: contractDate || "ไม่ได้ระบุ",
+    totalAmount: totalAmount || "ไม่ได้ระบุ"
+  };
+
+  // =================================================================
+  // ฟังก์ชันที่ 1: บันทึกข้อมูล (handleSubmit)
+  // =================================================================
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!contractNo) {
-      alert(L('Please enter contract number', 'กรุณากรอกเลขที่สัญญา'))
-      return
+      alert(L('Please enter contract number', 'กรุณากรอกเลขที่สัญญา'));
+      return;
     }
     if (!customerName) {
-      alert(L('Please select or enter customer', 'กรุณาเลือกหรือกรอกข้อมูลลูกค้า'))
-      return
+      alert(L('Please select or enter customer', 'กรุณาเลือกหรือกรอกข้อมูลลูกค้า'));
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     const payload = {
-      contractNo,
-      contractDate,
+      contractNo, contractDate,
       cusID: selectedCustomer?.cusID || selectedCustomer?.id || null,
-      customerName,
-      customerPhone,
-      customerAddress,
-      contractContent,
-      contractDuration,
-      durationUnit,
-      startDate,
-      endDate,
-      totalAmount,
-      installmentCount,
-      installmentAmount,
-      paymentSchedule,
-      warrantyPeriod,
-      warrantyUnit,
-      maintenanceScope,
-      notes,
+      customerName, customerPhone, customerAddress1, customerAddress2,
+      contractContent, contractDuration, durationUnit, startDate, endDate,
+      totalAmount, installmentCount, installmentAmount, paymentSchedule,
+      warrantyPeriod, warrantyUnit, maintenanceScope, notes,
       preInstID: importedPreInstID,
       createdBy: localStorage.getItem('k_system_admin_user') || 'thailand admin'
-    }
+    };
 
     try {
-      const headers: any = { 'Content-Type': 'application/json', ...getAuthHeaders() }
-      const res = await fetch('/api/contracts', { method: 'POST', headers, body: JSON.stringify(payload) })
-      const j = await res.json()
+      const headers: any = { 'Content-Type': 'application/json', ...getAuthHeaders() };
+      const res = await fetch('/api/contracts', { method: 'POST', headers, body: JSON.stringify(payload) });
+      const j = await res.json();
       if (j && j.success) {
-        window.dispatchEvent(new CustomEvent('k-system-toast', { detail: { message: L('Contract saved!', 'บันทึกสัญญาแล้ว!'), type: 'success' } }))
-        router.push('/KR-Thailand/Admin-Login/contract/list')
+        window.dispatchEvent(new CustomEvent('k-system-toast', { detail: { message: L('Contract saved!', 'บันทึกสัญญาแล้ว!'), type: 'success' } }));
+        router.push('/KR-Thailand/Admin-Login/contract/list');
       } else {
-        alert(L('Save failed', 'บันทึกไม่สำเร็จ') + ': ' + (j?.error || ''))
+        alert(L('Save failed', 'บันทึกไม่สำเร็จ') + ': ' + (j?.error || ''));
       }
     } catch (err) {
-      console.error(err)
-      alert(L('Network error', 'เกิดข้อผิดพลาด'))
+      console.error(err);
+      alert(L('Network error', 'เกิดข้อผิดพลาด'));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }; // 👈 จบแค่นี้ครับ! ห้ามมี else ต่อท้าย finally เด็ดขาด
 
-  const fmtCurrency = (n: number) => n.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+ // =================================================================
+  // ฟังก์ชันดาวน์โหลด PDF (รวมข้อมูลและโค้ดดาวน์โหลดไว้ใน Try เดียวกัน)
+  // =================================================================
+  const handleDownloadPDF = async () => {
+    try {
+      const { pdf } = await import('@react-pdf/renderer');
+      let blob;                      // ประกาศเผื่อไว้ก่อน เพื่อให้โค้ดด้านล่างมองเห็น
+      let fileName = 'Document.pdf'; // ประกาศเผื่อไว้ก่อน
+
+      // --- แยกทางแยกตามประเภทสัญญา ---
+      if (contractType === 'employment') {
+        const dataForEmployment = {
+          date: contractDate || "ไม่ได้ระบุ",
+          companyName: "บริษัท เค เอนเนอร์ยี่ เซฟ จำกัด",
+          employerName: "นายแพทริค จาง",
+          employeeName: employeeName || "ไม่ได้ระบุ",
+          position: position || "ไม่ได้ระบุ",
+          salary: salary || "ไม่ได้ระบุ",
+          hiringDate: hiringDate || "ไม่ได้ระบุ",
+          responsibilityDetail: responsibilityDetail || "ไม่ได้ระบุ"
+        };
+        blob = await pdf(<EmploymentAgreementPDF data={dataForEmployment} />).toBlob();
+        fileName = `Employment_Contract_${employeeName || 'Draft'}.pdf`;
+
+      } else if (contractType === 'sales' || contractType === 'company') {
+        const dataForSales = {
+          customerName: customerName || "ไม่ได้ระบุ",
+          contractNo: contractNo || "ไม่ได้ระบุ",
+          contractDate: contractDate || "ไม่ได้ระบุ",
+          totalAmount: totalAmount || "ไม่ได้ระบุ"
+        };
+        blob = await pdf(<ContractPDF data={dataForSales} />).toBlob();
+        fileName = `Contract_${contractNo || 'Draft'}.pdf`;
+
+      } else {
+        alert("กรุณาเลือกประเภทสัญญาก่อนดาวน์โหลดครับ");
+        return; // สั่งหยุด ไม่ต้องทำโค้ดดาวน์โหลดด้านล่างต่อ
+      }
+
+      // --- โค้ดส่วนดาวน์โหลดไฟล์ลงเครื่อง ---
+      if (blob) { // เช็คชัวร์ๆ ว่าสร้าง blob สำเร็จ ค่อยให้โหลด
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+    } catch (error) {
+      console.error("PDF Error:", error);
+      alert("เกิดข้อผิดพลาดในการสร้างไฟล์ PDF (เช็ค Console F12)");
+    }
+    
+  };
+  
+  // =================================================================
+  // ฟังก์ชันจัดการตอนเลือกชื่อลูกค้าจาก Dropdown
+  // =================================================================
+  const handleCustomerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (!val) {
+      // ถ้าไม่ได้เลือกใครเลย ให้ล้างค่าที่กรอกไว้
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress1('');
+      return;
+    }
+    
+    // ค้นหาข้อมูลลูกค้าจากตัวเลือก
+    const selected = customers.find((c: any) => c.cusID === val || c.id === val);
+    if (selected) {
+      // เติมข้อมูลลูกค้าลงในช่องอัตโนมัติ
+      setCustomerName(selected.fullname || selected.name || '');
+      setCustomerPhone(selected.phone || selected.telephone || '');
+      setCustomerAddress1(selected.address || selected.address1 || '');
+    }
+  };
+
+
+  // =================================================================
+  // ฟังก์ชันจัดรูปแบบเงิน (ต้องอยู่เหนือ return และอยู่ใน Component)
+  // =================================================================
+  const fmtCurrency = (n: number) => n.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+
+  // ====== เริ่มต้นส่วนแสดงผลหน้าจอ (UI) ======
   return (
-    <AdminLayout title="Contract" titleTh="สัญญาซื้อ-ขาย">
+    <AdminLayout title="Contract" titleTh="สัญญา">
       <div className={styles.contentCard}>
         <div className={styles.cardHeader}>
           <h2 className={styles.cardTitle}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <path d="M12 18v-6"/>
-              <path d="M9 15l3 3 3-3"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M12 18v-6" />
+              <path d="M9 15l3 3 3-3" />
             </svg>
-            {L('Create Sales Contract', 'สร้างสัญญาซื้อ-ขาย')}
+            {L('Create Contract', 'สร้างสัญญา')}
           </h2>
           <p className={styles.cardSubtitle}>
-            {L('Create sales and purchase contract for customers', 'สร้างสัญญาซื้อขายสำหรับลูกค้า')}
+            {L('Create sales and purchase contract for customers', 'สร้างสัญญาสำหรับลูกค้า')}
           </p>
         </div>
 
         <div className={styles.cardBody}>
           <CreatedBy />
           <form onSubmit={handleSubmit}>
-            {/* Import Section */}
-            <div style={{ marginBottom: 20, padding: 16, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
-              <div style={{ fontWeight: 600, color: '#0369a1', marginBottom: 12 }}>{L('Import from:', 'นำเข้าจาก:')}</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-                <button type="button" onClick={() => { loadPreInstallations(); setShowPreInstModal(true) }} className={styles.btnOutline} style={{ padding: '10px 16px' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                  </svg>
-                  {L('Import from Pre-installation', 'นำเข้าจากแบบก่อนติดตั้ง')}
-                </button>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" onClick={loadSalesOrders} className={styles.btnOutline}>
-                  {loadingSalesOrders ? L('Loading...', 'กำลังโหลด...') : L('Load Sales Orders', 'โหลดใบสั่งขาย')}
-                </button>
-                <select value={selectedSOId} onChange={(e) => setSelectedSOId(e.target.value)} className={styles.formInput} style={{ width: 260 }}>
-                  <option value="">{L('Select a sales order', 'เลือกใบสั่งขาย')}</option>
-                  {salesOrders.map((s: any) => (
-                    <option key={s.orderID || s.orderNo} value={s.orderID || s.orderNo}>
-                      {`${s.orderNo} — ${s.customer_name || s.customer || ''}`}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={importSalesOrder} className={`${styles.btn} ${styles.btnPrimary}`}>
-                  {L('Import', 'นำเข้า')}
-                </button>
-              </div>
-            </div>
-            {/* Contract Number & Date */}
-            <div className={styles.formRow} style={{ marginBottom: 20 }}>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>
-                  {L('Contract No.', 'เลขที่สัญญา')} <span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
+            {/* ==========================================
+                1. ข้อมูลทั่วไป (General) - โชว์ครบทุกช่องแล้วครับ!
+            ========================================== */}
+            <div style={{ marginBottom: 20, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#334155' }}>
+                📋 {L('General Information', 'ข้อมูลทั่วไป')}
+              </h3>
+
+              {/* Import & Contract No. */}
+              <div className={styles.formRow} style={{ marginBottom: 16 }}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    {L('Contract No.', 'เลขที่สัญญา')} <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      value={contractNo}
+                      onChange={e => setContractNo(e.target.value)}
+                      className={styles.formInput}
+                      placeholder="CT-260124-0001"
+                      required
+                      style={{ flex: 1 }}
+                    />
+                    <button type="button" onClick={refreshContractNo} className={styles.btnOutline}>
+                      {L('Refresh', 'รีเฟรช')}
+                    </button>
+                    {/* ปุ่ม Import (กดแล้วไม่รีเฟรชหน้าแล้ว!) */}
+                    <button type="button" onClick={() => { loadPreInstallations(); setShowPreInstModal(true) }} className={styles.btnOutline} style={{ padding: '10px 16px', background: '#f0f9ff', borderColor: '#bae6fd' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                      </svg>
+                      {L('Import', 'นำเข้า')}
+                    </button>
+                  </div>
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>{L('Contract Date', 'วันที่ทำสัญญา')}</label>
                   <input
-                    value={contractNo}
-                    onChange={e => setContractNo(e.target.value)}
+                    type="date"
+                    value={contractDate}
+                    onChange={e => setContractDate(e.target.value)}
                     className={styles.formInput}
-                    placeholder="CT-260124-0001"
-                    required
-                    style={{ flex: 1 }}
                   />
-                  <button type="button" onClick={refreshContractNo} className={styles.btnOutline}>
-                    {L('Refresh', 'รีเฟรช')}
-                  </button>
                 </div>
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>{L('Contract Date', 'วันที่ทำสัญญา')}</label>
-                <input
-                  type="date"
-                  value={contractDate}
-                  readOnly
-                  title={L('Fixed to today', 'ตั้งเป็นวันที่ปัจจุบัน')}
-                  className={styles.formInput}
-                />
-              </div>
-            </div>
 
-            {/* Customer Information */}
-            <div style={{ marginBottom: 20, padding: 16, background: '#f8fafc', borderRadius: 8 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>
-                {L('Customer Information', 'ข้อมูลลูกค้า')}
-              </h3>
-              <div className={styles.formRow}>
+              {/* Customer Info (เพิ่มเบอร์โทรและที่อยู่กลับมาแล้ว) */}
+              <div className={styles.formRow} style={{ marginBottom: 16 }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>{L('Select Customer', 'เลือกลูกค้า')}</label>
                   <select onChange={handleCustomerSelect} className={styles.formSelect}>
@@ -570,321 +709,358 @@ Buyer: ______________________    Date: __________
                   </select>
                 </div>
               </div>
-              <div className={styles.formRow}>
+
+              <div className={styles.formRow} style={{ marginBottom: 16 }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>
                     {L('Customer Name', 'ชื่อลูกค้า')} <span style={{ color: '#dc2626' }}>*</span>
                   </label>
-                  <input
-                    value={customerName}
-                    onChange={e => setCustomerName(e.target.value)}
-                    className={styles.formInput}
-                    placeholder={L('Customer name', 'ชื่อลูกค้า')}
-                    required
-                  />
+                  <input value={customerName} onChange={e => setCustomerName(e.target.value)} className={styles.formInput} required />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Phone', 'โทรศัพท์')}</label>
-                  <input
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
-                    className={styles.formInput}
-                    placeholder="08x-xxx-xxxx"
-                  />
+                  <label className={styles.formLabel}>{L('Phone', 'เบอร์โทรศัพท์')}</label>
+                  <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className={styles.formInput} placeholder="08x-xxx-xxxx" />
                 </div>
               </div>
+
               <div className={styles.formRow}>
-                <div className={styles.formGroup} style={{ flex: 2 }}>
+                <div className={styles.formGroup} style={{ width: '100%' }}>
                   <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
-                  <input
-                    value={customerAddress}
-                    onChange={e => setCustomerAddress(e.target.value)}
-                    className={styles.formInput}
-                    placeholder={L('Customer address', 'ที่อยู่ลูกค้า')}
-                  />
+                  <input value={customerAddress1} onChange={e => setCustomerAddress1(e.target.value)} className={styles.formInput} placeholder="Customer address" />
                 </div>
               </div>
-            </div>
+              {/* หาบรรทัดนี้ในโค้ดพี่ (ประมาณบรรทัดที่ 70 กว่าๆ) */}
+              <div className={styles.formGroup} style={{ width: '100%' }}>
+                <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
+                <input value={customerAddress2} onChange={e => setCustomerAddress2(e.target.value)} className={styles.formInput} placeholder="Customer address" />
+              </div>
 
-            {/* Contract Content */}
-            <div style={{ marginBottom: 20, padding: 16, background: '#eff6ff', borderRadius: 8 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>
-                {L('Contract Terms', 'เนื้อหาสัญญา')}
-              </h3>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>{L('Contract Content / Terms', 'เนื้อหาสัญญาที่กำหนด')}</label>
-                <textarea
-                  value={contractContent}
-                  onChange={e => setContractContent(e.target.value)}
+              {/* พิมพ์ต่อท้ายตรงนี้เลยพี่! */}
+              <div className={styles.formGroup} style={{ width: '100%', marginTop: 16 }}>
+                <label className={styles.formLabel}>{L('Tax ID / ID Card', 'เลขประจำตัวผู้เสียภาษี')}</label>
+                <input
+                  value={taxId}
+                  onChange={e => setTaxId(e.target.value.replace(/[^0-9]/g, '').slice(0, 13))}
                   className={styles.formInput}
-                  rows={5}
-                  placeholder={L('Enter contract terms and conditions...', 'ระบุเงื่อนไขและข้อกำหนดของสัญญา...')}
-                  style={{ resize: 'vertical' }}
-                />
-              </div>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Contract Duration', 'ระยะเวลาสัญญา')}</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="number"
-                      min={1}
-                      value={contractDuration}
-                      onChange={e => setContractDuration(Number(e.target.value) || 1)}
-                      className={styles.formInput}
-                      style={{ width: 100 }}
-                    />
-                    <select
-                      value={durationUnit}
-                      onChange={e => setDurationUnit(e.target.value as any)}
-                      className={styles.formSelect}
-                      style={{ width: 120 }}
-                    >
-                      <option value="days">{L('Days', 'วัน')}</option>
-                      <option value="months">{L('Months', 'เดือน')}</option>
-                      <option value="years">{L('Years', 'ปี')}</option>
-                    </select>
-                  </div>
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Start Date', 'วันที่เริ่มต้น')}</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
-                    className={styles.formInput}
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('End Date', 'วันที่สิ้นสุด')}</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    readOnly
-                    className={styles.formInput}
-                    style={{ background: '#f1f5f9' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Terms */}
-            <div style={{ marginBottom: 20, padding: 16, background: '#f0fdf4', borderRadius: 8 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>
-                {L('Payment Terms', 'กำหนดชำระเงิน')}
-              </h3>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Total Amount', 'ยอดรวมทั้งหมด')} (฿)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={totalAmount}
-                    onChange={e => setTotalAmount(Number(e.target.value) || 0)}
-                    className={styles.formInput}
-                    style={{ textAlign: 'right' }}
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Number of Installments', 'จำนวนงวด')}</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={installmentCount}
-                    onChange={e => setInstallmentCount(Number(e.target.value) || 1)}
-                    className={styles.formInput}
-                    style={{ textAlign: 'center' }}
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Amount per Installment', 'งวดละ')} (฿)</label>
-                  <input
-                    type="number"
-                    value={installmentAmount}
-                    readOnly
-                    className={styles.formInput}
-                    style={{ textAlign: 'right', background: '#f1f5f9' }}
-                  />
-                </div>
-              </div>
-
-              {/* Payment Schedule Preview */}
-              {paymentSchedule.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <label className={styles.formLabel}>{L('Payment Schedule', 'ตารางการชำระเงิน')}</label>
-                  <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                    <table className={styles.table} style={{ margin: 0 }}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: 80 }}>{L('No.', 'งวดที่')}</th>
-                          <th>{L('Due Date', 'กำหนดชำระ')}</th>
-                          <th style={{ textAlign: 'right' }}>{L('Amount', 'จำนวนเงิน')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paymentSchedule.map((p, i) => (
-                          <tr key={i}>
-                            <td style={{ textAlign: 'center' }}>{p.installmentNo}</td>
-                            <td>{p.dueDate}</td>
-                            <td style={{ textAlign: 'right' }}>{fmtCurrency(p.amount)} ฿</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Warranty & Maintenance */}
-            <div style={{ marginBottom: 20, padding: 16, background: '#fef3c7', borderRadius: 8 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>
-                {L('Warranty & Maintenance', 'การประกันและบำรุงรักษา')}
-              </h3>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>{L('Warranty Period', 'ระยะเวลาประกัน')}</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="number"
-                      min={0}
-                      value={warrantyPeriod}
-                      onChange={e => setWarrantyPeriod(Number(e.target.value) || 0)}
-                      className={styles.formInput}
-                      style={{ width: 100 }}
-                    />
-                    <select
-                      value={warrantyUnit}
-                      onChange={e => setWarrantyUnit(e.target.value as any)}
-                      className={styles.formSelect}
-                      style={{ width: 120 }}
-                    >
-                      <option value="days">{L('Days', 'วัน')}</option>
-                      <option value="months">{L('Months', 'เดือน')}</option>
-                      <option value="years">{L('Years', 'ปี')}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>{L('Maintenance Scope', 'ขอบเขตการดูแล')}</label>
-                <textarea
-                  value={maintenanceScope}
-                  onChange={e => setMaintenanceScope(e.target.value)}
-                  className={styles.formInput}
-                  rows={3}
-                  placeholder={L('Describe the scope of maintenance and support...', 'ระบุขอบเขตการดูแลและบำรุงรักษา...')}
-                  style={{ resize: 'vertical' }}
+                  placeholder="x-xxxx-xxxxx-xx-x"
                 />
               </div>
             </div>
 
-            {/* Notes */}
-            <div style={{ marginBottom: 20 }}>
-              <label className={styles.formLabel}>{L('Notes / Remarks', 'หมายเหตุ')}</label>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
+            {/* ==========================================
+                2. เลือกประเภทสัญญา (Dropdown)
+            ========================================== */}
+            <div style={{ marginBottom: 20, padding: 16, background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#1d4ed8' }}>
+                📌 {L('Select Contract Type', 'เลือกประเภทสัญญา')} <span style={{ color: '#dc2626' }}>*</span>
+              </h3>
+              <select
+                value={contractType}
+                onChange={(e) => setContractType(e.target.value as any)}
                 className={styles.formInput}
-                rows={3}
-                placeholder={L('Additional notes...', 'หมายเหตุเพิ่มเติม...')}
-                style={{ resize: 'vertical' }}
-              />
+                style={{ width: '100%', maxWidth: 400, fontWeight: 'bold' }}
+                required
+              >
+                <option value="" disabled>-- {L('Please select contract type', 'กรุณาเลือกประเภทสัญญา')} --</option>
+                {contractTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {locale === 'th' ? type.nameTh : type.nameEn}
+                  </option>
+                ))}
+                
+                
+              </select>
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 12, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`${styles.btn} ${styles.btnPrimary} ${styles.btnLarge}`}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                  <polyline points="17 21 17 13 7 13 7 21"/>
-                </svg>
-                {loading ? L('Saving...', 'กำลังบันทึก...') : L('Save Contract', 'บันทึกสัญญา')}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push('/KR-Thailand/Admin-Login/contract/list')}
-                className={`${styles.btn} ${styles.btnSecondary}`}
-              >
-                {L('Cancel', 'ยกเลิก')}
-              </button>
-            </div>
+            {/* ==========================================
+                3. ข้อมูลเฉพาะเจาะจง (เด้งตามประเภทที่เลือกเป๊ะๆ)
+            ========================================== */}
+            {contractType && (
+              <div style={{ borderTop: '2px dashed #cbd5e1', paddingTop: 20, animation: 'fadeIn 0.5s' }}>
+
+                {/* 🛒 โชว์เฉพาะตอนเลือก สัญญาซื้อขาย (สมมติว่าพี่ใช้ตัวแปรเดิมในการเช็ค Dropdown) */}
+{(contractType === 'company' || contractType === 'sales') && (
+  <div style={{ marginTop: 20, animation: 'fadeIn 0.5s' }}>
+
+    {/* 1. กล่อง Contract Terms (สีฟ้า) */}
+    <div style={{ marginBottom: 20, padding: 16, background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe' }}>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#1e3a8a' }}>
+        📝 {L('Contract Terms', 'เงื่อนไขสัญญา')}
+      </h3>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Contract Content / Terms', 'รายละเอียดสัญญา / เงื่อนไข')}</label>
+        <textarea 
+          className={styles.formInput} rows={3} placeholder={L('Enter contract terms and conditions...', 'กรอกรายละเอียดและเงื่อนไขสัญญา...')}
+          value={contractContent} 
+          onChange={(e) => setContractContent(e.target.value)} 
+        />
+      </div>
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>{L('Contract Duration', 'ระยะเวลาสัญญา')}</label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input 
+              type="number" className={styles.formInput} placeholder="12" style={{ flex: 1 }}
+              value={contractDuration} 
+              onChange={(e) => setContractDuration(Number(e.target.value))} 
+            />
+            <select 
+              className={styles.formInput} style={{ flex: 1 }}
+              value={durationUnit} 
+              onChange={(e) => setDurationUnit(e.target.value as 'days' | 'months' | 'years')}
+            >
+              <option value="days">{L('Days', 'วัน')}</option>
+              <option value="months">{L('Months', 'เดือน')}</option>
+              <option value="years">{L('Years', 'ปี')}</option>
+            </select>
+          </div>
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>{L('Start Date', 'วันที่เริ่มสัญญา')}</label>
+          <input 
+            type="date" className={styles.formInput}
+            value={startDate} 
+            onChange={(e) => setStartDate(e.target.value)} 
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>{L('End Date', 'วันที่สิ้นสุดสัญญา')}</label>
+          <input 
+            type="date" className={styles.formInput}
+            value={endDate} 
+            onChange={(e) => setEndDate(e.target.value)} 
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* 2. กล่อง Payment Terms (สีเขียว) */}
+    <div style={{ marginBottom: 20, padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#166534' }}>
+        💳 {L('Payment Terms', 'เงื่อนไขการชำระเงิน')}
+      </h3>
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>{L('Total Amount (฿)', 'ยอดรวมทั้งหมด (บาท)')}</label>
+          <input 
+            type="number" className={styles.formInput} placeholder="0"
+            value={totalAmount === 0 ? '' : totalAmount} 
+            onChange={(e) => setTotalAmount(Number(e.target.value))} 
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>{L('Number of Installments', 'จำนวนงวด')}</label>
+          <input 
+            type="number" className={styles.formInput} placeholder="1"
+            value={installmentCount === 0 ? '' : installmentCount} 
+            onChange={(e) => setInstallmentCount(Number(e.target.value))} 
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>{L('Amount per Installment (฿)', 'จำนวนเงินต่องวด (บาท)')}</label>
+          <input 
+            type="number" className={styles.formInput} placeholder="0"
+            value={installmentAmount === 0 ? '' : installmentAmount} 
+            onChange={(e) => setInstallmentAmount(Number(e.target.value))} 
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* 3. กล่อง Warranty & Maintenance (สีเหลือง) */}
+    <div style={{ marginBottom: 20, padding: 16, background: '#fef9c3', borderRadius: 8, border: '1px solid #fef08a' }}>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#854d0e' }}>
+        🛠️ {L('Warranty & Maintenance', 'การรับประกันและบำรุงรักษา')}
+      </h3>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Warranty Period', 'ระยะเวลารับประกัน')}</label>
+        <div style={{ display: 'flex', gap: 10, maxWidth: 300 }}>
+          <input 
+            type="number" className={styles.formInput} placeholder="12" style={{ flex: 1 }}
+            value={warrantyPeriod} 
+            onChange={(e) => setWarrantyPeriod(Number(e.target.value))} 
+          />
+          <select 
+            className={styles.formInput} style={{ flex: 1 }}
+            value={warrantyUnit} 
+            onChange={(e) => setWarrantyUnit(e.target.value as 'days' | 'months' | 'years')}
+          >
+            <option value="days">{L('Days', 'วัน')}</option>
+            <option value="months">{L('Months', 'เดือน')}</option>
+            <option value="years">{L('Years', 'ปี')}</option>
+          </select>
+        </div>
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Maintenance Scope', 'ขอบเขตการบำรุงรักษา')}</label>
+        <textarea 
+          className={styles.formInput} rows={3} placeholder={L('Describe the scope of maintenance and support...', 'อธิบายขอบเขตการบำรุงรักษา...')}
+          value={maintenanceScope} 
+          onChange={(e) => setMaintenanceScope(e.target.value)} 
+        />
+      </div>
+    </div>
+
+  </div>
+)}
+                 { /* 🤝 โชว์เฉพาะตอนเลือก สัญญาแต่งตั้งตัวแทนจำหน่าย (dealer) */}
+                 {contractType === 'dealer' && (
+                  <div style={{ marginBottom: 20, padding: 16, background: '#f5f3ff', borderRadius: 8, border: '1px solid #ddd6fe' }}>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#6d28d9' }}>
+                      🤝 {L('Appointment Details', 'รายละเอียดสัญญาตัวแทนจำหน่าย')}
+                    </h3>
+
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>{L('Responsible Area', 'เขตพื้นที่รับผิดชอบ')}</label>
+                      <input type="text" className={styles.formInput} placeholder="เช่น ทั่วประเทศไทย หรือ เฉพาะภาคเหนือ" />
+                    </div>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>{L('Commission Percentage', 'เปอร์เซ็นต์ค่าคอมมิชชั่น')}</label>
+                        <input type="number" className={styles.formInput} placeholder="%" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>{L('Probation Period (Months)', 'ระยะเวลาทดลองงาน (เดือน)')}</label>
+                        <input type="number" className={styles.formInput} />
+                      </div>
+                    </div>
+                  </div>
+              
+                )}
+              
+
+               {/* 💼 โชว์เฉพาะตอนเลือก สัญญาจ้างงาน (employment) */}
+{contractType === 'employment' && (
+  <div style={{ marginBottom: 20, padding: 16, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#0369a1' }}>
+      💼 {L('Employment Details', 'รายละเอียดสัญญาจ้างงาน')}
+    </h3>
+    <div className={styles.formRow}>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Employee Name', 'ชื่อลูกจ้าง')}</label>
+        <input type="text" className={styles.formInput} value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="ระบุชื่อ-นามสกุลลูกจ้าง" />
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Position', 'ตำแหน่งงาน')}</label>
+        <input type="text" className={styles.formInput} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="เช่น โปรแกรมเมอร์" />
+      </div>
+    </div>
+
+    <div className={styles.formRow} style={{ marginTop: 12 }}>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Salary (Baht/Month)', 'เงินเดือน (บาท/เดือน)')}</label>
+        <input type="number" className={styles.formInput} value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="0.00" />
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>{L('Hiring Date', 'วันที่เริ่มงาน')}</label>
+        <input type="date" className={styles.formInput} value={hiringDate} onChange={(e) => setHiringDate(e.target.value)} />
+      </div>
+    </div>
+
+    <div className={styles.formGroup} style={{ marginTop: 12 }}>
+      <label className={styles.formLabel}>{L('Responsibility Detail', 'ขอบเขตงานโดยละเอียด')}</label>
+      <textarea className={styles.formInput} rows={3} value={responsibilityDetail} onChange={(e) => setResponsibilityDetail(e.target.value)} placeholder="ระบุรายละเอียดหน้าที่รับผิดชอบ..." />
+    </div>
+  </div>
+)}
+
+                {/* 🏠 โชว์เฉพาะตอนเลือก สัญญาเช่า (rent) */}
+                {contractType === 'rent' && 
+                  <div style={{ marginBottom: 20, padding: 16, background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa' }}>
+                    <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#c2410c' }}>
+                      🏠 {L('Rent Details', 'รายละเอียดสัญญาเช่า')}
+                    </h3>
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>{L('Property Details', 'รายละเอียดที่พัก')}</label>
+                      <textarea className={styles.formInput} rows={2} placeholder="ระบุรายละเอียดที่พัก" />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>{L('Monthly Rent (Baht)', 'ค่าเช่ารายเดือน (บาท)')}</label>  
+                      <input type="number" className={styles.formInput} placeholder="0.00" />
+                    </div>
+                  </div>
+                }
+
+                {/* หมายเหตุ (มีทุกสัญญา) */}
+                <div style={{ marginBottom: 20 }}>
+                  <label className={styles.formLabel}>{L('Notes / Remarks', 'หมายเหตุ')}</label>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} className={styles.formInput} rows={2} />
+                </div>
+
+            {/* ปุ่มสำหรับดาวน์โหลด PDF ✅ */}
+
+
+      <button
+      type="button"
+      onClick={handleDownloadPDF}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded inline-block text-center"
+    >
+      📥 ดาวน์โหลด PDF
+    </button>
+    
+                {/* ปุ่ม Save */}
+                <div style={{ display: 'flex', gap: 12, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
+                  <button type="submit" disabled={loading} className={`${styles.btn} ${styles.btnPrimary} ${styles.btnLarge}`}>
+                    {loading ? L('Saving...', 'กำลังบันทึก...') : L('Save Contract', 'บันทึกสัญญา')}
+                  </button>
+                  <button type="button" onClick={() => router.push('/KR-Thailand/Admin-Login/contract/list')} className={`${styles.btn} ${styles.btnSecondary}`}>
+                    {L('Cancel', 'ยกเลิก')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!contractType && (
+              <div style={{ padding: 20, textAlign: 'center', color: '#64748b', background: '#f1f5f9', borderRadius: 8 }}>
+                ↑ กรุณาเลือกประเภทสัญญาด้านบน เพื่อกรอกข้อมูลเพิ่มเติม ↑
+              </div>
+            )}
+
           </form>
         </div>
       </div>
 
-      {/* Pre-installation Selection Modal */}
+      {/* ==========================================
+          MODAL Import (ใส่ type="button" ป้องกันหน้า Refresh แล้ว) 
+      ========================================== */}
       {showPreInstModal && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setShowPreInstModal(false)}>
           <div style={{
-            background: '#fff', borderRadius: 12, width: '90%', maxWidth: 800,
-            maxHeight: '80vh', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.15)'
+            background: '#fff', borderRadius: 12, width: '90%', maxWidth: 800, maxHeight: '80vh',
+            display: 'flex', flexDirection: 'column', boxShadow: '0 4px 24px rgba(0,0,0,0.15)'
           }} onClick={e => e.stopPropagation()}>
-            <div style={{
-              padding: '16px 20px', borderBottom: '1px solid #e5e7eb',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                  {L('Select Pre-installation', 'เลือกแบบก่อนติดตั้ง')}
-                </h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
-                  {L('Only showing records not yet used in contracts', 'แสดงเฉพาะรายการที่ยังไม่ถูกใช้ทำสัญญา')}
-                </p>
-              </div>
-              <button onClick={() => setShowPreInstModal(false)} style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 24, color: '#666'
-              }}>&times;</button>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{L('Select Pre-installation', 'เลือกแบบก่อนติดตั้ง')}</h3>
+              <button onClick={() => setShowPreInstModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 24 }}>&times;</button>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
               {preInstLoading ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
-                  {L('Loading...', 'กำลังโหลด...')}
-                </div>
+                <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>กำลังโหลด...</div>
               ) : preInstList.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
-                  {L('No available pre-installations (all used or none exist)', 'ไม่มีแบบก่อนติดตั้งที่พร้อมใช้งาน (ถูกใช้หมดแล้วหรือยังไม่มี)')}
-                </div>
+                <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>ไม่มีข้อมูล</div>
               ) : (
                 <table className={styles.table} style={{ fontSize: 14 }}>
                   <thead>
-                    <tr>
-                      <th>{L('Pre-Inst No.', 'เลขที่')}</th>
-                      <th>{L('Customer', 'ลูกค้า')}</th>
-                      <th>{L('Site', 'สถานที่')}</th>
-                      <th>{L('System Size', 'ขนาดระบบ')}</th>
-                      <th>{L('Survey Date', 'วันที่สำรวจ')}</th>
-                      <th style={{ width: 100 }}>{L('Action', 'เลือก')}</th>
-                    </tr>
+                    <tr><th>เลขที่</th><th>ลูกค้า</th><th style={{ width: 100 }}>เลือก</th></tr>
                   </thead>
                   <tbody>
                     {preInstList.map((pi: any) => (
                       <tr key={pi.preInstID || pi.id}>
-                        <td style={{ fontWeight: 600 }}>{pi.preInstNo || pi.pre_inst_no || '-'}</td>
-                        <td>{pi.customer_name || pi.customerName || '-'}</td>
-                        <td>{pi.site_name || pi.siteName || '-'}</td>
-                        <td>{pi.system_size || pi.systemSize || '-'}</td>
-                        <td>{pi.survey_date ? new Date(pi.survey_date).toLocaleDateString('th-TH') : '-'}</td>
+                        <td>{pi.preInstNo || pi.pre_inst_no}</td>
+                        <td>{pi.customer_name || pi.customerName}</td>
                         <td>
+                          {/* พระเอกของเรา! type="button" */}
                           <button
+                            type="button"
                             className={`${styles.btn} ${styles.btnPrimary}`}
                             style={{ padding: '6px 12px', fontSize: 13 }}
-                            onClick={() => selectPreInstallation(pi)}
+                            onClick={() => { selectPreInstallation(pi); setShowPreInstModal(false); }}
                           >
-                            {L('Select', 'เลือก')}
+                            เลือก
                           </button>
                         </td>
                       </tr>
@@ -899,3 +1075,4 @@ Buyer: ______________________    Date: __________
     </AdminLayout>
   )
 }
+
