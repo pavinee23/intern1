@@ -6,6 +6,7 @@ import AdminLayout from '../components/AdminLayout'
 import CreatedBy from '../components/CreatedBy'
 import styles from '../admin-theme.module.css'
 import { pdf } from '@react-pdf/renderer';
+<<<<<<< HEAD
 import EmploymentAgreementPDF from './employment/EmploymentPDF';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 
@@ -23,6 +24,20 @@ type PaymentInstallment = {
   status: 'pending' | 'paid'
   
 }
+=======
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import ContractPDF from './ContractPDF';
+import EmploymentAgreementPDF from './employment/EmploymentPDF';
+import SalesrepresentativePDF from './SalesrepresentativePDF/SalesrepresentativePDF';
+
+
+type PaymentInstallment = {
+  installmentNo: number;
+  dueDate: string;
+  amount: number;
+  status: 'pending' | 'paid';
+};
+>>>>>>> c1ca4cd (update)
 
 export default function ContractPage() {
   const router = useRouter()
@@ -43,7 +58,7 @@ export default function ContractPage() {
   
 
   useEffect(() => {
-    const handler = (e: Event) => {
+      const handler = (e: Event) => {
       const d = (e as any).detail
       const v = typeof d === 'string' ? d : d?.locale
       if (v === 'en' || v === 'th') setLocale(v)
@@ -89,19 +104,30 @@ export default function ContractPage() {
   const [contractDate, setContractDate] = useState(() => new Date().toISOString().split('T')[0])
   const [customers, setCustomers] = useState<any[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
-  const [customerName, setCustomerName] = useState('')
+  const [name, setName] = useState(''); // ตัวแปรเดียวที่ใช้คุมชื่อทั้งสัญญา 
   const [customerPhone, setCustomerPhone] = useState('')
+<<<<<<< HEAD
   const [customerAddress1, setCustomerAddress1] = useState(''); 
   const [customerAddress2, setCustomerAddress2] = useState('');
+=======
+>>>>>>> c1ca4cd (update)
 
   // ==========================================
 // ตัวแปร State สำหรับ "สัญญาจ้างงาน (Employment)"
 // ==========================================
+<<<<<<< HEAD
    const [employeeName, setEmployeeName] = useState(''); // ชื่อลูกจ้าง
    const [position, setPosition] = useState('');         // ตำแหน่งงาน
    const [salary, setSalary] = useState('');             // เงินเดือน
    const [hiringDate, setHiringDate] = useState('');     // วันที่เริ่มงาน
    const [responsibilityDetail, setResponsibilityDetail] = useState(''); // ขอบเขตงาน
+=======
+    const [phone, setPhone] = useState('');
+    const [position, setPosition] = useState('');         // ตำแหน่งงาน
+    const [salary, setSalary] = useState('');             // เงินเดือน
+    const [hiringDate, setHiringDate] = useState('');     // วันที่เริ่มงาน
+    const [responsibilityDetail, setResponsibilityDetail] = useState(''); // ขอบเขตงาน
+>>>>>>> c1ca4cd (update)
 
   // Contract Type (ประเภทสัญญา)
   const [contractTypes, setContractTypes] = useState<{
@@ -123,7 +149,7 @@ export default function ContractPage() {
     },
     {
       id: 'dealer',
-      nameEn: 'Appointment Agreement for Sales Representative',
+      nameEn: 'Salesrepresentative',
       nameTh: 'สัญญาแต่งตั้งตัวแทนจำหน่าย'
     },
     {
@@ -171,13 +197,18 @@ export default function ContractPage() {
   const [importedPreInstID, setImportedPreInstID] = useState<number | null>(null)
 
   // Contract Type (ประเภทสัญญา)
-
   const [selectedContractType, setSelectedContractType] = useState('')
 
    // 🤝 Dealer Agreement States (เพิ่มต่อจาก useState เดิมได้เลย)
   const [responsibleArea, setResponsibleArea] = useState('');
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [probationPeriod, setProbationPeriod] = useState<number>(0);
+<<<<<<< HEAD
+=======
+  // สัญญาเช่าและติดตั้ง (Rental and Installation) States
+  const [propertyDetails, setPropertyDetails] = useState('');
+  const [monthlyRent, setMonthlyRent] = useState(''); 
+>>>>>>> c1ca4cd (update)
 
   // Load initial data
   useEffect(() => {
@@ -284,9 +315,12 @@ export default function ContractPage() {
       return
     }
 
-    setCustomerName(order.customer_name || order.customer || '')
+    setName(order.customer_name || order.customer || '')
     setCustomerPhone(order.customer_phone || order.phone || '')
+<<<<<<< HEAD
     setCustomerAddress1(order.customer_address || order.address || order.site_address || '')
+=======
+>>>>>>> c1ca4cd (update)
     setTotalAmount(Number(order.total_amount || order.amount || 0))
     if (order.preInstID || order.pre_inst_id) setImportedPreInstID(Number(order.preInstID || order.pre_inst_id))
     // Prefill contract content if the order carries pre-installation data
@@ -335,9 +369,12 @@ export default function ContractPage() {
     try {
       const preInstNo = pi.preInstNo || pi.pre_inst_no || ''
       setImportedPreInstID(Number(pi.preInstID || pi.id || null))
-      setCustomerName(pi.customer_name || pi.customerName || '')
+      setName(pi.customer_name || pi.customerName || '')
       setCustomerPhone(pi.phone || pi.tel || '')
+<<<<<<< HEAD
       setCustomerAddress2(pi.site_address || pi.siteAddress || pi.site_name || '')
+=======
+>>>>>>> c1ca4cd (update)
       // Prefill contract content based on pre-installation
       setContractContent(generateLegalContent(pi))
     } catch (e) {
@@ -351,7 +388,7 @@ export default function ContractPage() {
   const generateLegalContent = (pi: any) => {
     const customerName = pi.customer_name || pi.customerName || '[ชื่อลูกค้า]'
     const siteName = pi.site_name || pi.siteName || '[สถานที่ติดตั้ง]'
-    const siteAddress = pi.site_address || pi.siteAddress || '[ที่อยู่]'
+    const siteAddress = pi.site_address || pi.siteAddress || '[ที่อยู่ตามบัตรประชาชน]'
     const systemSize = pi.system_size || pi.systemSize || '[กำลังไฟฟ้า]'
     const preInstNo = pi.preInstNo || pi.pre_inst_no || ''
 
@@ -475,6 +512,7 @@ Buyer: ______________________    Date: __________
 
   // 1. เตรียมข้อมูลสำหรับสัญญาจ้างงาน
   const dataForEmployment = {
+<<<<<<< HEAD
     date: contractDate || "ไม่ได้ระบุ",
     companyName: "บริษัท เค เอนเนอร์ยี่ เซฟ จำกัด",
     employerName: "นายแพทริค จาง",
@@ -483,14 +521,35 @@ Buyer: ______________________    Date: __________
     salary: salary || "ไม่ได้ระบุ",
     hiringDate: hiringDate || "ไม่ได้ระบุ",
     responsibilityDetail: responsibilityDetail || "ไม่ได้ระบุ"
+=======
+    date: contractDate || "................",
+    companyName: "L{ บริษัท เค เอนเนอร์ยี่ เซฟ จำกัด K-Save Energy Co., Ltd. }",
+    employerName: ".......................",
+    name : name || "................",
+    taxId: taxId || "................",
+    address1: address1 || "................",
+    address2: address2 || "................",
+    position: position || "................",
+    phone: phone || ".............",
+    salary: salary || "................",
+    hiringDate: hiringDate || "....................",
+    responsibilityDetail: responsibilityDetail || "................"
+>>>>>>> c1ca4cd (update)
   };
 
   // 2. เตรียมข้อมูลสำหรับสัญญาซื้อขาย
   const dataForSales = {
+<<<<<<< HEAD
     customerName: customerName || "ไม่ได้ระบุ",
     contractNo: contractNo || "ไม่ได้ระบุ",
     contractDate: contractDate || "ไม่ได้ระบุ",
     totalAmount: totalAmount || "ไม่ได้ระบุ"
+=======
+    customerName: name || "................",
+    contractNo: contractNo || "................",
+    contractDate: contractDate || "................",
+    totalAmount: totalAmount || "................"
+>>>>>>> c1ca4cd (update)
   };
 
   // =================================================================
@@ -502,7 +561,11 @@ Buyer: ______________________    Date: __________
       alert(L('Please enter contract number', 'กรุณากรอกเลขที่สัญญา'));
       return;
     }
+<<<<<<< HEAD
     if (!customerName) {
+=======
+    if (!name) {
+>>>>>>> c1ca4cd (update)
       alert(L('Please select or enter customer', 'กรุณาเลือกหรือกรอกข้อมูลลูกค้า'));
       return;
     }
@@ -511,7 +574,11 @@ Buyer: ______________________    Date: __________
     const payload = {
       contractNo, contractDate,
       cusID: selectedCustomer?.cusID || selectedCustomer?.id || null,
+<<<<<<< HEAD
       customerName, customerPhone, customerAddress1, customerAddress2,
+=======
+      name, customerPhone,  
+>>>>>>> c1ca4cd (update)
       contractContent, contractDuration, durationUnit, startDate, endDate,
       totalAmount, installmentCount, installmentAmount, paymentSchedule,
       warrantyPeriod, warrantyUnit, maintenanceScope, notes,
@@ -537,6 +604,7 @@ Buyer: ______________________    Date: __________
     }
   }; // 👈 จบแค่นี้ครับ! ห้ามมี else ต่อท้าย finally เด็ดขาด
 
+<<<<<<< HEAD
 
  // =================================================================
   // ฟังก์ชันดาวน์โหลด PDF (รวมข้อมูลและโค้ดดาวน์โหลดไว้ใน Try เดียวกัน)
@@ -579,6 +647,81 @@ Buyer: ______________________    Date: __________
 
       // --- โค้ดส่วนดาวน์โหลดไฟล์ลงเครื่อง ---
       if (blob) { // เช็คชัวร์ๆ ว่าสร้าง blob สำเร็จ ค่อยให้โหลด
+=======
+ // =================================================================
+  // ฟังก์ชันดาวน์โหลด PDF (รวมข้อมูลและโค้ดดาวน์โหลดไว้ใน Try เดียวกัน)
+  // =================================================================
+const handleDownloadPDF = async () => {
+  console.log("ค่าที่ฟังก์ชันเห็นคือ: ->", contractType, "<-");
+    try {
+      const { pdf } = await import('@react-pdf/renderer');
+      let blob: any;
+      let fileName = 'Document.pdf';
+
+      // 1. สัญญาจ้างงาน
+      if (contractType === 'employment') {
+        const dataForEmployment = {
+          date: contractDate || "................",
+          companyName: "บริษัท เค เอนเนอร์ยี่ เซฟ จำกัด K-Save Energy Co., Ltd.",
+          name: name || "................",
+          taxId: taxId || "................",
+          address1: address1 || "................",
+          address2: address2 || "................",
+          position: position || "................",
+          phone: phone || ".............",
+          salary: salary || "................",
+          hiringDate: hiringDate || "....................",
+          responsibilityDetail: responsibilityDetail || "................"
+        };
+        blob = await pdf(<EmploymentAgreementPDF data={dataForEmployment} lang={locale === 'en' ? 'EN' : 'TH'} />).toBlob();
+        fileName = `Employment_Contract_${name || 'Draft'}.pdf`;
+
+      // 2. สัญญาซื้อขาย
+      } else if (contractType === 'sales' || contractType === 'company') {
+        const dataForSales = {
+          date: contractDate || "................",
+          name: name || "................",
+          taxId: taxId || "................",
+          address1: address1 || "................",
+          phone: phone || ".............",
+        };
+        blob = await pdf(<ContractPDF data={dataForSales} lang={locale === 'en' ? 'EN' : 'TH'} />).toBlob();
+        fileName = `Contract_${name || 'Draft'}.pdf`;
+
+      // 3. สัญญาเช่า (ตรงนี้ที่พี่ติด Alert ในรูป image_edb757.png)
+      } else if (contractType === 'rent' || contractType === 'rental') {
+        const dataForRental = {
+          date: contractDate || "................",
+          name: name || "................",
+          taxId: taxId || "................",
+          address1: address1 || "................",
+          phone: phone || ".............",
+        };
+       
+
+      // 4. สัญญานายหน้า
+      // เพิ่ม || contractType === 'dealer' เข้าไปให้ตรงกับ id ที่พี่ตั้ง
+        } else if (contractType === 'dealer' || contractType === 'broker' || contractType === 'dealer') {
+          const dataForBroker = {
+            date: contractDate || "................",
+            name: name || "................",
+            taxId: taxId || "................",
+            address1: address1 || "................",
+            phone: phone || ".............",
+          };
+
+  // เรียกใช้ Tag ให้ตรงกับที่ import (ใช้ r เล็ก)
+        blob = await pdf(<SalesrepresentativePDF data={dataForBroker} lang={locale === 'en' ? 'EN' : 'TH'} />).toBlob();
+        fileName = `Sales_Representative_Agreement_${name || 'Draft'}.pdf`;
+    
+
+      } else {
+        alert("กรุณาเลือกประเภทสัญญาก่อนดาวน์โหลดครับ");
+        return;      
+      }
+
+      if (blob) {
+>>>>>>> c1ca4cd (update)
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -588,12 +731,19 @@ Buyer: ______________________    Date: __________
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }
+<<<<<<< HEAD
 
     } catch (error) {
       console.error("PDF Error:", error);
       alert("เกิดข้อผิดพลาดในการสร้างไฟล์ PDF (เช็ค Console F12)");
     }
     
+=======
+    } catch (error) {
+      console.error("PDF Error:", error);
+      alert("เกิดข้อผิดพลาดในการสร้างไฟล์ PDF");
+    }
+>>>>>>> c1ca4cd (update)
   };
   
   // =================================================================
@@ -603,9 +753,16 @@ Buyer: ______________________    Date: __________
     const val = e.target.value;
     if (!val) {
       // ถ้าไม่ได้เลือกใครเลย ให้ล้างค่าที่กรอกไว้
+<<<<<<< HEAD
       setCustomerName('');
       setCustomerPhone('');
       setCustomerAddress1('');
+=======
+     setPhone('');      
+     setAddress1('');   
+     setAddress2('');
+     setTaxId('');
+>>>>>>> c1ca4cd (update)
       return;
     }
     
@@ -613,6 +770,7 @@ Buyer: ______________________    Date: __________
     const selected = customers.find((c: any) => c.cusID === val || c.id === val);
     if (selected) {
       // เติมข้อมูลลูกค้าลงในช่องอัตโนมัติ
+<<<<<<< HEAD
       setCustomerName(selected.fullname || selected.name || '');
       setCustomerPhone(selected.phone || selected.telephone || '');
       setCustomerAddress1(selected.address || selected.address1 || '');
@@ -620,12 +778,23 @@ Buyer: ______________________    Date: __________
   };
 
 
+=======
+      setName(selected.fullname || selected.name || '');
+      setPhone(selected.phone || selected.telephone || '');
+      setAddress1(selected.address1 || selected.address1 || '');
+    }
+  };
+
+>>>>>>> c1ca4cd (update)
   // =================================================================
   // ฟังก์ชันจัดรูปแบบเงิน (ต้องอยู่เหนือ return และอยู่ใน Component)
   // =================================================================
   const fmtCurrency = (n: number) => n.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> c1ca4cd (update)
   // ====== เริ่มต้นส่วนแสดงผลหน้าจอ (UI) ======
   return (
     <AdminLayout title="Contract" titleTh="สัญญา">
@@ -658,6 +827,7 @@ Buyer: ______________________    Date: __________
               </h3>
 
               {/* Import & Contract No. */}
+              <div className={styles.formGroup} style={{ flex: 2 }}></div>
               <div className={styles.formRow} style={{ marginBottom: 16 }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>
@@ -665,6 +835,7 @@ Buyer: ______________________    Date: __________
                   </label>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input
+                      type="text"
                       value={contractNo}
                       onChange={e => setContractNo(e.target.value)}
                       className={styles.formInput}
@@ -709,30 +880,42 @@ Buyer: ______________________    Date: __________
                   </select>
                 </div>
               </div>
-
+                  {/* ชื่อ-นามสกุล, เบอร์โทรศัพท์ */}
               <div className={styles.formRow} style={{ marginBottom: 16 }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>
-                    {L('Customer Name', 'ชื่อลูกค้า')} <span style={{ color: '#dc2626' }}>*</span>
+                    {L('Name', 'ชื่อ-นามสกุล')} <span style={{ color: '#dc2626' }}>*</span>
                   </label>
-                  <input value={customerName} onChange={e => setCustomerName(e.target.value)} className={styles.formInput} required />
+                  <input value={name} onChange={e => setName(e.target.value)} className={styles.formInput} required />
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>{L('Phone', 'เบอร์โทรศัพท์')}</label>
-                  <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className={styles.formInput} placeholder="08x-xxx-xxxx" />
+                  <input value={phone}
+                   onChange={e => setPhone(e.target.value)}
+                    className={styles.formInput} placeholder="08x-xxx-xxxx" />
                 </div>
               </div>
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup} style={{ width: '100%' }}>
+<<<<<<< HEAD
                   <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
                   <input value={customerAddress1} onChange={e => setCustomerAddress1(e.target.value)} className={styles.formInput} placeholder="Customer address" />
+=======
+                  <label className={styles.formLabel}>{L('Address', 'ที่อยู่ตามบัตรประชาชน')}</label>
+                  <input value={address1} onChange={e => setAddress1(e.target.value)} className={styles.formInput} placeholder={L('Local Customer address', 'ที่อยู่ตามบัตรประชาชน')} />
+>>>>>>> c1ca4cd (update)
                 </div>
               </div>
               {/* หาบรรทัดนี้ในโค้ดพี่ (ประมาณบรรทัดที่ 70 กว่าๆ) */}
               <div className={styles.formGroup} style={{ width: '100%' }}>
+<<<<<<< HEAD
                 <label className={styles.formLabel}>{L('Address', 'ที่อยู่')}</label>
                 <input value={customerAddress2} onChange={e => setCustomerAddress2(e.target.value)} className={styles.formInput} placeholder="Customer address" />
+=======
+                <label className={styles.formLabel}>{L('Address', 'ที่อยู่ตามบัตรประชาชน')} </label>
+                <input value={address2} onChange={e => setAddress2(e.target.value)} className={styles.formInput} placeholder={L('Customer address', 'ที่อยู่ตามบัตรประชาชน')} />
+>>>>>>> c1ca4cd (update)
               </div>
 
               {/* พิมพ์ต่อท้ายตรงนี้เลยพี่! */}
@@ -936,17 +1119,24 @@ Buyer: ______________________    Date: __________
     <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#0369a1' }}>
       💼 {L('Employment Details', 'รายละเอียดสัญญาจ้างงาน')}
     </h3>
+<<<<<<< HEAD
     <div className={styles.formRow}>
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>{L('Employee Name', 'ชื่อลูกจ้าง')}</label>
         <input type="text" className={styles.formInput} value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="ระบุชื่อ-นามสกุลลูกจ้าง" />
       </div>
+=======
+    
+>>>>>>> c1ca4cd (update)
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>{L('Position', 'ตำแหน่งงาน')}</label>
         <input type="text" className={styles.formInput} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="เช่น โปรแกรมเมอร์" />
       </div>
+<<<<<<< HEAD
     </div>
 
+=======
+>>>>>>> c1ca4cd (update)
     <div className={styles.formRow} style={{ marginTop: 12 }}>
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>{L('Salary (Baht/Month)', 'เงินเดือน (บาท/เดือน)')}</label>
@@ -973,11 +1163,11 @@ Buyer: ______________________    Date: __________
                     </h3>
                     <div className={styles.formGroup}>
                       <label className={styles.formLabel}>{L('Property Details', 'รายละเอียดที่พัก')}</label>
-                      <textarea className={styles.formInput} rows={2} placeholder="ระบุรายละเอียดที่พัก" />
+                      <textarea className={styles.formInput} rows={2} value={propertyDetails} onChange={(e) => setPropertyDetails(e.target.value)} placeholder="ระบุรายละเอียดที่พัก" />
                     </div>
                     <div className={styles.formGroup}>
                       <label className={styles.formLabel}>{L('Monthly Rent (Baht)', 'ค่าเช่ารายเดือน (บาท)')}</label>  
-                      <input type="number" className={styles.formInput} placeholder="0.00" />
+                      <input type="number" className={styles.formInput} value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} placeholder="0.00" />
                     </div>
                   </div>
                 }
@@ -988,6 +1178,7 @@ Buyer: ______________________    Date: __________
                   <textarea value={notes} onChange={e => setNotes(e.target.value)} className={styles.formInput} rows={2} />
                 </div>
 
+<<<<<<< HEAD
             {/* ปุ่มสำหรับดาวน์โหลด PDF ✅ */}
 
 
@@ -998,6 +1189,17 @@ Buyer: ______________________    Date: __________
     >
       📥 ดาวน์โหลด PDF
     </button>
+=======
+           
+            {/* ปุ่มสำหรับดาวน์โหลด PDF ✅ */} 
+            <button
+            type="button"
+            onClick={handleDownloadPDF}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded inline-block text-center"
+          >
+            📥 ดาวน์โหลด PDF
+              </button>
+>>>>>>> c1ca4cd (update)
     
                 {/* ปุ่ม Save */}
                 <div style={{ display: 'flex', gap: 12, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
